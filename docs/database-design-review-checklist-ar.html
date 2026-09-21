@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contractra — قائمة مراجعة تصميم قاعدة البيانات</title>
+<meta name="description" content="النسخة التفاعلية المولَّدة من قائمة مراجعة تصميم قاعدة البيانات — Markdown هو المصدر الرسمي.">
+<meta name="generator" content="generate-html.py v2.0">
+<style>
+:root{
+  --purple:#7F77DD; --purple-dk:#3C3489; --purple-lt:#EEEDFE;
+  --teal:#1D9E75;   --teal-lt:#E1F5EE;
+  --coral:#D85A30;  --coral-lt:#FAECE7;
+  --amber:#BA7517;  --amber-lt:#FAEEDA;
+  --blue:#378ADD;   --blue-lt:#EEF4FD;
+  --gray-dk:#2C2C2A; --gray-md:#6B6B68; --gray-lt:#F1EFE8;
+  --gray-bd:#D3D1C7; --white:#fff; --bg:#F8F7F4;
+  --font-sans:"Segoe UI","Noto Naskh Arabic","Tahoma",system-ui,-apple-system,sans-serif;
+  --font-mono:"Cascadia Mono","SF Mono","Consolas","Courier New",monospace;
+  --radius:8px; --radius-lg:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-sans); background:var(--bg); color:var(--gray-dk);
+  font-size:14px; line-height:1.7; direction:rtl; text-align:right;
+}
+
+/* ── الترويسة ─────────────────────────────────────── */
+.site-header{
+  background:var(--purple-dk); padding:26px 40px; position:sticky; top:0; z-index:100;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+}
+.site-header .ttl{flex:1; min-width:240px}
+.site-header h1{font-size:21px; font-weight:700; color:#fff; letter-spacing:-.2px}
+.site-header p{font-size:12.5px; color:rgba(255,255,255,.55); margin-top:3px}
+.hdr-meta{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.chip-v{
+  font-size:11px; font-weight:700; padding:4px 11px; border-radius:20px;
+  background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.22);
+}
+#q{
+  width:220px; padding:7px 12px; border-radius:20px; font-family:inherit; font-size:12.5px;
+  border:1px solid rgba(255,255,255,.22); background:rgba(255,255,255,.1); color:#fff;
+}
+#q::placeholder{color:rgba(255,255,255,.5)}
+#q:focus{outline:none; background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.45)}
+
+/* ── التبويبات ────────────────────────────────────── */
+.nav{
+  background:var(--white); border-bottom:1px solid var(--gray-bd);
+  padding:0 40px; display:flex; flex-wrap:wrap; gap:0 2px;
+  position:sticky; top:81px; z-index:99;   /* يُضبط من JS حسب ارتفاع الترويسة */
+}
+.nav-btn{
+  font-size:13px; font-weight:600; padding:12px 15px; border:none; background:none;
+  color:var(--gray-md); cursor:pointer; border-bottom:2px solid transparent;
+  white-space:nowrap; transition:all .15s; font-family:inherit;
+}
+.nav-btn:hover{color:var(--gray-dk)}
+.nav-btn.active{color:var(--purple); border-bottom-color:var(--purple)}
+.nav-btn .cnt{font-size:10px; color:var(--gray-bd); margin-inline-start:5px; font-weight:700}
+.nav-btn.active .cnt{color:var(--purple)}
+
+/* ── المخطط المرسوم ───────────────────────────────── */
+.erd{border-bottom:1px solid var(--gray-bd); background:#fbfbf9}
+.erd-bar{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  padding:8px 14px; border-bottom:1px solid var(--gray-bd); background:var(--white);
+}
+.erd-bar button{
+  font-family:inherit; font-size:12px; font-weight:700; cursor:pointer;
+  padding:5px 11px; border-radius:7px; border:1px solid var(--gray-bd);
+  background:var(--white); color:var(--gray-dk); line-height:1.2;
+}
+.erd-bar button:hover{background:var(--purple-lt); border-color:var(--purple); color:var(--purple-dk)}
+.erd-hint{font-size:11.5px; color:var(--gray-md); margin-inline-start:auto}
+.erd-view{
+  height:min(74vh,720px); overflow:hidden; position:relative;
+  cursor:grab; background:
+    linear-gradient(90deg,rgba(0,0,0,.028) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(rgba(0,0,0,.028) 1px,transparent 1px) 0 0/22px 22px, #fff;
+}
+.erd-view.drag{cursor:grabbing}
+.erd-stage{transform-origin:0 0; will-change:transform; direction:ltr}
+.erd-stage svg{display:block; max-width:none; height:auto}
+.erd-src{border-top:1px solid var(--gray-bd)}
+.erd-src summary{
+  cursor:pointer; padding:9px 16px; font-size:12.5px; font-weight:700;
+  color:var(--purple-dk); background:#fcfcfa; list-style:none;
+}
+.erd-src summary::-webkit-details-marker{display:none}
+.erd-src summary::before{content:"▸ "; font-size:11px}
+.erd-src[open] summary::before{content:"▾ "}
+.erd-src pre{border-top:1px solid var(--gray-bd)}
+
+/* ── المحتوى ──────────────────────────────────────── */
+.content{max-width:1180px; margin:0 auto; padding:30px 40px 80px}
+.panel{display:none}
+.panel.active{display:block}
+
+.panel-title{
+  font-size:19px; font-weight:700; color:var(--gray-dk);
+  margin:34px 0 4px; padding-bottom:9px; border-bottom:2px solid var(--purple);
+  scroll-margin-top:var(--stick,150px);
+}
+.panel > .panel-title:first-child{margin-top:0}
+.section-title{
+  font-size:14.5px; font-weight:700; color:var(--purple-dk);
+  margin:26px 0 10px; padding-inline-start:10px;
+  border-inline-start:3px solid var(--purple); scroll-margin-top:var(--stick,150px);
+}
+.sub-title{
+  font-size:13px; font-weight:700; color:var(--gray-dk);
+  margin:18px 0 8px; scroll-margin-top:var(--stick,150px);
+}
+.para{font-size:13.5px; color:var(--gray-dk); margin:10px 2px}
+.rule-sep{height:1px; background:var(--gray-bd); margin:26px 0; opacity:.6}
+
+/* ── البطاقات ─────────────────────────────────────── */
+.card{
+  background:var(--white); border:1px solid var(--gray-bd);
+  border-radius:var(--radius-lg); overflow:hidden; margin-bottom:12px;
+}
+.card.bare{border-style:solid}
+.card-header{
+  display:flex; align-items:center; gap:10px; padding:11px 16px;
+  border-bottom:1px solid var(--gray-bd); background:#fcfcfa;
+}
+.card-header h3{font-size:13.5px; font-weight:700; color:var(--gray-dk); line-height:1.5}
+.card-title{scroll-margin-top:var(--stick,150px)}
+.card-header span{
+  font-size:10.5px; color:var(--gray-md); margin-inline-start:auto;
+  white-space:nowrap; flex-shrink:0;
+}
+.dot{width:9px; height:9px; border-radius:50%; flex-shrink:0}
+.dot-purple{background:var(--purple)} .dot-teal{background:var(--teal)}
+.dot-coral{background:var(--coral)}  .dot-amber{background:var(--amber)}
+.dot-blue{background:var(--blue)}
+
+/* ── الجداول ──────────────────────────────────────── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%; border-collapse:collapse; font-size:12.8px}
+th{
+  text-align:right; font-size:10.5px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--gray-md); padding:9px 13px;
+  background:var(--gray-lt); border-bottom:1px solid var(--gray-bd);
+  position:sticky; top:0; z-index:1; white-space:nowrap;
+}
+td{padding:9px 13px; border-bottom:1px solid var(--gray-bd); vertical-align:top; line-height:1.65}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--gray-lt)}
+td strong{font-weight:700}
+
+/* ── القوائم ──────────────────────────────────────── */
+.rule-list{list-style:none; padding:14px 16px; display:flex; flex-direction:column; gap:7px}
+.rule-list.tight{padding:6px 0}
+.rule-list li{
+  display:flex; gap:9px; align-items:flex-start;
+  font-size:13px; color:var(--gray-dk); line-height:1.65;
+}
+.rule-list li::before{content:'—'; color:var(--gray-bd); flex-shrink:0; margin-top:1px}
+ol.rule-list{counter-reset:ri}
+ol.rule-list li{counter-increment:ri}
+ol.rule-list li::before{
+  content:counter(ri); color:var(--purple); font-weight:700; font-size:11px;
+  min-width:17px; text-align:center;
+}
+
+/* ── الصناديق ─────────────────────────────────────── */
+.info-box{
+  border-inline-start:3px solid var(--blue); background:var(--blue-lt);
+  border-radius:0 var(--radius) var(--radius) 0;
+  padding:11px 15px; font-size:13px; color:var(--gray-dk); margin:12px 0;
+}
+.info-box.warn{border-inline-start-color:var(--amber); background:var(--amber-lt)}
+.info-box.danger{border-inline-start-color:var(--coral); background:var(--coral-lt)}
+.info-box.tech{border-inline-start-color:var(--purple); background:var(--purple-lt)}
+.info-box.ok{border-inline-start-color:var(--teal); background:var(--teal-lt)}
+.info-box p{margin:5px 0}
+.info-box p:first-child{margin-top:0}
+.info-box p:last-child{margin-bottom:0}
+.info-box .box-title{font-size:13.5px; font-weight:700; margin-bottom:6px}
+.info-box table{font-size:12.3px; margin-top:8px}
+.info-box th{background:rgba(255,255,255,.55)}
+.info-box td{border-bottom-color:rgba(0,0,0,.07)}
+.info-box tbody tr:hover td{background:rgba(255,255,255,.4)}
+
+/* ── الكود ────────────────────────────────────────── */
+.code-card pre{
+  margin:0; padding:14px 16px; overflow-x:auto; direction:ltr; text-align:left;
+  font-family:var(--font-mono); font-size:12px; line-height:1.7;
+  background:#fbfaf7; color:var(--gray-dk);
+}
+.code-card.gherkin pre{background:var(--teal-lt)}
+.code-card.diagram pre{background:var(--gray-lt); max-height:420px}
+.mono{
+  font-family:var(--font-mono); font-size:.9em; direction:ltr;
+  unicode-bidi:isolate; display:inline-block; background:var(--gray-lt);
+  padding:.1em .38em; border-radius:4px;
+}
+th .mono, .card-header .mono{background:transparent; padding:0}
+
+/* ── الشارات ──────────────────────────────────────── */
+.badge{
+  display:inline-block; font-size:11px; line-height:1.5; padding:1px 7px;
+  border-radius:20px; font-weight:600; vertical-align:middle;
+}
+.b-confirmed{background:var(--teal-lt)}
+.b-proposed{background:var(--blue-lt)}
+.b-open{background:var(--amber-lt)}
+.b-assumption{background:var(--gray-lt)}
+.b-evidence{background:var(--purple-lt)}
+.b-migration{background:var(--coral-lt)}
+.b-future{background:var(--gray-lt)}
+.mark{font-style:normal}
+.m-forbidden,.m-no{color:var(--coral)}
+.m-critical{color:var(--amber)}
+.m-ok{color:var(--teal)}
+.m-warn{color:var(--amber)}
+.m-idem{color:var(--purple)}
+.m-sensitive{color:var(--coral)}
+del{color:var(--gray-md)}
+a{color:var(--purple-dk)}
+mark{background:#FFE9A8; color:var(--gray-dk); border-radius:3px; padding:0 2px}
+
+/* ── فهرس جانبي عائم ──────────────────────────────── */
+.mini-toc{
+  position:fixed; inset-inline-start:14px; bottom:60px; z-index:60;
+  background:var(--white); border:1px solid var(--gray-bd); border-radius:var(--radius-lg);
+  max-width:280px; max-height:min(66vh,560px); overflow-y:auto; padding:9px 6px;
+  box-shadow:0 4px 18px rgba(0,0,0,.09); display:none;
+}
+.mini-toc.open{display:block}
+.mini-toc a{
+  display:block; padding:4px 9px; border-radius:6px; font-size:11.8px;
+  color:var(--gray-dk); text-decoration:none; line-height:1.5;
+}
+.mini-toc a:hover{background:var(--gray-lt)}
+.mini-toc a.l3{padding-inline-start:20px; font-size:11.2px; color:var(--gray-md)}
+.mini-toc a.hide{display:none}
+
+/* ── أزرار عائمة ──────────────────────────────────── */
+.fab{position:fixed; inset-inline-start:14px; bottom:14px; z-index:70; display:flex; gap:6px}
+.fab.up{inset-inline-start:auto; inset-inline-end:14px}
+.fab button{
+  border:1px solid var(--gray-bd); background:var(--white); color:var(--gray-dk);
+  border-radius:20px; padding:7px 13px; cursor:pointer; font-family:inherit;
+  font-size:12px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,.07);
+}
+.fab button:hover{background:var(--gray-lt)}
+.hits{
+  font-size:11px; color:rgba(255,255,255,.7); white-space:nowrap;
+}
+
+/* ── الاستجابة ────────────────────────────────────── */
+@media (max-width:820px){
+  .site-header{padding:16px; position:static}
+  .nav{padding:0 12px; position:static}
+  .content{padding:20px 14px 70px}
+  #q{width:100%}
+  .mini-toc{max-width:min(250px,84vw)}
+}
+
+/* ── الطباعة ──────────────────────────────────────── */
+@media print{
+  .nav,.fab,.mini-toc,#q,.hits,.erd-bar{display:none !important}
+  .erd-view{height:auto; overflow:visible}
+  .erd-src{display:none}
+  .site-header{position:static; background:#fff; border-bottom:2px solid #000; padding:0 0 10px}
+  .site-header h1,.site-header p{color:#000}
+  .chip-v{background:#eee; color:#000; border-color:#999}
+  body{background:#fff; font-size:10pt}
+  .content{max-width:100%; padding:0}
+  .panel{display:block !important}
+  .panel-title{page-break-before:always; page-break-after:avoid}
+  .panel:first-child .panel-title:first-child{page-break-before:avoid}
+  .card,.info-box,.code-card{page-break-inside:avoid; box-shadow:none}
+  table{font-size:8pt}
+  tr{page-break-inside:avoid}
+  th{position:static; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+  .badge,.dot{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  a{color:#000; text-decoration:none}
+  @page{size:A4; margin:14mm 12mm}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="ttl">
+    <h1>Contractra &nbsp;·&nbsp; كونتراكترا</h1>
+    <p>قائمة مراجعة تصميم قاعدة البيانات &nbsp;·&nbsp; Database Design Review Checklist</p>
+  </div>
+  <div class="hdr-meta">
+    <span class="chip-v">الإصدار 2.0.1</span>
+    <span class="chip-v">توليد 2026-09-20 · 14:29</span>
+    <input id="q" type="search" placeholder="ابحث في كل التبويبات…" autocomplete="off">
+    <span class="hits" id="hits"></span>
+  </div>
+</header>
+
+<nav class="nav"><button class="nav-btn active" data-tab="t1">إدارة الوثيقة<span class="cnt" data-n="4">4</span></button><button class="nav-btn" data-tab="t2">فحص النطاق — ما لم يُكتب<span class="cnt" data-n="4">4</span></button><button class="nav-btn" data-tab="t3">فحص جاهزية الترحيل — منفصل ع<span class="cnt" data-n="3">3</span></button></nav>
+
+<div class="content">
+<div id="t1" class="panel active"><h2 class="panel-title" id="0.-إدارة-الوثيقة">0. إدارة الوثيقة</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>القيمة</th></tr></thead><tbody><tr><td><strong>المعرّف</strong></td><td><span class="mono">database-design-review-checklist-ar</span></td></tr><tr><td><strong>الإصدار</strong></td><td><strong>2.0.1</strong></td></tr><tr><td><strong>الحالة</strong></td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>مُنفَّذة — النتيجة في §الحكم</strong></td></tr><tr><td><strong>التاريخ</strong></td><td>2026-09-17</td></tr><tr><td><strong>السؤال الواحد</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>هل النموذج المنطقي جاهز للانتقال إلى التصميم الفيزيائي؟</strong></td></tr><tr><td><strong>يُقرأ مع</strong></td><td><span class="mono">logical-data-model-ar.md</span> · <span class="mono">database-integrity-rules-ar.md</span> · <span class="mono">data-dictionary-ar.md</span></td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-teal"></div><h3 class="card-title" id="0.1-كيف-تُستخدم">0.1 كيف تُستخدم</h3></div><ol class="rule-list"><li><span class="mark m-critical" title="حرج">⭐</span> <strong>تُنفَّذ كاملة قبل كتابة أي DDL.</strong></li><li><strong>كل بند له إجابة: <span class="mark m-ok" title="مستوفى">✅</span> مستوفى · <span class="mark m-warn" title="تنبيه">⚠️</span> مستوفى بملاحظة · <span class="mark m-no" title="غير مستوفى">❌</span> غير مستوفى · <span class="badge b-open" title="قرار مفتوح">🟡</span> يحتاج قرارًا.</strong></li><li><span class="mark m-critical" title="حرج">⭐</span> <strong>بند واحد <span class="mark m-no" title="غير مستوفى">❌</span> يمنع الانتقال إلى التصميم الفيزيائي.</strong></li><li><strong>بند <span class="badge b-open" title="قرار مفتوح">🟡</span> لا يمنع إن كان لا يغيّر البنية — ويُسجَّل في §القرارات المفتوحة.</strong></li></ol></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="0.9-إعادة-التنفيذ-بعد-الباتش-v1.2.1">0.9 <span class="badge b-confirmed" title="مؤكدة">🟢</span> <span class="mark m-critical" title="حرج">⭐</span> إعادة التنفيذ بعد الباتش v1.2.1</h2>
+<div class="info-box tech"><p><span class="mark m-critical" title="حرج">⭐</span> <strong>أُعيد تنفيذ الفحص كاملًا بعد إضافة المجالين 19 و20 والتصحيحات التسعة.</strong></p></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>الفحص المضاف</th><th>النتيجة</th></tr></thead><tbody><tr><td><strong>P-01</strong></td><td><strong>العملية ↔ أمر الإسناد <span class="mono">1 : 1</span> في كل موضع</strong> (مخطط · جدول · مفاتيح · قاموس · قيود)</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>P-02</strong></td><td><strong><span class="mono">operation_dates</span> <span class="mono">1 : 0..1</span> <span class="mark m-forbidden" title="ممنوع">⛔</span> ولا تظهر <span class="mono">1 : N</span></strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>P-03</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا إشارة إلى <span class="mono">journal_entries</span> أو <span class="mono">cash_movements</span> بلا تعريف</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>P-04</strong></td><td><strong>كل قيد محاسبي متوازن ومربوط بحدث مالي</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>P-05</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>لا حركة خزينة عند اعتماد مصروف العهدة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>BR-256</strong></td></tr><tr><td><strong>P-06</strong></td><td><strong>حالات المصروف أربع <span class="mark m-forbidden" title="ممنوع">⛔</span> ولا <span class="mono">NeedsAdminAction</span></strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>P-07</strong></td><td><strong>حالة المزامنة منفصلة في كيان مستقل</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>P-08</strong></td><td><strong>سجل الإرسال يسمح بمحاولات متعددة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>P-09</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا قيد تفرّد يعتمد على <span class="mono">NULL</span> بلا دلالة معلَنة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>ملحق د</strong></td></tr><tr><td><strong>P-10</strong></td><td>🏗️ <strong>كل تفصيل فيزيائي موسوم</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>10 مرشحات</strong></td></tr><tr><td><strong>P-11</strong></td><td><strong>كل كيان له تصنيف نطاق</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>148/148</strong></td></tr><tr><td><strong>P-12</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا جدول بلا قاعدة عمل أو متطلب</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>P-13</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا متطلب مالي بلا حدث تدقيق</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>P-14</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا حركة مالية قابلة للحذف أو التعديل الصامت</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>P-15</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا SQL ولا DDL ولا Migrations</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr></tbody></table></div></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>قبل</th><th><span class="mark m-critical" title="حرج">⭐</span> بعد</th></tr></thead><tbody><tr><td><strong>الأسئلة الثلاثون</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span>27 · <span class="mark m-warn" title="تنبيه">⚠️</span>3 · <span class="mark m-no" title="غير مستوفى">❌</span>0</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mark m-ok" title="مستوفى">✅</span>30 · <span class="mark m-warn" title="تنبيه">⚠️</span>0 · <span class="mark m-no" title="غير مستوفى">❌</span>0</strong> — <strong>والثلاثة المعلَّقة كانت: تعريف الأستاذ · تعريف الخزينة · تعارض Cardinality</strong></td></tr><tr><td><strong>المبادئ</strong></td><td>38/38</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>41/41</strong> (<strong>+ التوازن · + سند الحركة النقدية · + دلالة الغياب</strong>)</td></tr><tr><td><strong>فحوص التعارض</strong></td><td>20/20</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>24/24</strong></td></tr><tr><td><strong>فحوص النطاق</strong></td><td>12/12</td><td><strong>12/12</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="0.10-فحوص-القبول-بعد-الباتش-v2.0.1--2222">0.10 <span class="badge b-confirmed" title="مؤكدة">🟢</span> <span class="mark m-critical" title="حرج">⭐</span> فحوص القبول بعد الباتش v2.0.1 — 22/22</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>الفحص</th><th>النتيجة</th></tr></thead><tbody><tr><td>1</td><td><strong>كل <span class="mono">Posted Financial Event</span> له قيد واحد فقط</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>2</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا <span class="mono">posting_sequence</span></strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>3</td><td><strong>كل عكس حدث مستقل يشير إلى الأصل</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>4</td><td><strong>كل تصحيح له مستند <span class="mono">accounting_adjustment</span></strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>5</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا تعديل لقيد أو حركة معتمدة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>6</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا <span class="mono">document_type</span> + <span class="mono">document_id</span> في تخصيصات الخزينة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>7</td><td><strong>كل تخصيص يشير إلى <span class="mono">allocated_financial_event_id</span></strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>8</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا <span class="mono">funding_source</span></strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>9</td><td><strong><span class="mono">settlement_mode</span> لا يُطلب من المهندس</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>10</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>اعتماد مصروف العهدة لا ينشئ حركة خزينة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>11</td><td><strong>تسليم العهدة ينشئ حركة خزينة واحدة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>12</td><td><strong>التحويل ينشئ حركتين متساويتين</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>13</td><td><strong>سطر القيد فيه موجب واحد فقط</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>14</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا قيمة سالبة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>15</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا <span class="mono">financial_accounts</span> غير مبرر</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>16</td><td><strong>قواعد <span class="mono">instrument</span> موحدة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>17</td><td><strong>الأرصدة الافتتاحية منفصلة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>18</td><td><strong>تتبّع كل سجل مستورد إلى صف Excel</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>19</td><td><strong>الأعداد أُعيد حسابها آليًا</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>20</td><td><strong>كل كيان في المصفوفة مرة واحدة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>149/149</strong></td></tr><tr><td>21</td><td><strong>كل علاقة في ERD معرَّفة في النموذج</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>204/204</strong></td></tr><tr><td>22</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا SQL ولا DDL ولا كود</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr></tbody></table></div></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>v2.0.0</th><th><span class="badge b-confirmed" title="مؤكدة">🟢</span> v2.0.1</th></tr></thead><tbody><tr><td><strong>الأسئلة الثلاثون</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span>30</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>30</strong></td></tr><tr><td><strong>المبادئ</strong></td><td>41/41</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>45/45</strong> (<strong>+ اكتمال الأثر · + قيد واحد لكل حدث · + مستند التصحيح · + لا مرجع متعدد الأشكال في مسار مالي</strong>)</td></tr><tr><td><strong>فحوص التعارض</strong></td><td>24/24</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>28/28</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="1.-فحص-الجودة-الإلزامي--الثلاثون-سؤالًا">1. <span class="mark m-critical" title="حرج">⭐</span> فحص الجودة الإلزامي — الثلاثون سؤالًا</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>السؤال</th><th>النتيجة</th><th>الدليل</th></tr></thead><tbody><tr><td><strong>1</strong></td><td>هل كل قاعدة مؤكدة لها مصدر؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>246 قاعدة</strong>، كل منها بمصدر: قرار كامل · نص مستند · دليل بيانات · الماستر برومبت. و<strong>9 قواعد <span class="badge b-proposed" title="مقترح">🔵</span> موسومة صراحةً «قرار تصميمي مقترح»</strong> ولا تحمل صفة «مؤكدة»</td></tr><tr><td><strong>2</strong></td><td>هل كل Requirement قابل للاختبار؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>226 متطلبًا وظيفيًا</strong> و<strong>54 غير وظيفي</strong> — كلها بمعيار قبول أو معيار قياس · <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا كلمة «سريع» أو «سهل» بلا معيار</strong></td></tr><tr><td><strong>3</strong></td><td>هل كل Requirement له ID ثابت؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>نظام بادئات موثَّق في §1.8 · و<strong>المعرّفات لا يُعاد استخدامها</strong> · و<strong>BR-134 محجوز</strong></td></tr><tr><td><strong>4</strong></td><td>هل كل متطلب مالي مرتبط بـAudit؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>كل متطلب مالي يحمل حقل «أثر Audit»</strong> · و<strong>نطاق التدقيق 12 مجموعة حد أدنى</strong></td></tr><tr><td><strong>5</strong></td><td>هل كل أثر مالي له مصدر حقيقة واحد؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>الطبقة 2 — كاتب واحد لكل مبلغ</strong> · وجدول مالك واحد لكل مفهوم مالي</td></tr><tr><td><strong>6</strong></td><td>هل توجد إمكانية لتكرار الأثر المالي؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong></td><td><strong>سبع طبقات</strong> + <span class="mark m-idem" title="منع تكرار">⚡</span> <strong>14 كيانًا بـIdempotency إلزامي</strong> + <span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong><span class="mono">UNIQUE(custody_ledger_entries: financial_event_id, movement_type)</span></strong> + <span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong><span class="mono">UNIQUE(journal_entries.financial_event_id)</span></strong></td></tr><tr><td><strong>7</strong></td><td>هل توجد علاقة many-to-many غير مُمثَّلة؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong></td><td><strong>كل M:N لها جدول وسيط بمبلغ أو فترة</strong>: <span class="mono">e_invoice_allocations</span> · <span class="mono">payment_order_allocations</span> · <span class="mono">collection_allocations</span> · <span class="mono">recoverable_expense_allocations</span> · <span class="mono">engineer_site_assignments</span> · <span class="mono">operation_party_roles</span> · <span class="mono">document_links</span></td></tr><tr><td><strong>8</strong></td><td>هل هناك جدول يعتمد على اسم كنص بدل FK؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong></td><td><strong>BR-053 مطبَّقة</strong> · و<span class="mark m-critical" title="حرج">⭐</span> <strong>تفكيك <span class="mono">بيان المصروف</span> و<span class="mono">شرح القيد</span> إلى تسعة مفاهيم</strong> · و<span class="mono">source_name</span> <strong>يُحفظ للتتبع لا للربط</strong></td></tr><tr><td><strong>9</strong></td><td>هل هناك عمود واحد يحمل أكثر من معنى؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong></td><td><strong>SEP-01 … SEP-12</strong> · والعمودان التاريخيان <strong>مفكَّكان بخريطة صريحة</strong></td></tr><tr><td><strong>10</strong></td><td>هل هناك رصيد مخزَّن يمكن تعديله يدويًا؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong></td><td><strong>BAL-01</strong> · و<span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا حقل <span class="mono">balance</span> في أي دفتر</strong> · والـSnapshot <strong>يُعاد بناؤه ولا يُعدَّل</strong></td></tr><tr><td><strong>11</strong></td><td>هل هناك حركة معتمدة يمكن حذفها؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong></td><td><strong>IMM-01 … IMM-10</strong> · <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا Soft Delete عام على المالي المعتمد</strong></td></tr><tr><td><strong>12</strong></td><td>هل هناك Unique Constraint منطقي قد يفشل مع Legacy؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا غير معلَّم</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>تسعة قيود مرفوضة صراحةً بسببها</strong> (ملحق ب في النموذج المنطقي) · و<strong><span class="mono">claims</span> جزئي <span class="mono">WHERE series &lt;&gt; 'LEGACY'</span></strong> · و<strong>ثلاثة قيود <span class="badge b-proposed" title="مقترح">🔵</span> معلَّمة «تحتاج اختبار بيانات»</strong></td></tr><tr><td><strong>13</strong></td><td>هل هناك كيان بلا lifecycle؟</td><td><span class="mark m-warn" title="تنبيه">⚠️</span></td><td><strong>كل الكيانات المالية والتشغيلية لها حالات موثَّقة.</strong> والبيانات المرجعية لها <span class="mono">Active</span>/<span class="mono">Deprecated</span> · <strong>وجداول الربط الخالصة بلا حالة — وهذا صحيح لا نقص</strong></td></tr><tr><td><strong>14</strong></td><td>هل هناك status بلا transitions واضحة؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong></td><td><strong>كل حالة لها مخطط انتقالات</strong> — المصروف · العملية · التقرير · محاولة الإرسال · المحتجز · الضمان · الاتفاق · كشف الأجور</td></tr><tr><td><strong>15</strong></td><td>هل هناك ملف حساس في Public Storage؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong></td><td><strong>SEC-02 … SEC-03</strong> · <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا Public URL دائم</strong> · والرابط <strong>مؤقت ومرتبط بالمستخدم</strong></td></tr><tr><td><strong>16</strong></td><td>هل توجد بيانات رواتب في Operational Logs؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong></td><td><strong>SEC-07</strong> · <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا مبلغ راتب ولا اسم مقترن بمبلغ في Serilog</strong> · <strong>AC-015</strong></td></tr><tr><td><strong>17</strong></td><td>هل صلاحيات Backend مطابقة للواجهة؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>NFR-SEC-001: 100% من الاستدعاءات المعدِّلة تمرّ بفحص خادم</strong> · <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>والواجهة ليست أمانًا</strong> · <strong>AC-020</strong></td></tr><tr><td><strong>18</strong></td><td>هل <span class="mono">EngineerSiteAssignment</span> يحقق الوصول المطلوب؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>نعم</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>وصول العملية مشتق من المواقع المكلَّف بها</strong> · <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>و<span class="mono">EngineerOperationAssignment</span> لا تُعتمد افتراضيًا</strong> · والشرط الوحيد لإضافتها: <strong>حاجة عمل مستقلة ومثبتة</strong> — <strong>ولا توجد اليوم</strong></td></tr><tr><td><strong>19</strong></td><td>هل أمر الإسناد إلزامي فعليًا؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>FK إلزامي عند <span class="mono">status &lt;&gt; مسودة</span></strong> + <strong>تحقق تطبيقي عند التفعيل</strong> + <strong>شبكة أمان</strong> · و<span class="mark m-critical" title="حرج">⭐</span> <strong>Snapshot على المصروف عند الاعتماد (ADR-015)</strong></td></tr><tr><td><strong>20</strong></td><td>هل نسبة الشركة الخارجية Versioned؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>داخل اتفاق العملية بـ<span class="mono">version_no</span> و<span class="mono">effective_from/to</span></strong> · <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا قيمة على الشركة</strong> · و<strong>Snapshot سباعي Immutable عند التطبيق</strong></td></tr><tr><td><strong>21</strong></td><td>هل تقارير الشهر Immutable وVersioned؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>IMM-07</strong> · <span class="mark m-critical" title="حرج">⭐</span> <strong>إعادة التوليد ⟹ إصدار جديد · وإعادة الإرسال ⟹ لا إصدار</strong> · و<strong>SHA-256 يثبت المطابقة</strong></td></tr><tr><td><strong>22</strong></td><td>هل إعادة المحاولة Idempotent؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-idem" title="منع تكرار">⚡</span> <strong>14 كيانًا</strong> · و<strong>المزامنة والاستيراد والمهام الخلفية والإرسال</strong> — كلها بمفاتيح منطقية موثَّقة</td></tr><tr><td><strong>23</strong></td><td>هل استيراد Excel قابل للمطابقة؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>RC-01 … RC-22</strong> · و<strong>Provenance بثلاثة عشر حقلًا</strong> · و<span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>الدفعة تتوقف عند عدم مطابقة المجموع</strong></td></tr><tr><td><strong>24</strong></td><td>هل الأسماء العربية محفوظة للعرض والترحيل؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>ثلاثة أسماء متعايشة</strong>: تقني · عربي للعرض · <strong>اسم Excel حرفيًا</strong> · و<span class="mono">source_name</span> <strong>يحفظ الاسم قبل التطبيع</strong></td></tr><tr><td><strong>25</strong></td><td>هل النموذج يدعم التصحيح دون فقد الأصل؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>IMM-02 … IMM-05</strong> · و<span class="mono">correction_of_*</span> · و<span class="mono">audit_event_links</span> بـ<span class="mono">CORRECTION_OF</span>/<span class="mono">REVERSAL_OF</span></td></tr><tr><td><strong>26</strong></td><td>هل تم الفصل بين الاستحقاق والدفع؟</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الفصل الخماسي في Domain 7</strong> · و<strong>BR-046 … BR-050</strong> · و<strong>BR-222 · BR-223</strong> · و<strong>الخزينة تُخفَّض في مكانين فقط</strong></td></tr><tr><td><strong>27</strong></td><td>هل يوجد أي تناقض مع Patch أحدث؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong></td><td><strong>فُحص النموذج كله مقابل 1.1.4 وملحق التقرير و1.1.3 وملحق العمليات</strong> — <strong>والنتيجة في §3</strong></td></tr><tr><td><strong>28</strong></td><td>هل أي قرار غير محسوم عُرض كأنه مؤكد؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong></td><td><strong>30 قرارًا مفتوحًا موسومًا <span class="badge b-open" title="قرار مفتوح">🟡</span></strong> · و<strong>10 افتراضات <span class="badge b-assumption" title="افتراض">⚪</span> معلَّمة</strong> · و<strong>9 قواعد <span class="badge b-proposed" title="مقترح">🔵</span></strong> · و<strong>أرقام الأداء <span class="badge b-proposed" title="مقترح">🔵</span> مع سبب اقتراح كل رقم</strong></td></tr><tr><td><strong>29</strong></td><td>هل تم إنشاء أي SQL أو DDL بالمخالفة للنطاق؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong></td><td><strong>فحص نصي — النتيجة في §4</strong></td></tr><tr><td><strong>30</strong></td><td>هل يستطيع مطور جديد فهم النظام من الوثائق دون شرح شفهي؟</td><td><span class="mark m-warn" title="تنبيه">⚠️</span> <strong>نعم بشرط</strong></td><td><strong>الوثائق تغطي: الأدوار · الوحدات · المتطلبات · حالات الاستخدام · النموذج · القاموس · القيود · التتبع · القرارات.</strong> <span class="mark m-warn" title="تنبيه">⚠️</span> <strong>والشرط: قراءة <span class="mono">system-specification-and-team-reference-ar.md</span> §1.4 أولًا لمعرفة ما يقرأه دوره</strong></td></tr></tbody></table></div></div>
+<p class="para"><strong>النتيجة: <span class="mark m-ok" title="مستوفى">✅</span> 27 · <span class="mark m-warn" title="تنبيه">⚠️</span> 3 · <span class="mark m-no" title="غير مستوفى">❌</span> 0 · <span class="badge b-open" title="قرار مفتوح">🟡</span> 0</strong></p>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="2.-فحص-المبادئ-الثمانية-والثلاثين-الإلزامية">2. <span class="mark m-critical" title="حرج">⭐</span> فحص المبادئ الثمانية والثلاثين الإلزامية</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>المبدأ</th><th><span class="mark m-ok" title="مستوفى">✅</span></th></tr></thead><tbody><tr><td>1</td><td>مصدر حقيقة واحد لكل مفهوم مالي</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>2</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا رصيد مخزَّن قابل للتعديل يدويًا</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>3</td><td>الأرصدة مشتقة من دفتر حركات · وRead Models للأداء فقط</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>4</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا تعديل مباشر لحركة معتمدة</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>5</td><td>التصحيح بـreversal أو adjustment مرتبط بالأصل</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>6</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا Float ولا Double للمبالغ</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>7</td><td>متطلبات الدقة منطقية · والاختيار الفيزيائي مؤجَّل</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>8</td><td>فصل التواريخ ذات المعاني المختلفة</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>ثمانية تواريخ + خمسة Back-to-back</strong></td></tr><tr><td>9</td><td>كل سجل مالي يحمل نسبه العشرة</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>PRV-01 … PRV-10</strong></td></tr><tr><td>10</td><td>فصل الوصف عن التصنيف عن الطرف</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>تسعة مفاهيم</strong></td></tr><tr><td>11</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا اسم شخص أو مورد أو موقع مفتاحًا</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>12</td><td>Party Model موحَّد بلا تعقيد زائد</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>والواجهة تعرض شاشات مألوفة</strong></td></tr><tr><td>13</td><td>aliases للتنظيف لا للهوية</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>14</td><td>identifiers بنطاق (نوع · دولة · جهة · تفرّد)</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>حُسم BR-177</strong></td></tr><tr><td>15</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا Unique على بيانات تاريخية قبل اختبارها</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>ثلاثة قيود <span class="badge b-proposed" title="مقترح">🔵</span> معلَّمة</strong></td></tr><tr><td>16</td><td>تمييز ثلاثي: قيد · تنبيه · استثناء Legacy</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>§1 من قواعد النزاهة</strong></td></tr><tr><td>17</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <span class="mono">line_number</span> ليس هوية</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>حُسم BR-176</strong></td></tr><tr><td>18</td><td>Idempotency للاستيراد والمزامنة والمهام</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>14 كيانًا</strong></td></tr><tr><td>19</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> منع الأثر المالي المزدوج من إعادة الطلب أو التشغيل</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>20</td><td>Offline Client ID على المصروف</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <span class="mono">UNIQUE(client_generated_id)</span></td></tr><tr><td>21</td><td>كل عملية بأمر إسناد إلزامي</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>22</td><td>كل موقع بعملية واحدة فعّالة</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>23</td><td>تكليف المهندس بست خصائص</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>بداية · نهاية · حالة · المنشئ · منع التعارض · حفظ التاريخ</strong></td></tr><tr><td>24</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> الأمان لا يعتمد على إخفاء القائمة</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>25</td><td>نسبة الشركة داخل اتفاق العملية بـVersion وSnapshot</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>26</td><td>Snapshot عند تطبيق النسبة بستة عناصر</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>سباعي فعليًا</strong></td></tr><tr><td>27</td><td>الاستقطاعات Lines قابلة للتوسع</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>28</td><td>Snapshot للمعالجة المحاسبية وقت الاعتماد</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>29</td><td>التقرير وإصداراته وSnapshots وإرسالاته كيانات مستقلة</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>10 كيانات</strong></td></tr><tr><td>30</td><td>إعادة الإرسال لا تنشئ Version</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>31</td><td>إعادة التوليد تنشئ Version</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>32</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا يُحسب رصيد من سجل التدقيق</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>33</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا PDF داخل القاعدة افتراضيًا</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>34</td><td>القاعدة تحفظ metadata + مرجع + checksum + حجم</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>35</td><td>Import يحتفظ بالمعلومات التسع</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>13 حقلًا فعليًا</strong></td></tr><tr><td>36</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> رفض صفوف <span class="mono">Total</span> و<span class="mono">SUBTOTAL</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>IMP-04 · IMP-05</strong></td></tr><tr><td>37</td><td>إعادة حساب الأعمدة المحسوبة · والفراغ لا يُقرأ صفرًا</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>IMP-07</strong></td></tr><tr><td>38</td><td>سياسة LEGACY واضحة بستة بنود</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr></tbody></table></div></div>
+<p class="para"><strong>النتيجة: <span class="mark m-ok" title="مستوفى">✅</span> 38 / 38</strong></p>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="3.-فحص-التعارض-مع-أحدث-Patch">3. <span class="mark m-critical" title="حرج">⭐</span> فحص التعارض مع أحدث Patch</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>الفحص</th><th>النتيجة</th></tr></thead><tbody><tr><td>«الموقع كيان أكبر من العملية»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>غير موجود</strong> — <strong>العملية هي الأكبر في كل موضع</strong></td></tr><tr><td>«العملية اختيارية في المسودة»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>غير موجودة</strong> — <strong>إلزامية من لحظة الإدخال</strong></td></tr><tr><td>«أمر الإسناد يمكن تركه فارغًا»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>غير موجودة</strong> — <strong>إلزامي وRead Only ومشتق</strong></td></tr><tr><td>«المهندس يكتب رقم أمر الإسناد»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>غير موجودة</strong> — <strong>ومنعها مثبَّت</strong></td></tr><tr><td>«المراجع يحدد العملية» كقاعدة أساسية</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>استثناء موسوم لا قاعدة</strong></td></tr><tr><td>«الفاتورة إجبارية بمبلغ أو نوع»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>غير موجودة</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ومنع حد المبلغ مثبَّت</strong></td></tr><tr><td>«طريقة الدفع · مصدر الدفع · المدفوع إليه»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>غير موجودة</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ومنعها مثبَّت في قاموس البيانات صراحةً</strong></td></tr><tr><td>«المهندس يرى كل المواقع أو العمليات»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>غير موجودة</strong></td></tr><tr><td>«تسليم العهدة يحتاج اعتماد الطرفين»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>مصحَّحة</strong> — <strong>معتمِد الصرف وحده</strong></td></tr><tr><td>«التراكمي لا ينقص»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>محذوفة</strong> — <strong>البديل مستند تصحيح</strong></td></tr><tr><td>«<span class="mono">accounting_treatment</span> على النوع حصريًا»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>مصحَّحة</strong> — <strong>سلّم ثلاثي والـSnapshot حاكم</strong></td></tr><tr><td>«<span class="mono">CHECK</span> عابر للجداول»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>ممنوعة صراحةً</strong> — <strong>وخمس آليات بديلة موثَّقة</strong></td></tr><tr><td>«الأدمن يكفي لرؤية الرواتب»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong> — <strong><span class="mono">Payroll.View</span> مستقلة في كل موضع</strong></td></tr><tr><td>«تعديل تقرير مُصدَر أو الكتابة فوقه»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>ممنوعة في كل موضع</strong></td></tr><tr><td>«Public URL دائم»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>ممنوع في كل موضع</strong></td></tr><tr><td>«خلط التكلفة بالنقد المنصرف»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong> — <strong>رقمان منفصلان في كل موضع</strong></td></tr><tr><td>«طبقة منع ازدواج ثامنة»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong> — <strong>السبع فقط</strong></td></tr><tr><td>«توزيع راتب المهندس بلا سياسة»</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>ممنوع</strong> — <strong>والافتراضي «بلا توزيع»</strong></td></tr><tr><td>تعريف ثانٍ لسجل التدقيق أو Serilog</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong> — <strong>تعريف واحد والباقي يحيل إليه</strong></td></tr><tr><td>قاعدة مالية قائمة تغيّرت</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong> — <strong>BR-001 … BR-246 كما هي</strong></td></tr></tbody></table></div></div>
+<p class="para"><strong>النتيجة: <span class="mark m-ok" title="مستوفى">✅</span> 20 / 20 — <span class="mark m-forbidden" title="ممنوع">⛔</span> صفر تعارض</strong></p>
+<div class="rule-sep"></div></div><div id="t2" class="panel"><h2 class="panel-title" id="4.-فحص-النطاق--ما-لم-يُكتب">4. <span class="mark m-critical" title="حرج">⭐</span> فحص النطاق — ما لم يُكتب</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>النتيجة</th><th>طريقة الفحص</th></tr></thead><tbody><tr><td><strong>SQL</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر سطر</strong></td><td>فحص نصي لكل المستندات المنشأة</td></tr><tr><td><strong>DDL</strong> (<span class="mono">CREATE TABLE</span> · <span class="mono">ALTER</span> · <span class="mono">DROP</span>)</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td><td>فحص نصي</td></tr><tr><td><strong>Migrations</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td><td>فحص نصي</td></tr><tr><td><strong>كود Backend</strong> (C# · أي لغة)</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td><td>فحص نصي</td></tr><tr><td><strong>كود Frontend</strong> (JS · TSX · أي إطار)</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td><td>فحص نصي</td></tr><tr><td><strong>أنواع PostgreSQL محددة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الأنواع منطقية فقط: <span class="mono">MONEY</span> · <span class="mono">RATE</span> · <span class="mono">ENUM</span> …</strong></td></tr><tr><td><strong>فهارس فيزيائية</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>ذُكرت كآليات مرشَّحة مؤجَّلة للتصميم الفيزيائي فقط</strong></td></tr><tr><td><strong>إعادة فحص Excel من البداية</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لم تحدث</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل رقم منقول من تحقق سابق موثَّق بمصدره</strong></td></tr><tr><td><strong>تعديل مستندات المرحلة صفر</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لم يحدث</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الملفات الـ21 لم تُمَس</strong></td></tr><tr><td><strong>حذف أي مستند</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لم يحدث</strong></td><td>—</td></tr><tr><td><strong>تغيير قاعدة عمل مؤكدة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لم يحدث</strong></td><td>—</td></tr><tr><td><strong>اختراع قاعدة مالية أو تشغيلية</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لم يحدث</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>وكل قاعدة جديدة موسومة <span class="badge b-proposed" title="مقترح">🔵</span> أو <span class="badge b-assumption" title="افتراض">⚪</span></strong></td></tr></tbody></table></div></div>
+<p class="para"><strong>النتيجة: <span class="mark m-ok" title="مستوفى">✅</span> 12 / 12</strong></p>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="5.-فحص-التتبع">5. <span class="mark m-critical" title="حرج">⭐</span> فحص التتبع</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>الفحص</th><th>النتيجة</th><th>التفصيل</th></tr></thead><tbody><tr><td><strong>متطلبات يتيمة</strong> (بلا قاعدة عمل أو قرار مصدر)</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td><td>كل FR له BR أو مصدر معلَن</td></tr><tr><td><strong>قواعد عمل بلا متطلب يطبّقها</strong></td><td><span class="mark m-warn" title="تنبيه">⚠️</span> <strong>9 — مُعلَنة</strong></td><td><strong>BR-092 · BR-095 · BR-113 · BR-116 · BR-122 · BR-123 · BR-126 · BR-129 · BR-130 · BR-171 · BR-172</strong> — <strong>حقائق رصد وبنود عقد وصفية وقواعد تسمية — <span class="mark m-forbidden" title="ممنوع">⛔</span> لا قواعد سلوك برمجي</strong></td></tr><tr><td><strong>متطلبات حرجة بلا معيار قبول</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td><td>—</td></tr><tr><td><strong>معايير قبول بلا حالة اختبار</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td><td><strong>232 معيارًا · 267 حالة اختبار</strong></td></tr><tr><td><strong>حالات استخدام بلا متطلبات</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td><td><strong>32 / 32 مغطاة</strong></td></tr><tr><td><strong>كيانات بلا سبب عمل</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td><td>كل كيان في §«قواعد العمل التي يخدمها» بمجاله</td></tr><tr><td><strong>متطلبات مالية بلا أثر Audit معلَن</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td><td>—</td></tr><tr><td><strong>حقول مالية قابلة للتعديل بصمت</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td><td><strong>IMM-01 … IMM-10</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="6.-فحص-المجالات-الثمانية-عشر--كل-مجال-مقابل-خمسة-عشر-بندًا">6. <span class="mark m-critical" title="حرج">⭐</span> فحص المجالات الثمانية عشر — كل مجال مقابل خمسة عشر بندًا</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>Domain</th><th>الغرض</th><th>القواعد</th><th>الكيانات</th><th>العلاقات</th><th>Cardinality</th><th>Ownership</th><th>Lifecycle</th><th>الحالات</th><th>المفاتيح</th><th>القيود</th><th>الحساس</th><th>Audit</th><th>التكرار</th><th>الاستيراد</th><th>الأسئلة</th></tr></thead><tbody><tr><td><strong>1</strong> Identity</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>2</strong> Parties</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>3</strong> Operations</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>4</strong> Sites &amp; Assignments</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>5</strong> Custody</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>6</strong> Expenses</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>7</strong> Workers</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>8</strong> Engineer Payroll</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="badge b-open" title="قرار مفتوح">🟡</span></td></tr><tr><td><strong>9</strong> Suppliers</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="badge b-open" title="قرار مفتوح">🟡</span></td></tr><tr><td><strong>10</strong> Claims</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="badge b-open" title="قرار مفتوح">🟡</span></td></tr><tr><td><strong>11</strong> Agreements</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>12</strong> Retentions</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="badge b-open" title="قرار مفتوح">🟡</span></td></tr><tr><td><strong>13</strong> Reports</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>14</strong> Files</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>15</strong> Audit</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="badge b-open" title="قرار مفتوح">🟡</span></td></tr><tr><td><strong>16</strong> Notifications</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>17</strong> Imports</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="badge b-open" title="قرار مفتوح">🟡</span></td></tr><tr><td><strong>18</strong> Reference Data</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr></tbody></table></div></div>
+<div class="info-box danger"><p><span class="badge b-open" title="قرار مفتوح">🟡</span> <strong>في عمود «الأسئلة» تعني وجود سؤال مفتوح مسجَّل في المجال — <span class="mark m-forbidden" title="ممنوع">⛔</span> ولا يعني نقصًا في التوثيق.</strong></p></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="7.-فحص-القيود-الفريدة--واحدًا-واحدًا">7. <span class="mark m-critical" title="حرج">⭐</span> فحص القيود الفريدة — واحدًا واحدًا</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>السؤال</th><th><span class="mark m-ok" title="مستوفى">✅</span></th></tr></thead><tbody><tr><td>1</td><td>هل كل <span class="mono">UNIQUE</span> مُبرَّر بجملة واحدة؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>§15 من قواعد النزاهة</strong></td></tr><tr><td>2</td><td>هل يوجد <span class="mono">UNIQUE</span> قد يدمج كيانين حقيقيين؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong></td></tr><tr><td>3</td><td>هل يوجد <span class="mono">UNIQUE</span> قد يمنع حركة صحيحة؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا</strong> — <strong>وتسعة قيود مرفوضة بهذا السبب</strong></td></tr><tr><td>4</td><td>هل القيود الجزئية مستخدمة حيث يلزم؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong><span class="mono">WHERE status &lt;&gt; 'Cancelled'</span></strong> · <strong><span class="mono">WHERE ended_at IS NULL</span></strong> · <strong><span class="mono">WHERE series &lt;&gt; 'LEGACY'</span></strong></td></tr><tr><td>5</td><td>هل القيود الزمنية مفروضة فعلًا؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>11 قيدًا زمنيًا</strong></td></tr><tr><td>6</td><td>هل القيود المؤجَّلة معلَّمة صراحةً؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>ثلاثة قيود <span class="badge b-proposed" title="مقترح">🔵</span> «يحتاج اختبار بيانات»</strong></td></tr><tr><td>7</td><td>هل بدائل القيود المرفوضة موثَّقة؟</td><td><span class="mark m-ok" title="مستوفى">✅</span> — <strong>ملحق ب في النموذج المنطقي</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div></div><div id="t3" class="panel"><h2 class="panel-title" id="8.-فحص-جاهزية-الترحيل--منفصل-عن-جاهزية-التصميم">8. <span class="mark m-critical" title="حرج">⭐</span> فحص جاهزية الترحيل — منفصل عن جاهزية التصميم</h2>
+<div class="info-box tech"><p><span class="mark m-critical" title="حرج">⭐</span> <strong>جاهزية التصميم ليست جاهزية الترحيل — وهذا فرق يجب ألا يُطمس.</strong></p></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>البند</th><th>الحالة</th></tr></thead><tbody><tr><td>1</td><td><strong>بصمات الملفات المتاحة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>ستة ملفات ببصماتها</strong></td></tr><tr><td>2</td><td><strong>بصمات الملفات الناقصة</strong></td><td><span class="mark m-no" title="غير مستوفى">❌</span> <strong><span class="mono">الروضه 2025.xlsm</span> + 13 ملف أجور — غير متاحة</strong></td></tr><tr><td>3</td><td><strong>خريطة الأعمدة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>مكتملة لكل ورقة مرشَّحة</strong></td></tr><tr><td>4</td><td><strong>فحوص المطابقة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>RC-01 … RC-22 معرَّفة</strong></td></tr><tr><td>5</td><td><strong>فخّا الاستيراد المثبتان</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>مُعالَجان بقواعد إلزامية</strong></td></tr><tr><td>6</td><td><strong>الأرصدة الافتتاحية</strong></td><td><span class="badge b-open" title="قرار مفتوح">🟡</span> <strong>تحتاج اعتمادًا — 27 مندوبًا · 110 موردًا · محتجزات ما قبل 2026</strong></td></tr><tr><td>7</td><td><strong>المعالجات المحاسبية غير المحسومة</strong></td><td><span class="badge b-open" title="قرار مفتوح">🟡</span> <strong>21,819,378.93 تنتظر المحاسب</strong></td></tr><tr><td>8</td><td><strong>تصحيح تضخيم 7,802,857</strong></td><td><span class="badge b-open" title="قرار مفتوح">🟡</span> <strong>ينتظر قرار صاحب المشروع</strong></td></tr><tr><td>9</td><td><strong>ثلاث تسويات مشتبه في تكرارها</strong></td><td><span class="badge b-open" title="قرار مفتوح">🟡</span> <strong>تُستورد بعلامة ولا تُرحَّل محاسبيًا</strong></td></tr><tr><td>10</td><td><strong>رصيد المحتجزات الافتتاحي</strong></td><td><span class="mark m-no" title="غير مستوفى">❌</span> <strong>غير معلوم ولن يُعلم قبل <span class="mono">الروضه 2025.xlsm</span></strong></td></tr></tbody></table></div></div>
+<p class="para"><strong>النتيجة: <span class="mark m-ok" title="مستوفى">✅</span> 4 · <span class="badge b-open" title="قرار مفتوح">🟡</span> 4 · <span class="mark m-no" title="غير مستوفى">❌</span> 2</strong></p>
+<div class="info-box danger"><p><span class="mark m-critical" title="حرج">⭐</span> <strong>البندان <span class="mark m-no" title="غير مستوفى">❌</span> لا يمنعان التصميم — لأنهما نقص بيانات لا نقص بنية.</strong> <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لكنهما يمنعان إعلان اكتمال الترحيل.</strong></p></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="9.-ما-لا-نَدّعيه--إعلان-صريح">9. <span class="mark m-critical" title="حرج">⭐</span> ما لا نَدّعيه — إعلان صريح</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>ما لا يُدَّعى</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>جاهزية التصميم ليست جاهزية الترحيل</strong></td></tr><tr><td>2</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>رصيد المحتجزات الافتتاحي غير معلوم</strong> — و<strong>27,474,600.07 لا يُوصف بأنه رصيد قائم</strong></td></tr><tr><td>3</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>الردود السابقة للمحتجزات غير مكتملة التسجيل</strong> — <strong>صفر قيمة سالبة في الأعمدة الأربعة</strong></td></tr><tr><td>4</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>أربعة مستندات يعتبرها العقد جزءًا منه لم تصل</strong> — <strong>ولا تُفترض محتوياتها</strong></td></tr><tr><td>5</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>بيانات أجور 13 موقعًا غير متاحة</strong> — <strong>والمنهج معروف لكن البيانات ليست</strong></td></tr><tr><td>6</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>قاعدة توزيع راتب المهندس لم تُحسم</strong> — <strong>والافتراضي «بلا توزيع» يجعل تكلفة الموقع أقل من تكلفتها الاقتصادية</strong></td></tr><tr><td>7</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ثلاثة مفاتيح أعمال تحتاج اختبار بيانات قبل فرض تفرّدها</strong>: <span class="mono">assignment_orders</span> · <span class="mono">payment_orders</span> · <span class="mono">supplier_invoices</span></td></tr><tr><td>8</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>آليات القيود العابرة للجداول مرشَّحة لا مقرَّرة</strong> — والاختيار في التصميم الفيزيائي</td></tr><tr><td>9</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>أرقام الأداء مقترحة لا معتمدة</strong> — وكل رقم بسبب اقتراحه</td></tr><tr><td>10</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>البند الرابع عشر مفقود من العقد ولا بند اختصاص ولا تحكيم</strong> — <strong>عيب توثيقي يحتاج مراجعة قانونية</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="10.-الحكم">10. <span class="mark m-critical" title="حرج">⭐</span> الحكم</h2>
+<div class="info-box ok"><p class="box-title"><span class="mark m-ok" title="مستوفى">✅</span> <strong>النموذج المنطقي جاهز للانتقال إلى التصميم الفيزيائي.</strong></p></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>المعيار</th><th>الحالة</th></tr></thead><tbody><tr><td><strong>فحص الجودة الثلاثون</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>27 مستوفى · 3 بملاحظة · <span class="mark m-forbidden" title="ممنوع">⛔</span> صفر غير مستوفى</strong></td></tr><tr><td><strong>المبادئ الثمانية والثلاثون</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>38 / 38</strong></td></tr><tr><td><strong>التعارض مع أحدث Patch</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td></tr><tr><td><strong>فحص النطاق</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>12 / 12 — <span class="mark m-forbidden" title="ممنوع">⛔</span> لا SQL ولا DDL ولا Migrations ولا كود</strong></td></tr><tr><td><strong>فحص التتبع</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر متطلب يتيم · و9 قواعد بلا متطلب مُعلَنة ومبرَّرة</strong></td></tr><tr><td><strong>المجالات الثمانية عشر</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>كلها مكتملة بالبنود الخمسة عشر</strong></td></tr><tr><td><strong>القيود الفريدة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>39 معتمدًا · 9 مرفوضة بسببها · 3 مؤجَّلة معلَّمة</strong></td></tr><tr><td><strong>جاهزية الترحيل</strong></td><td><span class="mark m-warn" title="تنبيه">⚠️</span> <strong>4 بنود <span class="badge b-open" title="قرار مفتوح">🟡</span> و2 <span class="mark m-no" title="غير مستوفى">❌</span> — نقص بيانات لا نقص بنية</strong></td></tr><tr><td><strong>Blocking Decisions</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر</strong></td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-amber"></div><h3 class="card-title" id="10.1-لماذا-الانتقال-صحيح-الآن">10.1 لماذا الانتقال صحيح الآن</h3><span>5 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>#</th><th>السبب</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>لم يعد أي سؤال مفتوح يستدعي كيانًا أو علاقة غير موجودة.</strong> أخطرها (OQ-016) <strong>يغيّر قيدًا محاسبيًا واحدًا عند الإنشاء — والدورة الستّية تدعم الاثنين بلا تغيير جدول واحد</strong></td></tr><tr><td>2</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>القيود الثلاثة المؤجَّلة من المرحلة صفر حُسمت</strong>: <span class="mono">payroll_periods</span> · <span class="mono">payroll_lines</span> · <span class="mono">attendance_entries</span> — <strong>وكذلك <span class="mono">party_identifiers</span> وسلسلة <span class="mono">LEGACY</span></strong></td></tr><tr><td>3</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>القرار المؤجَّل الوحيد ذو الأثر البنيوي (BR-214) حُسم</strong> — <strong>Snapshot على المصروف (ADR-015)</strong></td></tr><tr><td>4</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>القيود غير المحسومة معلَّمة بدل أن تكون خفية</strong> — <strong>وهذا بالضبط ما يُبنى له التصميم الفيزيائي</strong></td></tr><tr><td>5</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل قيد مرفوض له سبب مكتوب وبديل موثَّق</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا قيد أعمى</strong></td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-blue"></div><h3 class="card-title" id="10.2-أول-ثلاث-خطوات-بعد-الموافقة">10.2 أول ثلاث خطوات بعد الموافقة</h3><span>3 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>#</th><th>الخطوة</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>اختبار المفاتيح التجارية الثلاثة على البيانات الفعلية</strong> قبل فرض تفرّدها</td></tr><tr><td>2</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>اختيار آليات القيود العابرة للجداول</strong> من الخمس الموثَّقة</td></tr><tr><td>3</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>تحديد الدقة الفيزيائية للمبالغ والنسب</strong> — بما يستوعب مئات الملايين وكسورًا بأكثر من منزلتين</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<div class="info-box danger"><p class="box-title"><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا يبدأ أي SQL أو DDL أو Migrations قبل موافقتك الصريحة على النموذج المنطقي.</strong></p></div></div>
+</div>
+
+<div class="mini-toc" id="toc"></div>
+<div class="fab"><button id="tocBtn" type="button">الفهرس</button></div>
+<div class="fab up"><button id="upBtn" type="button">أعلى</button></div>
+
+<script>
+(function(){
+  var q=document.getElementById('q'), hits=document.getElementById('hits');
+  var toc=document.getElementById('toc'), links;
+
+  /* ارتفاع الترويسة والتبويبات متغيّر (سطر أو سطران) — نقيسه بدل تثبيته */
+  var hdrEl=document.querySelector('.site-header'), navEl=document.querySelector('.nav');
+  function syncSticky(){
+    var h=hdrEl.offsetHeight;
+    navEl.style.top=h+'px';
+    document.documentElement.style.setProperty('--stick',(h+navEl.offsetHeight+14)+'px');
+  }
+  syncSticky();
+  window.addEventListener('resize',syncSticky);
+  if(window.ResizeObserver){ new ResizeObserver(syncSticky).observe(hdrEl); }
+
+  function show(id,btn){
+    document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
+    document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active')});
+    var el=document.getElementById(id); if(el) el.classList.add('active');
+    if(btn) btn.classList.add('active');
+    buildToc(id);
+    window.scrollTo({top:0,behavior:'instant'});
+    history.replaceState(null,'','#'+id);
+  }
+  window.__show=show;
+  document.querySelectorAll('.nav-btn').forEach(function(b){
+    b.addEventListener('click',function(){show(b.dataset.tab,b)});
+  });
+
+  function buildToc(id){
+    var p=document.getElementById(id); if(!p) return;
+    var hs=p.querySelectorAll('.panel-title,.section-title,.card-title');
+    var h='';
+    hs.forEach(function(x){
+      var cls=x.classList.contains('panel-title')?'l2':'l3';
+      h+='<a class="'+cls+'" href="#'+x.id+'">'+x.textContent.replace(/#$/,'')+'</a>';
+    });
+    toc.innerHTML=h;
+    links=Array.prototype.slice.call(toc.querySelectorAll('a'));
+  }
+
+  document.getElementById('tocBtn').addEventListener('click',function(){
+    toc.classList.toggle('open');
+  });
+  document.getElementById('upBtn').addEventListener('click',function(){
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  // ── تكبير وتحريك المخططات المرسومة ──────────────────
+  document.querySelectorAll('.erd').forEach(function(box){
+    var view=box.querySelector('.erd-view'), stage=box.querySelector('.erd-stage');
+    var svg=stage.querySelector('svg'); if(!svg) return;
+    var w=parseFloat(svg.getAttribute('width'))||svg.getBoundingClientRect().width;
+    var h=parseFloat(svg.getAttribute('height'))||svg.getBoundingClientRect().height;
+    svg.removeAttribute('width'); svg.removeAttribute('height');
+    svg.style.width=w+'px'; svg.style.height=h+'px';
+    var s=1,x=0,y=0;
+    function apply(){stage.style.transform='translate('+x+'px,'+y+'px) scale('+s+')'}
+    function fit(){            // ملء العرض: العرض كاملًا والتمرير رأسيًا بالسحب
+      s=Math.max(0.05,Math.min(view.clientWidth/w,1));
+      x=(view.clientWidth-w*s)/2; y=10; apply();
+    }
+    function fitAll(){         // ملء الإطار: المخطط كله داخل الإطار
+      var k=Math.min(view.clientWidth/w, view.clientHeight/h);
+      s=Math.max(0.03,Math.min(k,1)); x=(view.clientWidth-w*s)/2; y=6; apply();
+    }
+    function zoom(f,cx,cy){
+      var ns=Math.min(4,Math.max(0.05,s*f));
+      x=cx-(cx-x)*(ns/s); y=cy-(cy-y)*(ns/s); s=ns; apply();
+    }
+    box.querySelectorAll('.erd-bar button').forEach(function(b){
+      b.addEventListener('click',function(){
+        var k=b.dataset.z;
+        if(k==='in')  zoom(1.25,view.clientWidth/2,view.clientHeight/2);
+        if(k==='out') zoom(0.8, view.clientWidth/2,view.clientHeight/2);
+        if(k==='fit') fit();
+        if(k==='all') fitAll();
+        if(k==='reset'){s=1;x=0;y=0;apply()}
+      });
+    });
+    view.addEventListener('wheel',function(e){
+      e.preventDefault();
+      var r=view.getBoundingClientRect();
+      zoom(e.deltaY<0?1.12:0.89, e.clientX-r.left, e.clientY-r.top);
+    },{passive:false});
+    var dx=0,dy=0,down=false;
+    view.addEventListener('pointerdown',function(e){
+      down=true; dx=e.clientX-x; dy=e.clientY-y;
+      view.classList.add('drag'); view.setPointerCapture(e.pointerId);
+    });
+    view.addEventListener('pointermove',function(e){
+      if(!down) return; x=e.clientX-dx; y=e.clientY-dy; apply();
+    });
+    ['pointerup','pointercancel'].forEach(function(ev){
+      view.addEventListener(ev,function(){down=false; view.classList.remove('drag')});
+    });
+    // اللوحة قد تكون مخفية عند التحميل — فالضبط يتم أول ما تظهر بمقاس حقيقي
+    var fitted=false;
+    function tryFit(){
+      if(fitted || view.clientWidth<40 || view.clientHeight<40) return;
+      fitted=true; fit();
+    }
+    tryFit();
+    if(window.ResizeObserver){ new ResizeObserver(tryFit).observe(view); }
+    window.addEventListener('resize',function(){ if(fitted && s<=0.25) fit(); });
+  });
+
+  // بحث عبر كل التبويبات
+  function clearMarks(){
+    Array.prototype.slice.call(document.querySelectorAll('mark')).forEach(function(m){
+      m.parentNode.replaceChild(document.createTextNode(m.textContent),m);
+    });
+    document.querySelectorAll('.panel').forEach(function(p){p.normalize()});
+  }
+  var timer;
+  q.addEventListener('input',function(){
+    clearTimeout(timer); timer=setTimeout(runSearch,260);
+  });
+  function runSearch(){
+    clearMarks();
+    var v=q.value.trim();
+    document.querySelectorAll('.nav-btn .cnt').forEach(function(c){c.textContent=c.dataset.n});
+    if(v.length<2){ hits.textContent=''; return; }
+    var total=0;
+    document.querySelectorAll('.panel').forEach(function(p){
+      var c=0;
+      var w=document.createTreeWalker(p,NodeFilter.SHOW_TEXT,null), nodes=[], nd;
+      while((nd=w.nextNode())){ if(nd.nodeValue.indexOf(v)!==-1) nodes.push(nd); }
+      nodes.forEach(function(node){
+        var parts=node.nodeValue.split(v), frag=document.createDocumentFragment();
+        for(var i=0;i<parts.length;i++){
+          frag.appendChild(document.createTextNode(parts[i]));
+          if(i<parts.length-1){ var m=document.createElement('mark'); m.textContent=v; frag.appendChild(m); c++; }
+        }
+        node.parentNode.replaceChild(frag,node);
+      });
+      total+=c;
+      var btn=document.querySelector('.nav-btn[data-tab="'+p.id+'"] .cnt');
+      if(btn) btn.textContent=c?c:'0';
+    });
+    hits.textContent = total ? ('مطابقات: '+total) : 'لا مطابقات';
+    var first=document.querySelector('.panel.active mark');
+    if(first) first.scrollIntoView({block:'center'});
+  }
+
+  // فتح التبويب من الرابط
+  var h=location.hash.slice(1);
+  var start=document.querySelector('.nav-btn[data-tab="'+h+'"]');
+  if(start) show(h,start); else buildToc(document.querySelector('.panel.active').id);
+
+  // روابط الفهرس تغلقه بعد القفز
+  document.addEventListener('click',function(e){
+    if(e.target.closest('#toc a')) toc.classList.remove('open');
+  });
+})();
+</script>
+</body>
+</html>

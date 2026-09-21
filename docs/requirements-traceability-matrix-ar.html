@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contractra — مصفوفة تتبع المتطلبات</title>
+<meta name="description" content="النسخة التفاعلية المولَّدة من مصفوفة تتبع المتطلبات — Markdown هو المصدر الرسمي.">
+<meta name="generator" content="generate-html.py v2.0">
+<style>
+:root{
+  --purple:#7F77DD; --purple-dk:#3C3489; --purple-lt:#EEEDFE;
+  --teal:#1D9E75;   --teal-lt:#E1F5EE;
+  --coral:#D85A30;  --coral-lt:#FAECE7;
+  --amber:#BA7517;  --amber-lt:#FAEEDA;
+  --blue:#378ADD;   --blue-lt:#EEF4FD;
+  --gray-dk:#2C2C2A; --gray-md:#6B6B68; --gray-lt:#F1EFE8;
+  --gray-bd:#D3D1C7; --white:#fff; --bg:#F8F7F4;
+  --font-sans:"Segoe UI","Noto Naskh Arabic","Tahoma",system-ui,-apple-system,sans-serif;
+  --font-mono:"Cascadia Mono","SF Mono","Consolas","Courier New",monospace;
+  --radius:8px; --radius-lg:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-sans); background:var(--bg); color:var(--gray-dk);
+  font-size:14px; line-height:1.7; direction:rtl; text-align:right;
+}
+
+/* ── الترويسة ─────────────────────────────────────── */
+.site-header{
+  background:var(--purple-dk); padding:26px 40px; position:sticky; top:0; z-index:100;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+}
+.site-header .ttl{flex:1; min-width:240px}
+.site-header h1{font-size:21px; font-weight:700; color:#fff; letter-spacing:-.2px}
+.site-header p{font-size:12.5px; color:rgba(255,255,255,.55); margin-top:3px}
+.hdr-meta{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.chip-v{
+  font-size:11px; font-weight:700; padding:4px 11px; border-radius:20px;
+  background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.22);
+}
+#q{
+  width:220px; padding:7px 12px; border-radius:20px; font-family:inherit; font-size:12.5px;
+  border:1px solid rgba(255,255,255,.22); background:rgba(255,255,255,.1); color:#fff;
+}
+#q::placeholder{color:rgba(255,255,255,.5)}
+#q:focus{outline:none; background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.45)}
+
+/* ── التبويبات ────────────────────────────────────── */
+.nav{
+  background:var(--white); border-bottom:1px solid var(--gray-bd);
+  padding:0 40px; display:flex; flex-wrap:wrap; gap:0 2px;
+  position:sticky; top:81px; z-index:99;   /* يُضبط من JS حسب ارتفاع الترويسة */
+}
+.nav-btn{
+  font-size:13px; font-weight:600; padding:12px 15px; border:none; background:none;
+  color:var(--gray-md); cursor:pointer; border-bottom:2px solid transparent;
+  white-space:nowrap; transition:all .15s; font-family:inherit;
+}
+.nav-btn:hover{color:var(--gray-dk)}
+.nav-btn.active{color:var(--purple); border-bottom-color:var(--purple)}
+.nav-btn .cnt{font-size:10px; color:var(--gray-bd); margin-inline-start:5px; font-weight:700}
+.nav-btn.active .cnt{color:var(--purple)}
+
+/* ── المخطط المرسوم ───────────────────────────────── */
+.erd{border-bottom:1px solid var(--gray-bd); background:#fbfbf9}
+.erd-bar{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  padding:8px 14px; border-bottom:1px solid var(--gray-bd); background:var(--white);
+}
+.erd-bar button{
+  font-family:inherit; font-size:12px; font-weight:700; cursor:pointer;
+  padding:5px 11px; border-radius:7px; border:1px solid var(--gray-bd);
+  background:var(--white); color:var(--gray-dk); line-height:1.2;
+}
+.erd-bar button:hover{background:var(--purple-lt); border-color:var(--purple); color:var(--purple-dk)}
+.erd-hint{font-size:11.5px; color:var(--gray-md); margin-inline-start:auto}
+.erd-view{
+  height:min(74vh,720px); overflow:hidden; position:relative;
+  cursor:grab; background:
+    linear-gradient(90deg,rgba(0,0,0,.028) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(rgba(0,0,0,.028) 1px,transparent 1px) 0 0/22px 22px, #fff;
+}
+.erd-view.drag{cursor:grabbing}
+.erd-stage{transform-origin:0 0; will-change:transform; direction:ltr}
+.erd-stage svg{display:block; max-width:none; height:auto}
+.erd-src{border-top:1px solid var(--gray-bd)}
+.erd-src summary{
+  cursor:pointer; padding:9px 16px; font-size:12.5px; font-weight:700;
+  color:var(--purple-dk); background:#fcfcfa; list-style:none;
+}
+.erd-src summary::-webkit-details-marker{display:none}
+.erd-src summary::before{content:"▸ "; font-size:11px}
+.erd-src[open] summary::before{content:"▾ "}
+.erd-src pre{border-top:1px solid var(--gray-bd)}
+
+/* ── المحتوى ──────────────────────────────────────── */
+.content{max-width:1180px; margin:0 auto; padding:30px 40px 80px}
+.panel{display:none}
+.panel.active{display:block}
+
+.panel-title{
+  font-size:19px; font-weight:700; color:var(--gray-dk);
+  margin:34px 0 4px; padding-bottom:9px; border-bottom:2px solid var(--purple);
+  scroll-margin-top:var(--stick,150px);
+}
+.panel > .panel-title:first-child{margin-top:0}
+.section-title{
+  font-size:14.5px; font-weight:700; color:var(--purple-dk);
+  margin:26px 0 10px; padding-inline-start:10px;
+  border-inline-start:3px solid var(--purple); scroll-margin-top:var(--stick,150px);
+}
+.sub-title{
+  font-size:13px; font-weight:700; color:var(--gray-dk);
+  margin:18px 0 8px; scroll-margin-top:var(--stick,150px);
+}
+.para{font-size:13.5px; color:var(--gray-dk); margin:10px 2px}
+.rule-sep{height:1px; background:var(--gray-bd); margin:26px 0; opacity:.6}
+
+/* ── البطاقات ─────────────────────────────────────── */
+.card{
+  background:var(--white); border:1px solid var(--gray-bd);
+  border-radius:var(--radius-lg); overflow:hidden; margin-bottom:12px;
+}
+.card.bare{border-style:solid}
+.card-header{
+  display:flex; align-items:center; gap:10px; padding:11px 16px;
+  border-bottom:1px solid var(--gray-bd); background:#fcfcfa;
+}
+.card-header h3{font-size:13.5px; font-weight:700; color:var(--gray-dk); line-height:1.5}
+.card-title{scroll-margin-top:var(--stick,150px)}
+.card-header span{
+  font-size:10.5px; color:var(--gray-md); margin-inline-start:auto;
+  white-space:nowrap; flex-shrink:0;
+}
+.dot{width:9px; height:9px; border-radius:50%; flex-shrink:0}
+.dot-purple{background:var(--purple)} .dot-teal{background:var(--teal)}
+.dot-coral{background:var(--coral)}  .dot-amber{background:var(--amber)}
+.dot-blue{background:var(--blue)}
+
+/* ── الجداول ──────────────────────────────────────── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%; border-collapse:collapse; font-size:12.8px}
+th{
+  text-align:right; font-size:10.5px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--gray-md); padding:9px 13px;
+  background:var(--gray-lt); border-bottom:1px solid var(--gray-bd);
+  position:sticky; top:0; z-index:1; white-space:nowrap;
+}
+td{padding:9px 13px; border-bottom:1px solid var(--gray-bd); vertical-align:top; line-height:1.65}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--gray-lt)}
+td strong{font-weight:700}
+
+/* ── القوائم ──────────────────────────────────────── */
+.rule-list{list-style:none; padding:14px 16px; display:flex; flex-direction:column; gap:7px}
+.rule-list.tight{padding:6px 0}
+.rule-list li{
+  display:flex; gap:9px; align-items:flex-start;
+  font-size:13px; color:var(--gray-dk); line-height:1.65;
+}
+.rule-list li::before{content:'—'; color:var(--gray-bd); flex-shrink:0; margin-top:1px}
+ol.rule-list{counter-reset:ri}
+ol.rule-list li{counter-increment:ri}
+ol.rule-list li::before{
+  content:counter(ri); color:var(--purple); font-weight:700; font-size:11px;
+  min-width:17px; text-align:center;
+}
+
+/* ── الصناديق ─────────────────────────────────────── */
+.info-box{
+  border-inline-start:3px solid var(--blue); background:var(--blue-lt);
+  border-radius:0 var(--radius) var(--radius) 0;
+  padding:11px 15px; font-size:13px; color:var(--gray-dk); margin:12px 0;
+}
+.info-box.warn{border-inline-start-color:var(--amber); background:var(--amber-lt)}
+.info-box.danger{border-inline-start-color:var(--coral); background:var(--coral-lt)}
+.info-box.tech{border-inline-start-color:var(--purple); background:var(--purple-lt)}
+.info-box.ok{border-inline-start-color:var(--teal); background:var(--teal-lt)}
+.info-box p{margin:5px 0}
+.info-box p:first-child{margin-top:0}
+.info-box p:last-child{margin-bottom:0}
+.info-box .box-title{font-size:13.5px; font-weight:700; margin-bottom:6px}
+.info-box table{font-size:12.3px; margin-top:8px}
+.info-box th{background:rgba(255,255,255,.55)}
+.info-box td{border-bottom-color:rgba(0,0,0,.07)}
+.info-box tbody tr:hover td{background:rgba(255,255,255,.4)}
+
+/* ── الكود ────────────────────────────────────────── */
+.code-card pre{
+  margin:0; padding:14px 16px; overflow-x:auto; direction:ltr; text-align:left;
+  font-family:var(--font-mono); font-size:12px; line-height:1.7;
+  background:#fbfaf7; color:var(--gray-dk);
+}
+.code-card.gherkin pre{background:var(--teal-lt)}
+.code-card.diagram pre{background:var(--gray-lt); max-height:420px}
+.mono{
+  font-family:var(--font-mono); font-size:.9em; direction:ltr;
+  unicode-bidi:isolate; display:inline-block; background:var(--gray-lt);
+  padding:.1em .38em; border-radius:4px;
+}
+th .mono, .card-header .mono{background:transparent; padding:0}
+
+/* ── الشارات ──────────────────────────────────────── */
+.badge{
+  display:inline-block; font-size:11px; line-height:1.5; padding:1px 7px;
+  border-radius:20px; font-weight:600; vertical-align:middle;
+}
+.b-confirmed{background:var(--teal-lt)}
+.b-proposed{background:var(--blue-lt)}
+.b-open{background:var(--amber-lt)}
+.b-assumption{background:var(--gray-lt)}
+.b-evidence{background:var(--purple-lt)}
+.b-migration{background:var(--coral-lt)}
+.b-future{background:var(--gray-lt)}
+.mark{font-style:normal}
+.m-forbidden,.m-no{color:var(--coral)}
+.m-critical{color:var(--amber)}
+.m-ok{color:var(--teal)}
+.m-warn{color:var(--amber)}
+.m-idem{color:var(--purple)}
+.m-sensitive{color:var(--coral)}
+del{color:var(--gray-md)}
+a{color:var(--purple-dk)}
+mark{background:#FFE9A8; color:var(--gray-dk); border-radius:3px; padding:0 2px}
+
+/* ── فهرس جانبي عائم ──────────────────────────────── */
+.mini-toc{
+  position:fixed; inset-inline-start:14px; bottom:60px; z-index:60;
+  background:var(--white); border:1px solid var(--gray-bd); border-radius:var(--radius-lg);
+  max-width:280px; max-height:min(66vh,560px); overflow-y:auto; padding:9px 6px;
+  box-shadow:0 4px 18px rgba(0,0,0,.09); display:none;
+}
+.mini-toc.open{display:block}
+.mini-toc a{
+  display:block; padding:4px 9px; border-radius:6px; font-size:11.8px;
+  color:var(--gray-dk); text-decoration:none; line-height:1.5;
+}
+.mini-toc a:hover{background:var(--gray-lt)}
+.mini-toc a.l3{padding-inline-start:20px; font-size:11.2px; color:var(--gray-md)}
+.mini-toc a.hide{display:none}
+
+/* ── أزرار عائمة ──────────────────────────────────── */
+.fab{position:fixed; inset-inline-start:14px; bottom:14px; z-index:70; display:flex; gap:6px}
+.fab.up{inset-inline-start:auto; inset-inline-end:14px}
+.fab button{
+  border:1px solid var(--gray-bd); background:var(--white); color:var(--gray-dk);
+  border-radius:20px; padding:7px 13px; cursor:pointer; font-family:inherit;
+  font-size:12px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,.07);
+}
+.fab button:hover{background:var(--gray-lt)}
+.hits{
+  font-size:11px; color:rgba(255,255,255,.7); white-space:nowrap;
+}
+
+/* ── الاستجابة ────────────────────────────────────── */
+@media (max-width:820px){
+  .site-header{padding:16px; position:static}
+  .nav{padding:0 12px; position:static}
+  .content{padding:20px 14px 70px}
+  #q{width:100%}
+  .mini-toc{max-width:min(250px,84vw)}
+}
+
+/* ── الطباعة ──────────────────────────────────────── */
+@media print{
+  .nav,.fab,.mini-toc,#q,.hits,.erd-bar{display:none !important}
+  .erd-view{height:auto; overflow:visible}
+  .erd-src{display:none}
+  .site-header{position:static; background:#fff; border-bottom:2px solid #000; padding:0 0 10px}
+  .site-header h1,.site-header p{color:#000}
+  .chip-v{background:#eee; color:#000; border-color:#999}
+  body{background:#fff; font-size:10pt}
+  .content{max-width:100%; padding:0}
+  .panel{display:block !important}
+  .panel-title{page-break-before:always; page-break-after:avoid}
+  .panel:first-child .panel-title:first-child{page-break-before:avoid}
+  .card,.info-box,.code-card{page-break-inside:avoid; box-shadow:none}
+  table{font-size:8pt}
+  tr{page-break-inside:avoid}
+  th{position:static; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+  .badge,.dot{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  a{color:#000; text-decoration:none}
+  @page{size:A4; margin:14mm 12mm}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="ttl">
+    <h1>Contractra &nbsp;·&nbsp; كونتراكترا</h1>
+    <p>مصفوفة تتبع المتطلبات &nbsp;·&nbsp; Requirements Traceability Matrix</p>
+  </div>
+  <div class="hdr-meta">
+    <span class="chip-v">الإصدار 2.0.1</span>
+    <span class="chip-v">توليد 2026-09-20 · 14:29</span>
+    <input id="q" type="search" placeholder="ابحث في كل التبويبات…" autocomplete="off">
+    <span class="hits" id="hits"></span>
+  </div>
+</header>
+
+<nav class="nav"><button class="nav-btn active" data-tab="t1">إدارة الوثيقة<span class="cnt" data-n="4">4</span></button><button class="nav-btn" data-tab="t2">تتبع المتطلبات غير الوظيفية<span class="cnt" data-n="4">4</span></button></nav>
+
+<div class="content">
+<div id="t1" class="panel active"><h2 class="panel-title" id="0.-إدارة-الوثيقة">0. إدارة الوثيقة</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>القيمة</th></tr></thead><tbody><tr><td><strong>المعرّف</strong></td><td><span class="mono">requirements-traceability-matrix-ar</span></td></tr><tr><td><strong>الإصدار</strong></td><td><strong>2.0.1</strong></td></tr><tr><td><strong>الحالة</strong></td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> مكتملة — <strong>Normative</strong></td></tr><tr><td><strong>التاريخ</strong></td><td>2026-09-17</td></tr><tr><td><strong>الغرض</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>إثبات أن كل متطلب مرتبط بقاعدة عمل وحالة استخدام وكيانات وصلاحية وحدث تدقيق ومعيار قبول واختبار ومصدر</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>فلا متطلب يتيم ولا قاعدة معلَّقة في الهواء</strong></td></tr><tr><td><strong>يُقرأ مع</strong></td><td><span class="mono">system-specification-and-team-reference-ar.md</span> (الأب) · <span class="mono">logical-data-model-ar.md</span></td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-teal"></div><h3 class="card-title" id="0.1-الأعمدة">0.1 الأعمدة</h3><span>10 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>العمود</th><th>المعنى</th></tr></thead><tbody><tr><td><strong>FR</strong></td><td>معرّف المتطلب</td></tr><tr><td><strong>BR</strong></td><td>قاعدة العمل الحاكمة</td></tr><tr><td><strong>UC</strong></td><td>حالة الاستخدام</td></tr><tr><td><strong>Entities</strong></td><td>كيانات البيانات المتأثرة</td></tr><tr><td><strong>Permission</strong></td><td>الصلاحية المطلوبة</td></tr><tr><td><strong>Audit Event</strong></td><td>حدث التدقيق</td></tr><tr><td><strong>AC</strong></td><td>معيار القبول</td></tr><tr><td><strong>TEST</strong></td><td>حالة الاختبار</td></tr><tr><td><strong>Source</strong></td><td>المستند المصدر</td></tr><tr><td><strong>Status</strong></td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> Confirmed · <span class="badge b-proposed" title="مقترح">🔵</span> Proposed · <span class="badge b-open" title="قرار مفتوح">🟡</span> Open</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="1.-المتطلبات-الحرجة--المصفوفة-الكاملة">1. <span class="mark m-critical" title="حرج">⭐</span> المتطلبات الحرجة — المصفوفة الكاملة</h2>
+<div class="info-box tech"><p><strong>هذه المتطلبات <span class="mark m-critical" title="حرج">⭐</span> حرجة: فشل أيٍّ منها يمنع الإطلاق.</strong></p></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>FR</th><th>BR</th><th>UC</th><th>Entities</th><th>Permission</th><th>Audit Event</th><th>AC</th><th>TEST</th><th>Source</th><th>Status</th></tr></thead><tbody><tr><td><strong>FR-AUTH-006</strong> استقلال <span class="mono">Payroll.View</span></td><td><strong>BR-235</strong></td><td>UC-002</td><td><span class="mono">user_permissions</span></td><td><span class="mono">Permissions.Grant</span></td><td><span class="mono">PayrollViewGranted</span> · <span class="mono">PayrollViewRevoked</span></td><td><strong>AC-047</strong></td><td>TEST-006</td><td>ملحق التقرير §11.3</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-AUTH-008</strong> التحقق في الخادم</td><td><strong>BR-018</strong> · BR-138</td><td>كل UC</td><td>—</td><td>كل الصلاحيات</td><td><span class="mono">AccessDenied</span></td><td><strong>AC-020</strong> · AC-056</td><td>TEST-008</td><td>ح-18 · ح-138</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-004</strong> تطبيع بلا تفرّد</td><td><strong>BR-100</strong> · BR-168</td><td>UC-003</td><td><span class="mono">parties</span> · <span class="mono">party_aliases</span></td><td><span class="mono">Parties.Manage</span></td><td><span class="mono">PartyCreated</span></td><td>AC-063</td><td>TEST-015</td><td>ح-100 · ح-168</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-005</strong> كشف تشابه ينبّه ولا يدمج</td><td><strong>BR-106</strong> · BR-100</td><td>UC-003</td><td><span class="mono">party_similarity_candidates</span></td><td><span class="mono">Parties.Merge.Review</span></td><td><span class="mono">SimilarityCandidateResolved</span></td><td>AC-064</td><td>TEST-016</td><td>ح-106</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-011</strong> منع تحويل الحساب التجميعي</td><td><strong>BR-031</strong></td><td>UC-003</td><td><span class="mono">aggregate_cost_accounts</span></td><td><span class="mono">Parties.Manage</span></td><td><span class="mono">CostResourceCreated</span></td><td>AC-070</td><td>TEST-022</td><td>ح-31</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-015</strong> أمر إسناد إلزامي</td><td><strong>BR-197</strong> · BR-196</td><td><strong>UC-004</strong></td><td><span class="mono">operations</span> · <span class="mono">assignment_orders</span></td><td><span class="mono">Operations.Manage</span></td><td><span class="mono">OperationActivated</span></td><td><strong>AC-022</strong> · AC-074</td><td>TEST-026 · TEST-027</td><td>ملحق العمليات §2</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-019</strong> تكليف مؤرَّخ</td><td><strong>BR-017</strong> · BR-131 · BR-202</td><td><strong>UC-006</strong></td><td><span class="mono">engineer_site_assignments</span></td><td><span class="mono">Assignments.Manage</span></td><td><span class="mono">EngineerSiteAssignmentCreated</span></td><td>AC-075 · AC-076 · AC-081</td><td>TEST-028 … 030</td><td>ملحق العمليات §3</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-021</strong> ثبات الحركات القديمة</td><td><strong>BR-202</strong> · BR-020</td><td><strong>UC-007</strong></td><td><span class="mono">engineer_site_assignments</span> · <span class="mono">expenses</span></td><td><span class="mono">Assignments.Manage</span></td><td><span class="mono">EngineerSiteAssignmentClosed</span></td><td><strong>AC-080</strong></td><td>TEST-035</td><td>ح-202</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-023 · FR-024</strong> رؤية المهندس</td><td><strong>BR-201</strong> · BR-016</td><td>UC-009</td><td><span class="mono">engineer_site_assignments</span> · <span class="mono">sites</span> · <span class="mono">operations</span></td><td><span class="mono">Expenses.Create</span></td><td>—</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-018</strong></td><td>TEST-037 · TEST-038</td><td>ح-201</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-026</strong> قيد الكمية للبند غير المتكرر</td><td><strong>BR-076</strong> · BR-115</td><td>UC-022</td><td><span class="mono">boq_items</span> · <span class="mono">claim_line_progress</span></td><td><span class="mono">Claims.Manage</span></td><td><span class="mono">ClaimCreated</span></td><td>AC-083</td><td>TEST-040</td><td>ح-76 · العقد ص8</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-034</strong> منع تغيير أمر الإسناد بعد الاعتماد</td><td><strong>BR-200</strong></td><td>UC-004</td><td><span class="mono">operations</span> · <span class="mono">assignment_orders</span></td><td><span class="mono">Operations.Manage</span></td><td><span class="mono">AssignmentOrderRelinked</span></td><td>AC-091</td><td>TEST-048</td><td>ملحق العمليات §2 ق11</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CUS-001</strong> تسليم عهدة</td><td><strong>BR-025</strong> · <strong>BR-140</strong></td><td><strong>UC-008</strong></td><td><span class="mono">custody_ledger_entries</span> · <span class="badge b-confirmed" title="مؤكدة">🟢</span> <span class="mono">treasury_movements</span> · <span class="mono">financial_events</span></td><td><span class="mono">Custody.Disburse</span></td><td><span class="mono">CustodyDisbursed</span></td><td>AC-092 · AC-093</td><td>TEST-049 · 050</td><td>ح-140</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CUS-002</strong> منع المهندس من إضافة عهدة</td><td><strong>BR-025</strong></td><td>UC-008</td><td><span class="mono">custody_ledger_entries</span></td><td>—</td><td><span class="mono">AccessDenied</span></td><td>AC-094</td><td>TEST-051</td><td>ح-25</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CUS-006</strong> تصحيح حركة عهدة</td><td><strong>BR-143</strong></td><td>UC-015</td><td><span class="mono">custody_ledger_entries</span></td><td><span class="mono">Custody.Correct</span></td><td><span class="mono">CustodyAdjusted</span></td><td><strong>AC-005</strong></td><td>TEST-055</td><td>ح-143</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CUS-007</strong> الرصيد مشتق</td><td><strong>BR-028</strong> · BR-026</td><td><strong>UC-016</strong></td><td><span class="mono">custody_ledger_entries</span></td><td><span class="mono">Custody.ViewBalance</span></td><td>—</td><td>AC-098</td><td>TEST-056</td><td>ح-28</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CUS-008</strong> الرصيد بنص واضح</td><td><strong>BR-027</strong></td><td>UC-016</td><td>—</td><td><span class="mono">Custody.ViewBalance</span></td><td>—</td><td><strong>AC-099</strong></td><td>TEST-057</td><td>ح-27</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-EXP-001</strong> تسجيل مصروف</td><td><strong>BR-203</strong> … <strong>BR-208</strong></td><td><strong>UC-009</strong></td><td><span class="mono">expenses</span> · <span class="mono">expense_attachments</span></td><td><span class="mono">Expenses.Create</span></td><td><span class="mono">ExpenseDraftCreated</span></td><td><strong>AC-016</strong> … <strong>AC-019</strong> · <strong>AC-024</strong> … <strong>AC-026</strong></td><td>TEST-060 … 067</td><td>ملحق العمليات §4–6</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-EXP-002</strong> أمر الإسناد تلقائي</td><td><strong>BR-199</strong></td><td>UC-009</td><td><span class="mono">expenses</span> · <span class="mono">operations</span></td><td><span class="mono">Expenses.Create</span></td><td>—</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-019</strong></td><td>TEST-073</td><td>ح-199</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-EXP-005</strong> اختيارية المرفق المطلقة</td><td><strong>BR-207</strong></td><td>UC-009 · UC-014</td><td><span class="mono">expense_attachments</span></td><td><span class="mono">Expenses.Create</span></td><td><span class="mono">DocumentUploaded</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-023</strong> · <strong>AC-026</strong></td><td>TEST-076 · 077</td><td>ملحق العمليات §8</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-EXP-007</strong> اعتماد المصروف</td><td><strong>BR-213</strong> · <strong>BR-186</strong></td><td><strong>UC-014</strong></td><td><span class="mono">expenses</span> · <span class="mono">custody_ledger_entries</span> · <span class="mono">journal_entries</span> · <span class="mono">audit_events</span></td><td><span class="mono">Expenses.Approve</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <span class="mono">ExpenseApproved</span></td><td><strong>AC-001</strong> · <strong>AC-002</strong> · <strong>AC-027</strong></td><td>TEST-068 … 072</td><td>ح-213 · ح-186</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-EXP-011</strong> تصحيح مصروف معتمد</td><td><strong>BR-213</strong> · <strong>BR-178</strong> · BR-187</td><td><strong>UC-015</strong></td><td><span class="mono">expense_corrections</span> · <span class="mono">audit_event_links</span></td><td><span class="mono">Expenses.Correct</span></td><td><span class="mono">CorrectionPosted</span></td><td><strong>AC-005</strong> · <strong>AC-029</strong></td><td>TEST-082 · 083</td><td>ح-178</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-EXP-015</strong> تحققات الخادم العشرة</td><td><strong>BR-210</strong> · BR-138</td><td>UC-011 · UC-014</td><td><span class="mono">expenses</span> · <span class="mono">engineer_site_assignments</span></td><td><span class="mono">Expenses.Submit</span></td><td><span class="mono">AccessDenied</span></td><td><strong>AC-020</strong> · <strong>AC-021</strong></td><td>TEST-087 … 096</td><td>ملحق العمليات §11</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-EXP-018</strong> لا أثر قبل الاعتماد</td><td><strong>BR-219</strong> · BR-209</td><td>UC-016</td><td><span class="mono">expenses</span> · <span class="mono">custody_ledger_entries</span></td><td>—</td><td>—</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-038</strong></td><td>TEST-099</td><td>ح-219</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-EXP-019</strong> منع الأثر المزدوج</td><td><strong>BR-103</strong> · BR-213</td><td>UC-014</td><td><span class="mono">custody_ledger_entries</span></td><td><span class="mono">Expenses.Approve</span></td><td><span class="mono">ExpenseApproved</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-027</strong></td><td>TEST-100</td><td>ح-103</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-WRK-001</strong> يومية بلا أثر مالي</td><td><strong>BR-046</strong> · BR-042</td><td><strong>UC-017</strong></td><td><span class="mono">attendance_entries</span></td><td><span class="mono">Attendance.Create</span></td><td><span class="mono">AttendanceRecorded</span></td><td>AC-111 · AC-112</td><td>TEST-104 · 105</td><td>ح-46</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-WRK-004</strong> لا صيغة حرة</td><td><strong>BR-167</strong></td><td>UC-017 · UC-020</td><td><span class="mono">pay_rate_versions</span> · <span class="mono">payroll_lines</span></td><td><span class="mono">Payroll.Prepare</span></td><td><span class="mono">PayRateVersionCreated</span></td><td>AC-115</td><td>TEST-108</td><td>ح-167</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-WRK-009</strong> اعتماد بلا نقد</td><td><strong>BR-047</strong> · BR-223</td><td><strong>UC-020</strong></td><td><span class="mono">payroll_periods</span> · <span class="mono">journal_entries</span></td><td><span class="mono">Payroll.Approve</span></td><td><span class="mono">PayrollApproved</span></td><td>AC-120</td><td>TEST-113</td><td>ح-47</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-WRK-010</strong> تكلفة بأساس الاستحقاق</td><td><strong>BR-045</strong> · BR-051</td><td>UC-020</td><td><span class="mono">payroll_lines</span> · <span class="mono">journal_entries</span></td><td><span class="mono">Payroll.Approve</span></td><td><span class="mono">PayrollApproved</span></td><td>AC-121</td><td>TEST-114</td><td>ح-45</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-WRK-012</strong> منع الخصم المزدوج للسلفة</td><td><strong>BR-049</strong></td><td><strong>UC-018</strong> · UC-020</td><td><span class="mono">worker_advances</span> · <span class="mono">payroll_lines</span> · <span class="badge b-confirmed" title="مؤكدة">🟢</span> <span class="mono">treasury_movements</span></td><td><span class="mono">WorkerAdvances.Manage</span></td><td><span class="mono">WorkerAdvanceRecorded</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-123</strong></td><td>TEST-116 · 117</td><td>ح-49</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-WRK-014</strong> <span class="mono">تم القبض</span> محسوب</td><td><strong>BR-050</strong></td><td>UC-019</td><td><span class="mono">worker_payments</span> · <span class="mono">payroll_lines</span></td><td><span class="mono">WorkerPayments.Manage</span></td><td><span class="mono">WorkerPaymentRecorded</span></td><td>AC-125</td><td>TEST-119</td><td>ح-50</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-WRK-017</strong> منع ازدواج المقاول</td><td><strong>BR-052</strong></td><td>UC-020</td><td><span class="mono">payroll_lines</span> · <span class="mono">subcontractor_settlements</span></td><td><span class="mono">Payroll.Approve</span></td><td><span class="mono">PayrollApproved</span></td><td>AC-128</td><td>TEST-122</td><td>ح-52</td><td><span class="badge b-proposed" title="مقترح">🔵</span></td></tr><tr><td><strong>FR-PAY-002</strong> منع التوزيع بلا سياسة</td><td><strong>BR-225</strong></td><td>UC-026</td><td><span class="mono">engineer_salary_allocations</span></td><td><span class="mono">Payroll.Approve</span></td><td><span class="mono">SalaryAllocationApplied</span></td><td>AC-131</td><td>TEST-125</td><td>ملحق التقرير §7.1</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-PAY-004</strong> الافتراضي بلا توزيع</td><td><strong>BR-226</strong></td><td>UC-026</td><td><span class="mono">engineer_salary_allocation_rules</span></td><td>—</td><td>—</td><td>AC-133</td><td>TEST-127</td><td>ملحق التقرير §7.3</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-SUP-007</strong> تمييز نسبة الأعمال</td><td><strong>BR-011</strong></td><td>UC-021</td><td><span class="mono">subcontractor_settlements</span> · <span class="mono">payment_order_party_shares</span></td><td><span class="mono">Subcontractors.Settle</span></td><td><span class="mono">SubcontractorSettlementApproved</span></td><td>AC-142</td><td>TEST-136</td><td>ملحق الأجور §8.2</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-SUP-015</strong> منع القيد الثاني</td><td><strong>BR-051</strong> · BR-169</td><td>UC-021</td><td><span class="mono">recoverable_expense_claims</span> · <span class="mono">journal_entries</span></td><td><span class="mono">Subcontractors.Settle</span></td><td><span class="mono">RecoverableClaimCreated</span></td><td>AC-150</td><td>TEST-144</td><td>النموذج المفاهيمي §5.9</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-SUP-016</strong> مسار استرداد واحد</td><td><strong>BR-105</strong></td><td>UC-021</td><td><span class="mono">recoverable_expense_allocations</span></td><td><span class="mono">Subcontractors.Settle</span></td><td><span class="mono">RecoverableAllocated</span></td><td>AC-151</td><td>TEST-145</td><td>النموذج المفاهيمي §5.9</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CLM-005</strong> سطور استقطاع مفتوحة</td><td><strong>BR-144</strong> … <strong>BR-146</strong></td><td><strong>UC-023</strong></td><td><span class="mono">claim_deduction_lines</span></td><td><span class="mono">Claims.Manage</span></td><td><span class="mono">ClaimApproved</span></td><td>AC-160</td><td>TEST-156</td><td>ح-144…146</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CLM-006</strong> سلّم المعالجة الثلاثي</td><td><strong>BR-173</strong></td><td><strong>UC-023</strong></td><td><span class="mono">deduction_types</span> · <span class="mono">deduction_rule_versions</span> · <span class="mono">claim_deduction_lines</span></td><td><span class="mono">Deductions.Manage</span></td><td><span class="mono">DeductionRuleVersionCreated</span></td><td>AC-161</td><td>TEST-157</td><td>ح-173</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CLM-008</strong> تغيير القاعدة لا يمسّ المعتمد</td><td><strong>BR-146</strong></td><td>UC-023</td><td><span class="mono">claim_deduction_lines</span></td><td>—</td><td>—</td><td>AC-163</td><td>TEST-159</td><td>ح-146</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CLM-011</strong> تطبيق نسبة الشركة الخارجية</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-170</strong> · BR-008</td><td><strong>UC-025</strong></td><td><span class="mono">_agreement_versions</span> · <span class="mono">payment_order_party_shares</span></td><td><span class="mono">PaymentOrders.Manage</span></td><td><span class="mono">ExternalCompanyShareApplied</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-007</strong> · AC-154 · AC-155</td><td>TEST-148 … 151</td><td>Patch 1.1.1 §1</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CLM-012</strong> تفعيل الاتفاق</td><td><strong>BR-170</strong></td><td>UC-025</td><td><span class="mono">_agreement_versions</span> · <span class="mono">agreement_documents</span></td><td><span class="mono">Agreements.Activate</span></td><td><span class="mono">ExternalCompanyAgreementActivated</span></td><td>AC-166</td><td>TEST-162</td><td>ح-170</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CLM-013</strong> إصدار اتفاق جديد</td><td><strong>BR-007</strong></td><td>UC-025</td><td><span class="mono">_agreement_versions</span></td><td><span class="mono">Agreements.Manage</span></td><td><span class="mono">AgreementVersionCreated</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-007</strong></td><td>TEST-163</td><td>ح-7</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CLM-026</strong> استقلال الاعتراف عن التحصيل</td><td><strong>BR-014</strong> · BR-013</td><td>UC-024</td><td><span class="mono">payment_terms</span> · <span class="mono">journal_entries</span></td><td><span class="mono">Claims.Approve</span></td><td><span class="mono">ClaimApproved</span></td><td>AC-179</td><td>TEST-176</td><td>ح-14</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CLM-027</strong> التصحيح بمستند</td><td><strong>BR-178</strong></td><td>UC-023</td><td><span class="mono">claims</span> · <span class="mono">claim_progress</span></td><td><span class="mono">Claims.Manage</span></td><td><span class="mono">ClaimAdjusted</span></td><td><strong>AC-005</strong></td><td>TEST-177</td><td>ح-178</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CLM-029</strong> شرط الرد حدث لا تاريخ</td><td><strong>BR-125</strong> · <strong>BR-166</strong></td><td>UC-024</td><td><span class="mono">release_condition_versions</span> · <span class="mono">retention_register</span></td><td><span class="mono">Retentions.Release</span></td><td><span class="mono">RetentionReleased</span></td><td>AC-181</td><td>TEST-179</td><td>العقد البند 8</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CLM-033</strong> تاريخ الاستعلام إلزامي</td><td><strong>BR-150</strong> · BR-172</td><td>UC-032</td><td><span class="mono">retention_register</span></td><td><span class="mono">Reports.View</span></td><td>—</td><td>AC-185</td><td>TEST-183</td><td>ح-150</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CLM-036</strong> فصل الضمانين</td><td><strong>BR-091</strong></td><td>UC-024</td><td><span class="mono">guarantees</span> · <span class="mono">retention_register</span></td><td><span class="mono">Claims.Manage</span></td><td><span class="mono">GuaranteeIssued</span></td><td>AC-188</td><td>TEST-186</td><td>ح-91 · العقد البند 12</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-CLM-042</strong> التقريب مرة واحدة</td><td><strong>BR-093</strong> · <strong>BR-094</strong></td><td>UC-023</td><td>كل الجداول المالية</td><td>—</td><td>—</td><td>AC-194</td><td>TEST-192</td><td>ح-93 · ح-94</td><td><span class="badge b-proposed" title="مقترح">🔵</span></td></tr><tr><td><strong>FR-REP-005</strong> إصدار التقرير الشهري</td><td><strong>BR-215</strong> … <strong>BR-242</strong></td><td><strong>UC-026</strong></td><td><span class="mono">monthly_report_versions</span> · <span class="mono">_snapshots</span> · <span class="mono">stored_documents</span></td><td><span class="mono">Reports.Monthly.Generate</span></td><td><span class="mono">MonthlyReportGenerated</span></td><td><strong>AC-030</strong> … <strong>AC-039</strong></td><td>TEST-195 … 203</td><td>ملحق التقرير</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-REP-007</strong> فصل التكلفة عن النقد</td><td><strong>BR-222</strong> · BR-223</td><td>UC-026</td><td><span class="mono">monthly_report_versions</span></td><td>—</td><td>—</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-037</strong></td><td>TEST-209</td><td>ملحق التقرير §6</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-REP-008</strong> استبعاد غير المعتمد</td><td><strong>BR-219</strong></td><td>UC-026</td><td><span class="mono">monthly_report_snapshots</span></td><td>—</td><td>—</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-038</strong></td><td>TEST-210</td><td>ح-219</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-REP-010</strong> إصدار جديد لا تعديل</td><td><strong>BR-229</strong> · <strong>BR-230</strong></td><td><strong>UC-027</strong></td><td><span class="mono">monthly_report_versions</span></td><td><span class="mono">Reports.Monthly.Generate</span></td><td><span class="mono">MonthlyReportVersionCreated</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-044</strong> · <strong>AC-045</strong></td><td>TEST-212 · 213</td><td>ح-229</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-REP-011</strong> إعادة الإرسال بلا إصدار</td><td><strong>BR-230</strong></td><td><strong>UC-028</strong></td><td><span class="mono">monthly_report_delivery_attempts</span></td><td><span class="mono">Reports.Monthly.ManageRecipients</span></td><td><span class="mono">MonthlyReportResent</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-042</strong> · <strong>AC-046</strong></td><td>TEST-214</td><td>ح-230</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-REP-016</strong> رسالة منفصلة لكل مستلم</td><td><strong>BR-236</strong></td><td>UC-026</td><td><span class="mono">monthly_report_delivery_attempts</span></td><td>—</td><td><span class="mono">MonthlyReportSent</span></td><td><strong>AC-040</strong></td><td>TEST-219</td><td>ح-236</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-REP-018</strong> سجل إرسال لكل مستلم</td><td><strong>BR-238</strong> · <strong>BR-244</strong></td><td>UC-028</td><td><span class="mono">monthly_report_delivery_attempts</span></td><td>—</td><td><span class="mono">MonthlyReportDeliveryFailed</span></td><td>AC-204</td><td>TEST-221</td><td>ح-238</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-REP-019</strong> فشل مستلم لا يوقف الباقين</td><td><strong>BR-239</strong></td><td>UC-026</td><td><span class="mono">monthly_report_versions</span></td><td>—</td><td><span class="mono">MonthlyReportDeliveryFailed</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-041</strong></td><td>TEST-222</td><td>ح-239</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-REP-021</strong> حجب التقرير بلا <span class="mono">Payroll.View</span></td><td><strong>BR-235</strong> · BR-245</td><td>UC-028</td><td><span class="mono">monthly_report_recipients</span></td><td><span class="mono">Payroll.View</span></td><td><span class="mono">AccessDenied</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-047</strong></td><td>TEST-224</td><td>ح-235</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-REP-022</strong> Idempotency للمهمة</td><td><strong>BR-241</strong></td><td>UC-026</td><td><span class="mono">monthly_report_versions</span></td><td>—</td><td><span class="mono">BackgroundJobResult</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-043</strong></td><td>TEST-225</td><td>ح-241</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-REP-023</strong> عطل البريد لا يفقد التقرير</td><td><strong>BR-242</strong></td><td>UC-026</td><td><span class="mono">monthly_report_versions</span> · <span class="mono">stored_documents</span></td><td>—</td><td><span class="mono">MonthlyReportDeliveryFailed</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-049</strong></td><td>TEST-226</td><td>ح-242</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-REP-027</strong> محتويات Snapshot التسعة</td><td><strong>BR-228</strong></td><td>UC-026</td><td><span class="mono">monthly_report_snapshots</span> + سطوره الأربعة</td><td>—</td><td><span class="mono">MonthlyReportVersionCreated</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-044</strong></td><td>TEST-230</td><td>ملحق التقرير §4</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-IMP-001</strong> دفعة ببصمة</td><td><strong>BR-151</strong> · <strong>BR-155</strong></td><td><strong>UC-029</strong></td><td><span class="mono">import_batches</span></td><td><span class="mono">Imports.Run</span></td><td><span class="mono">ImportBatchStarted</span></td><td>AC-208</td><td>TEST-232</td><td>ح-151 · ح-155</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-IMP-005</strong> لا مضاعفة</td><td><strong>BR-103</strong> · <strong>BR-188</strong></td><td>UC-029</td><td><span class="mono">import_rows</span> · <span class="mono">record_lineage</span></td><td><span class="mono">Imports.Run</span></td><td><span class="mono">ImportBatchCompleted</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-212</strong></td><td>TEST-236</td><td>ح-103</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-IMP-006</strong> رفض صفوف المجاميع</td><td><span class="badge b-evidence" title="دليل تاريخي">📊</span> ب-13</td><td>UC-029</td><td><span class="mono">import_rows</span></td><td><span class="mono">Imports.Run</span></td><td><span class="mono">ImportRowRejected</span></td><td>AC-213</td><td>TEST-237</td><td><span class="mono">excel-source-mapping</span> §2</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-IMP-007</strong> مطابقة المجموع</td><td><span class="badge b-evidence" title="دليل تاريخي">📊</span> ب-13</td><td>UC-029</td><td><span class="mono">import_batches</span> · <span class="mono">reconciliation_checks</span></td><td><span class="mono">Imports.Run</span></td><td><span class="mono">ImportBatchAborted</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-214</strong></td><td>TEST-238</td><td><span class="mono">excel-source-mapping</span> §2</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-IMP-008</strong> إعادة حساب العمود المحسوب</td><td><span class="badge b-evidence" title="دليل تاريخي">📊</span> ب-14</td><td>UC-029</td><td><span class="mono">import_rows</span></td><td><span class="mono">Imports.Run</span></td><td><span class="mono">ImportRowRejected</span></td><td>AC-215</td><td>TEST-239</td><td><span class="mono">excel-source-mapping</span> §3</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-IMP-011 · 012</strong> سياسة <span class="mono">LEGACY</span></td><td><strong>BR-181</strong></td><td>UC-029</td><td><span class="mono">claims</span> · <span class="mono">claim_series</span></td><td><span class="mono">Imports.Run</span></td><td><span class="mono">ImportBatchCompleted</span></td><td>AC-218 · AC-219</td><td>TEST-242 · 243</td><td>ح-181</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-AUD-001</strong> ذرّية حدث التدقيق</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-186</strong></td><td>كل UC مالي</td><td><span class="mono">audit_events</span></td><td>—</td><td><strong>هو الحدث نفسه</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-001</strong> · <strong>AC-002</strong> · <strong>AC-014</strong></td><td>TEST-249 · 250</td><td>ملحق التدقيق §7</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-AUD-002</strong> Append-only</td><td><strong>BR-187</strong></td><td><strong>UC-031</strong></td><td><span class="mono">audit_events</span></td><td><span class="mono">Audit.View</span></td><td>—</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-010</strong></td><td>TEST-251</td><td>ملحق التدقيق §6</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-AUD-006</strong> لا رصيد من التدقيق</td><td><strong>BR-184</strong> · <strong>BR-246</strong></td><td>UC-032</td><td>—</td><td>—</td><td>—</td><td>AC-226</td><td>TEST-255</td><td>ح-184</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-AUD-008 · 009</strong> الحجب قبل الكتابة</td><td><strong>BR-191</strong></td><td>كل UC</td><td><span class="mono">audit_event_changes</span></td><td>—</td><td>—</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-015</strong></td><td>TEST-257 · 258</td><td>ملحق التدقيق §9</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-AUD-014</strong> Serilog لا يُفشل المعاملة</td><td><strong>BR-194</strong></td><td>كل UC مالي</td><td>—</td><td>—</td><td>—</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-013</strong></td><td>TEST-263</td><td>ملحق التدقيق §12.5</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-AUD-016</strong> لا رواتب في Serilog</td><td><strong>BR-245</strong> · BR-191</td><td>UC-020 · UC-026</td><td>—</td><td>—</td><td>—</td><td>AC-230</td><td>TEST-265</td><td>ح-245</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-amber"></div><h3 class="card-title" id="1.99-متطلبات-الباتش-v1.2.1--BR-247--BR-262">1.99 <span class="badge b-confirmed" title="مؤكدة">🟢</span> <span class="mark m-critical" title="حرج">⭐</span> متطلبات الباتش v1.2.1 — BR-247 … BR-262</h3><span>15 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>المتطلب</th><th>قاعدة العمل</th><th>حالة الاستخدام</th><th>الكيانات</th><th>الصلاحية</th><th>حدث التدقيق</th><th>معيار القبول</th><th>حالة الاختبار</th><th>المصدر</th><th>الحالة</th></tr></thead><tbody><tr><td><strong>FR-OPS-030</strong> أمر إسناد واحد لكل عملية</td><td><strong>BR-247</strong> · BR-248</td><td>UC-004</td><td><span class="mono">operations</span> · <span class="mono">assignment_orders</span></td><td><span class="mono">Operations.Manage</span></td><td><span class="mono">AssignmentOrderLinked</span></td><td><strong>AC-233</strong></td><td>TEST-233</td><td>باتش v1.2.1 §2</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-OPS-031</strong> أمر الإسناد Read-only للمهندس</td><td><strong>BR-249</strong></td><td>UC-011</td><td><span class="mono">expenses</span> · <span class="mono">assignment_orders</span></td><td><span class="mono">Expenses.Create</span></td><td>—</td><td><strong>AC-234</strong></td><td>TEST-234</td><td>باتش §2.2</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-ACC-001</strong> حدث مالي لكل أثر قابل للترحيل</td><td><strong>BR-250</strong></td><td>UC-008 · UC-014</td><td><span class="mono">financial_events</span></td><td><span class="mono">System</span></td><td><span class="mono">FinancialEventCreated</span></td><td><strong>AC-235</strong></td><td>TEST-235</td><td>باتش §3</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-ACC-002</strong> قيد متوازن</td><td><strong>BR-251</strong></td><td>UC-014</td><td><span class="mono">journal_entries</span> · <span class="mono">journal_entry_lines</span></td><td><span class="mono">Accounting.Post</span></td><td><span class="mono">JournalEntryPosted</span></td><td><strong>AC-236</strong></td><td>TEST-236</td><td>باتش §3.4</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-ACC-003</strong> لا تعديل لقيد مرحَّل</td><td><strong>BR-252</strong></td><td>UC-014</td><td><span class="mono">journal_entries</span></td><td>—</td><td><span class="mono">JournalEntryReversed</span></td><td><strong>AC-237</strong></td><td>TEST-237</td><td>باتش §3.4</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-ACC-004</strong> الفترة المقفلة تمنع الترحيل</td><td><strong>BR-253</strong></td><td>UC-030</td><td><span class="mono">fiscal_periods</span></td><td><span class="mono">Accounting.ClosePeriod</span></td><td><span class="mono">FinancialPeriodClosed</span> · <span class="mono">FinancialPeriodReopened</span></td><td><strong>AC-238</strong></td><td>TEST-238</td><td>باتش §3.4</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-ACC-005</strong> الأرصدة مشتقة</td><td><strong>BR-254</strong></td><td>UC-031</td><td><span class="mono">journal_entry_lines</span> · <span class="mono">ledger_period_balances</span></td><td><span class="mono">Reports.View</span></td><td>—</td><td><strong>AC-239</strong></td><td>TEST-239</td><td>باتش §5</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-TRS-001</strong> حركة خزينة بسند</td><td><strong>BR-250</strong> · BR-254</td><td>UC-008</td><td><span class="mono">treasury_movements</span> · <span class="mono">financial_events</span></td><td><span class="mono">Treasury.Manage</span></td><td><span class="mono">TreasuryMovementRecorded</span></td><td><strong>AC-240</strong></td><td>TEST-240</td><td>باتش §4</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-TRS-002</strong> مطابقة الخزينة بالأستاذ</td><td><strong>BR-255</strong></td><td>UC-031</td><td><span class="mono">treasury_movements</span> · <span class="mono">journal_entry_lines</span></td><td><span class="mono">Accounting.Reconcile</span></td><td><span class="mono">ReconciliationExceptionRaised</span></td><td><strong>AC-241</strong></td><td>TEST-241</td><td>باتش §4.3</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>FR-TRS-003</strong> لا خصم نقدي مزدوج</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-256</strong></td><td><strong>UC-014</strong></td><td><span class="mono">expenses</span> · <span class="mono">custody_ledger_entries</span> · <span class="mono">treasury_movements</span></td><td><span class="mono">Expenses.Approve</span></td><td><span class="mono">ExpenseApproved</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-242</strong></td><td>TEST-242 · 243</td><td>باتش §7</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>FR-TRS-004</strong> صرف العهدة أربعة آثار في معاملة</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-257</strong></td><td><strong>UC-008</strong></td><td><span class="mono">financial_events</span> · <span class="mono">treasury_movements</span> · <span class="mono">custody_ledger_entries</span> · <span class="mono">journal_entries</span> · <span class="mono">audit_events</span></td><td><span class="mono">Custody.Disburse</span></td><td><span class="mono">CustodyDisbursed</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-244</strong></td><td>TEST-244 · 245</td><td>باتش §6</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-EXP-030</strong> أربع حالات للمصروف</td><td><strong>BR-258</strong></td><td>UC-011 … UC-014</td><td><span class="mono">expenses</span></td><td>—</td><td><span class="mono">ExpenseSubmitted</span></td><td><strong>AC-246</strong></td><td>TEST-246</td><td>باتش §9</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-EXP-031</strong> فصل حالة المزامنة</td><td><strong>BR-259</strong></td><td>UC-013</td><td><span class="mono">sync_submissions</span> · <span class="mono">sync_exceptions</span></td><td><span class="mono">System</span></td><td><span class="mono">SyncBlocked</span> · <span class="mono">SyncExceptionResolved</span></td><td><strong>AC-247</strong></td><td>TEST-247</td><td>باتش §9.3</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-RPT-030</strong> محاولات إرسال متعددة</td><td><strong>BR-260</strong></td><td>UC-029</td><td><span class="mono">monthly_report_deliveries</span> · <span class="mono">monthly_report_delivery_attempts</span></td><td><span class="mono">Reports.Send</span></td><td><span class="mono">MonthlyReportResent</span></td><td><strong>AC-248</strong></td><td>TEST-248</td><td>باتش §10</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-DB-001</strong> دلالة غياب معلَنة</td><td><strong>BR-261</strong> · <strong>BR-262</strong></td><td>—</td><td>كل الجداول ذات التفرّد المشروط</td><td>—</td><td>—</td><td><strong>AC-249</strong></td><td>TEST-249</td><td>باتش §11</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr></tbody></table></div></div>
+<div class="info-box danger"><p><span class="badge b-confirmed" title="مؤكدة">🟢</span> <span class="mark m-critical" title="حرج">⭐</span> <strong>خمس عشرة صفًا جديدًا — وكلها مربوطة بقاعدة ومعيار قبول وحالة اختبار.</strong> <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا متطلب يتيم.</strong></p></div>
+<div class="card"><div class="card-header"><div class="dot dot-blue"></div><h3 class="card-title" id="1.100-متطلبات-الباتش-v2.0.1--BR-263--BR-272">1.100 <span class="badge b-confirmed" title="مؤكدة">🟢</span> <span class="mark m-critical" title="حرج">⭐</span> متطلبات الباتش v2.0.1 — BR-263 … BR-272</h3><span>9 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>المتطلب</th><th>قاعدة العمل</th><th>حالة الاستخدام</th><th>الكيانات</th><th>الصلاحية</th><th>حدث التدقيق</th><th>معيار القبول</th><th>حالة الاختبار</th><th>المصدر</th><th>الحالة</th></tr></thead><tbody><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>FR-ACC-010</strong> اكتمال آثار الحدث قبل الترحيل</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-264</strong></td><td>UC-008 · UC-014</td><td><span class="mono">financial_events</span> · <span class="mono">journal_entries</span> · <span class="mono">treasury_movements</span> · <span class="mono">custody_ledger_entries</span></td><td><span class="mono">Accounting.Post</span></td><td><span class="mono">FinancialEventCreated</span> · <span class="mono">JournalEntryPosted</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-250</strong></td><td>TEST-250 … 253</td><td>باتش v2.0.1 §2</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-ACC-011</strong> قيد واحد لكل حدث</td><td><strong>BR-265</strong></td><td>UC-014</td><td><span class="mono">journal_entries</span></td><td><span class="mono">Accounting.Post</span></td><td><span class="mono">JournalEntryPosted</span></td><td><strong>AC-251</strong></td><td>TEST-254</td><td>باتش §3</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-ACC-012</strong> مستند تصحيح لكل عكس</td><td><strong>BR-266</strong> · <strong>BR-267</strong></td><td>UC-032</td><td><span class="mono">accounting_adjustments</span> · <span class="mono">financial_events</span></td><td><span class="mono">Accounting.Adjust</span></td><td><span class="mono">JournalEntryReversed</span></td><td><strong>AC-252</strong></td><td>TEST-255 · 256</td><td>باتش §4</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-ACC-013</strong> قواعد سطور القيد</td><td><strong>BR-272</strong></td><td>UC-014</td><td><span class="mono">journal_entry_lines</span></td><td><span class="mono">Accounting.Post</span></td><td>—</td><td><strong>AC-253</strong></td><td>TEST-257 … 259</td><td>باتش §5</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-TRS-010</strong> تخصيص الحركة بحدث مالي</td><td><strong>BR-268</strong></td><td>UC-025</td><td><span class="mono">treasury_movement_allocations</span> · <span class="mono">financial_events</span></td><td><span class="mono">Treasury.Manage</span></td><td><span class="mono">TreasuryMovementAllocated</span></td><td><strong>AC-254</strong></td><td>TEST-260</td><td>باتش §6</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-TRS-011</strong> طريقة التسوية نظامية</td><td><strong>BR-263</strong></td><td>UC-011 · UC-014</td><td><span class="mono">financial_events</span></td><td>—</td><td>—</td><td><strong>AC-255</strong></td><td>TEST-261</td><td>باتش §7</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-TRS-012</strong> قواعد أداة الدفع</td><td><strong>BR-269</strong></td><td>UC-008 · UC-025</td><td><span class="mono">treasury_movements</span> · <span class="mono">cheques</span> · <span class="mono">treasury_accounts</span></td><td><span class="mono">Treasury.Manage</span></td><td><span class="mono">TreasuryMovementRecorded</span></td><td><strong>AC-256</strong></td><td>TEST-262</td><td>باتش §8</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-IMP-010</strong> فصل الأرصدة الافتتاحية</td><td><strong>BR-270</strong></td><td>UC-027</td><td><span class="mono">financial_events</span> · <span class="mono">accounting_adjustments</span> · <span class="mono">import_batches</span></td><td><span class="mono">Import.Run</span></td><td><span class="mono">OpeningBalanceApproved</span></td><td><strong>AC-257</strong></td><td>TEST-263</td><td>باتش §9</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>FR-IMP-011</strong> قيود مجمَّعة بأبعادها</td><td><strong>BR-271</strong></td><td>UC-027</td><td><span class="mono">journal_entries</span> · <span class="mono">record_lineage</span> · <span class="mono">import_rows</span></td><td><span class="mono">Import.Run</span></td><td><span class="mono">ImportBatchCompleted</span></td><td><strong>AC-258</strong></td><td>TEST-264 · 265</td><td>باتش §9</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="2.-التتبع-العكسي--كل-قاعدة-عمل--ما-يطبّقها">2. <span class="mark m-critical" title="حرج">⭐</span> التتبع العكسي — كل قاعدة عمل ← ما يطبّقها</h2>
+<div class="card"><div class="card-header"><div class="dot dot-purple"></div><h3 class="card-title" id="2.1-القواعد-المالية-الأساسية">2.1 القواعد المالية الأساسية</h3><span>36 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>BR</th><th>المتطلبات التي تطبّقها</th><th>UC</th><th>الحالة</th></tr></thead><tbody><tr><td><strong>BR-001 · BR-002</strong></td><td>FR-009 · FR-001</td><td>UC-003</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-003 … BR-012</strong></td><td>FR-CLM-011 … FR-CLM-014</td><td>UC-025</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-013 · BR-014</strong></td><td>FR-CLM-025 · FR-CLM-026</td><td>UC-024</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-015 … BR-023</strong></td><td>FR-019 … FR-024 · FR-EXP-015 · FR-EXP-016</td><td>UC-006 · UC-009</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-024 … BR-029</strong></td><td>FR-CUS-001 … FR-CUS-010</td><td>UC-008 · UC-016</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-030 … BR-033</strong></td><td>FR-010 · FR-011</td><td>UC-003</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-034 … BR-045</strong></td><td>FR-WRK-002 … FR-WRK-010</td><td>UC-017 · UC-020</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-046 … BR-052</strong></td><td>FR-WRK-001 · FR-WRK-009 … FR-WRK-017</td><td>UC-017 … UC-020</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-053 … BR-059</strong></td><td>FR-001 … FR-008 · FR-IMP-009</td><td>UC-003 · UC-029</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-060 … BR-073</strong></td><td>FR-CLM-001 … FR-CLM-010 · FR-CLM-039 … FR-CLM-041</td><td>UC-022 · UC-023</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-074 … BR-077</strong></td><td>FR-025 … FR-027</td><td>UC-004 · UC-022</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-078 … BR-088</strong></td><td>FR-CLM-015 … FR-CLM-025</td><td>UC-024</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-089 … BR-091</strong></td><td>FR-CLM-035 … FR-CLM-038</td><td>UC-024</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-093 · BR-094</strong></td><td>FR-CLM-042 · FR-CLM-043</td><td>UC-023</td><td><span class="badge b-proposed" title="مقترح">🔵</span></td></tr><tr><td><strong>BR-096 · BR-097</strong></td><td>FR-IMP-013 · FR-CLM-044</td><td>UC-029</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-098 · BR-099</strong></td><td>FR-CUS-001 · Domain 18</td><td>UC-008</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-100 … BR-106</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل طبقات منع الازدواج</strong> — FR-004 · FR-005 · FR-EXP-019 · FR-IMP-005 · FR-SUP-010 · FR-SUP-016 · FR-WRK-018</td><td>كل UC مالي</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-107 … BR-112</strong></td><td>FR-028 … FR-033</td><td>UC-004</td><td><span class="badge b-proposed" title="مقترح">🔵</span></td></tr><tr><td><strong>BR-114 … BR-121 · BR-124 · BR-125 · BR-127 · BR-128</strong></td><td>FR-CLM-011 · FR-CLM-029 · FR-CLM-035 · FR-CLM-040 · FR-SUP-008 · FR-SUP-011 · FR-030</td><td>UC-024 · UC-025</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-131 … BR-139</strong></td><td>FR-019 · FR-023 · FR-EXP-015 … FR-EXP-017</td><td>UC-006 · UC-009</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-140 … BR-143</strong></td><td>FR-CUS-001 … FR-CUS-006</td><td>UC-008 · UC-015</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-144 … BR-147</strong></td><td>FR-CLM-005 … FR-CLM-009</td><td>UC-023</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-148 · BR-149</strong></td><td>FR-012 · FR-IMP-015</td><td>UC-029 · UC-030</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-150</strong></td><td>FR-CLM-033 · FR-REP-004</td><td>UC-032</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-151 … BR-155</strong></td><td>FR-IMP-001 … FR-IMP-004</td><td>UC-029</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-156 … BR-160</strong></td><td>ADR-001 · ADR-002 · ADR-016 · FR-009</td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-161 … BR-169</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>القيود المصحَّحة</strong> — مطبَّقة في النموذج المنطقي §17.2 وملحق ب</td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-170</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> FR-CLM-011 · FR-CLM-012</td><td>UC-025</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-173</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> FR-CLM-006 · FR-CLM-028</td><td>UC-023</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-174 … BR-177</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>حُسمت في النموذج المنطقي</strong> §17.2 · FR-006 · FR-WRK-007</td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-178 · BR-179</strong></td><td>FR-CLM-027 · Domain 18</td><td>UC-023</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-180</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>قواعد النزاهة §5</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-181</strong></td><td>FR-IMP-011 · FR-IMP-012</td><td>UC-029</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-182 … BR-195</strong></td><td>FR-AUD-001 … FR-AUD-018</td><td>UC-031</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-196 … BR-214</strong></td><td>FR-015 … FR-024 · FR-EXP-001 … FR-EXP-022</td><td>UC-004 … UC-015</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td><strong>BR-215 … BR-246</strong></td><td>FR-REP-005 … FR-REP-028 · FR-PAY-002 … FR-PAY-005</td><td>UC-026 … UC-028</td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr></tbody></table></div></div>
+<p class="section-title" id="2.2-القواعد-بلا-متطلب-مباشر--مُعلَنة-ومبرَّرة">2.2 <span class="mark m-critical" title="حرج">⭐</span> القواعد بلا متطلب مباشر — مُعلَنة ومبرَّرة</p>
+<div class="info-box tech"><p><span class="mark m-critical" title="حرج">⭐</span> <strong>ليست كل قاعدة قاعدةَ سلوك برمجي — وهذا تصنيف صحيح لا نقص في التتبع.</strong></p></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>BR</th><th>لماذا لا متطلب مباشر</th><th>أين تظهر بدلًا من ذلك</th></tr></thead><tbody><tr><td><strong>BR-092</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>حقيقة رصد</strong> — شيك الضمان 400,563 غائب عن ورقة <span class="mono">شيكات</span></td><td><strong>أثرها في FR-CLM-035</strong> · و<strong>ملاحظات الترحيل في Domain 9</strong></td></tr><tr><td><strong>BR-095</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>إحصاء يبرر BR-093</strong> — 26% من القيم بكسور &gt; منزلتين</td><td><strong>مبرِّر NUM-01 … NUM-08</strong></td></tr><tr><td><strong>BR-113</strong></td><td>قيمة عقد التيسير 8,011,262.40</td><td><strong>بيانات عقد تُدخَل — لا سلوك</strong></td></tr><tr><td><strong>BR-116</strong></td><td>مدة التنفيذ 24 شهرًا</td><td><strong>بيانات عقد</strong> · ويُحسب النهو بـFR-029</td></tr><tr><td><strong>BR-122</strong></td><td>القيمة التعاقدية تشمل الأجور والإقامة والتأمين</td><td><strong>بند وصفي — لا سلوك</strong></td></tr><tr><td><strong>BR-123</strong></td><td>المزروعات في عهدة المقاول</td><td><strong>بند وصفي</strong></td></tr><tr><td><strong>BR-126</strong></td><td>حق إلغاء العقد عند إيقاف الأعمال</td><td><strong>بند وصفي</strong></td></tr><tr><td><strong>BR-129</strong></td><td>سريان اللائحة التنفيذية للجهة المالكة</td><td><strong>بند وصفي</strong></td></tr><tr><td><strong>BR-130</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>البند 14 مفقود · ولا بند اختصاص ولا تحكيم</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>RISK-012 — يحتاج مراجعة قانونية لا كودًا</strong></td></tr><tr><td><strong>BR-171 · BR-172</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>قواعد تسمية ووصف للأرقام المنشورة</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>مطبَّقة في §2.4 و§25.2 وفي كل تقرير — ولا تُنفَّذ كمتطلب وظيفي</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="3.-تتبع-حالات-الاستخدام">3. <span class="mark m-critical" title="حرج">⭐</span> تتبع حالات الاستخدام</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>UC</th><th>المتطلبات</th><th>BR الرئيسية</th><th>Entities</th><th>AC</th></tr></thead><tbody><tr><td><strong>UC-001</strong> تسجيل الدخول</td><td>FR-AUTH-001 · FR-AUTH-002</td><td>BR-193</td><td><span class="mono">users</span> · <span class="mono">roles</span></td><td>AC-050 · AC-051</td></tr><tr><td><strong>UC-002</strong> المستخدمون والصلاحيات</td><td>FR-AUTH-003 … FR-AUTH-007</td><td><strong>BR-235</strong> · BR-195</td><td><span class="mono">users</span> · <span class="mono">user_permissions</span></td><td>AC-052 … AC-055 · <strong>AC-047</strong></td></tr><tr><td><strong>UC-003</strong> الشركات والأطراف</td><td>FR-001 … FR-012</td><td>BR-001 · BR-002 · <strong>BR-100</strong> · BR-160</td><td><span class="mono">parties</span> + 8 كيانات</td><td>AC-060 … AC-071</td></tr><tr><td><strong>UC-004</strong> العملية وأمر الإسناد</td><td>FR-015 · FR-016 · FR-025 … FR-031 · FR-034</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-197</strong></td><td><span class="mono">operations</span> · <span class="mono">assignment_orders</span> · <span class="mono">boq_items</span></td><td><strong>AC-022</strong> · AC-074</td></tr><tr><td><strong>UC-005</strong> المواقع</td><td>FR-017 · FR-018</td><td><strong>BR-198</strong></td><td><span class="mono">sites</span></td><td>AC-077 · AC-078</td></tr><tr><td><strong>UC-006</strong> تكليف مهندس</td><td>FR-019 · FR-022</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-017</strong> · BR-202</td><td><span class="mono">engineer_site_assignments</span></td><td>AC-075 · AC-076 · AC-081</td></tr><tr><td><strong>UC-007</strong> إنهاء تكليف</td><td>FR-020 · FR-021</td><td><strong>BR-020</strong> · BR-202</td><td><span class="mono">engineer_site_assignments</span></td><td>AC-079 · <strong>AC-080</strong></td></tr><tr><td><strong>UC-008</strong> تسجيل عهدة</td><td>FR-CUS-001 · FR-CUS-002</td><td><strong>BR-025</strong> · BR-140</td><td><span class="mono">custody_ledger_entries</span></td><td>AC-092 … AC-094</td></tr><tr><td><strong>UC-009</strong> مصروف كمسودة</td><td>FR-EXP-001 … FR-EXP-005 · FR-023 · FR-024</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-203</strong> … <strong>BR-208</strong></td><td><span class="mono">expenses</span></td><td><strong>AC-016</strong> … <strong>AC-021</strong></td></tr><tr><td><strong>UC-010</strong> مزامنة Offline</td><td>FR-EXP-016 · FR-IMP-005</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-212</strong> · BR-103</td><td><span class="mono">expenses</span> · <span class="mono">audit_events</span></td><td><strong>AC-008</strong> · <strong>AC-028</strong></td></tr><tr><td><strong>UC-011</strong> إرسال للمراجعة</td><td>FR-EXP-006 · FR-EXP-015</td><td><strong>BR-210</strong> · BR-211</td><td><span class="mono">expenses</span></td><td><strong>AC-022</strong> · <strong>AC-023</strong></td></tr><tr><td><strong>UC-012</strong> طلب توضيح</td><td>FR-EXP-008 · FR-EXP-022</td><td>BR-209 · BR-207</td><td><span class="mono">expense_reviews</span></td><td><strong>AC-004</strong></td></tr><tr><td><strong>UC-013</strong> تعديل وإعادة إرسال</td><td>FR-EXP-009</td><td>BR-209</td><td><span class="mono">expenses</span></td><td><strong>AC-003</strong></td></tr><tr><td><strong>UC-014</strong> اعتماد المصروف</td><td>FR-EXP-007 · FR-EXP-019</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-213</strong> · <strong>BR-186</strong></td><td><span class="mono">expenses</span> · <span class="mono">custody_ledger_entries</span> · <span class="mono">journal_entries</span></td><td><strong>AC-001</strong> · <strong>AC-002</strong> · <strong>AC-027</strong></td></tr><tr><td><strong>UC-015</strong> تصحيح معتمد</td><td>FR-EXP-011 · FR-CUS-006</td><td><strong>BR-213</strong> · BR-178</td><td><span class="mono">expense_corrections</span></td><td><strong>AC-005</strong> · <strong>AC-029</strong></td></tr><tr><td><strong>UC-016</strong> رصيد العهدة</td><td>FR-CUS-007 · FR-CUS-008</td><td><strong>BR-028</strong> · BR-027</td><td><span class="mono">custody_ledger_entries</span></td><td>AC-098 · <strong>AC-099</strong></td></tr><tr><td><strong>UC-017</strong> يومية عامل</td><td>FR-WRK-001 … FR-WRK-005</td><td><strong>BR-046</strong> · BR-176</td><td><span class="mono">attendance_entries</span></td><td>AC-111 · AC-112</td></tr><tr><td><strong>UC-018</strong> سلفة عامل</td><td>FR-WRK-011 … FR-WRK-013</td><td><strong>BR-048</strong> · BR-049</td><td><span class="mono">worker_advances</span></td><td>AC-122 · <strong>AC-123</strong></td></tr><tr><td><strong>UC-019</strong> دفعة عامل</td><td>FR-WRK-014 · FR-WRK-015</td><td><strong>BR-050</strong></td><td><span class="mono">worker_payments</span></td><td>AC-125 · AC-126</td></tr><tr><td><strong>UC-020</strong> كشف الأجور</td><td>FR-WRK-007 … FR-WRK-010 · FR-WRK-016 · FR-WRK-017</td><td><strong>BR-045</strong> · BR-047 · BR-052</td><td><span class="mono">payroll_periods</span> · <span class="mono">payroll_lines</span></td><td>AC-118 … AC-128</td></tr><tr><td><strong>UC-021</strong> المورد وحسابه</td><td>FR-SUP-001 … FR-SUP-018</td><td>BR-165 · <strong>BR-169</strong></td><td><span class="mono">supplier_*</span> · <span class="mono">recoverable_*</span></td><td>AC-136 … AC-153</td></tr><tr><td><strong>UC-022</strong> إنشاء مستخلص</td><td>FR-CLM-001 … FR-CLM-004 · FR-CLM-010</td><td><strong>BR-060</strong> · BR-163 · BR-181</td><td><span class="mono">claims</span> · <span class="mono">claim_progress</span></td><td>AC-156 … AC-159</td></tr><tr><td><strong>UC-023</strong> الاستقطاعات</td><td>FR-CLM-005 … FR-CLM-009 · FR-CLM-028</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-173</strong> · BR-144 … BR-147</td><td><span class="mono">claim_deduction_lines</span></td><td>AC-160 … AC-165</td></tr><tr><td><strong>UC-024</strong> أمر الدفع</td><td>FR-CLM-015 … FR-CLM-025 · FR-CLM-029 … FR-CLM-038</td><td><strong>BR-078</strong> · BR-079 · BR-087</td><td><span class="mono">payment_orders</span> + 5 كيانات</td><td>AC-168 … AC-190</td></tr><tr><td><strong>UC-025</strong> نسبة الشركة الخارجية</td><td>FR-CLM-011 … FR-CLM-014</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-170</strong> · BR-008</td><td><span class="mono">_agreement_versions</span> · <span class="mono">_party_shares</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>AC-007</strong> · AC-166</td></tr><tr><td><strong>UC-026</strong> التقرير الشهري</td><td>FR-REP-005 … FR-REP-009 · FR-REP-016 … FR-REP-027</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-215</strong> … <strong>BR-246</strong></td><td><span class="mono">monthly_report_*</span> (10 كيانات)</td><td><strong>AC-030</strong> … <strong>AC-049</strong></td></tr><tr><td><strong>UC-027</strong> إعادة الإصدار</td><td>FR-REP-010</td><td><strong>BR-229</strong> · BR-230</td><td><span class="mono">monthly_report_versions</span></td><td><strong>AC-044</strong> · <strong>AC-045</strong></td></tr><tr><td><strong>UC-028</strong> إعادة الإرسال</td><td>FR-REP-011 · FR-REP-020 · FR-REP-021</td><td><strong>BR-230</strong> · BR-236 · BR-239</td><td><span class="mono">_delivery_attempts</span></td><td><strong>AC-041</strong> · <strong>AC-042</strong> · <strong>AC-046</strong> · <strong>AC-047</strong></td></tr><tr><td><strong>UC-029</strong> استيراد Excel</td><td>FR-IMP-001 … FR-IMP-014</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>BR-151</strong> … <strong>BR-155</strong> · BR-181</td><td><span class="mono">import_batches</span> · <span class="mono">import_rows</span></td><td><strong>AC-009</strong> · AC-208 … AC-221</td></tr><tr><td><strong>UC-030</strong> أخطاء الاستيراد</td><td>FR-IMP-015 · FR-IMP-017</td><td>BR-153 · BR-188</td><td><span class="mono">import_resolutions</span></td><td>AC-222 · <strong>AC-009</strong></td></tr><tr><td><strong>UC-031</strong> سجل التدقيق</td><td>FR-AUD-002 · FR-AUD-011 · FR-AUD-012</td><td><strong>BR-187</strong> · BR-192</td><td><span class="mono">audit_events</span></td><td><strong>AC-010</strong> · <strong>AC-011</strong></td></tr><tr><td><strong>UC-032</strong> كشف حساب أو تقرير</td><td>FR-REP-001 … FR-REP-004 · FR-REP-028 · FR-AUD-006</td><td><strong>BR-184</strong> · BR-150 · BR-246</td><td>قراءة من الدفاتر</td><td>AC-185 · AC-207 · AC-226</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div></div><div id="t2" class="panel"><h2 class="panel-title" id="4.-تتبع-المتطلبات-غير-الوظيفية">4. <span class="mark m-critical" title="حرج">⭐</span> تتبع المتطلبات غير الوظيفية</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>NFR</th><th>المصدر</th><th>المعيار</th><th>TEST</th><th>الحالة</th></tr></thead><tbody><tr><td><strong>NFR-SEC-001</strong> … <strong>NFR-SEC-004</strong></td><td>BR-018 · BR-191 · BR-235 · BR-232</td><td>صفر انتهاك</td><td>TEST-008 · TEST-257 · TEST-006 · TEST-217</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>NFR-SEC-005</strong> … <strong>NFR-SEC-008</strong></td><td><span class="badge b-proposed" title="مقترح">🔵</span> مقترح</td><td>أرقام مقترحة بسببها</td><td>—</td><td><span class="badge b-proposed" title="مقترح">🔵</span></td></tr><tr><td><strong>NFR-SEC-009</strong> · <strong>NFR-SEC-010</strong></td><td>BR-187 · BR-192</td><td>منع تقني + صفر وصول</td><td>TEST-251 · TEST-010</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>NFR-SEC-011</strong> … <strong>NFR-SEC-014</strong></td><td>BR-245 · BR-236 · BR-189 · BR-191</td><td>—</td><td>TEST-224 · TEST-219</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>NFR-PERF-001</strong> … <strong>NFR-PERF-008</strong></td><td><span class="badge b-proposed" title="مقترح">🔵</span> <strong>كلها مقترحة بأحجام 2026 المرصودة</strong></td><td>أرقام محددة</td><td>اختبارات أداء</td><td><span class="badge b-proposed" title="مقترح">🔵</span></td></tr><tr><td><strong>NFR-REL-001</strong> … <strong>NFR-REL-008</strong></td><td>BR-186 · BR-103 · BR-028 · BR-187 · BR-093 · BR-194 · <span class="badge b-evidence" title="دليل تاريخي">📊</span> · BR-231</td><td>صفر انتهاك</td><td>TEST-249 … TEST-263</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>NFR-REL-009</strong> · <strong>NFR-REL-010</strong></td><td><span class="badge b-proposed" title="مقترح">🔵</span> مقترح</td><td>99.5% · 48 ساعة</td><td>—</td><td><span class="badge b-proposed" title="مقترح">🔵</span></td></tr><tr><td><strong>NFR-OFF-001</strong> … <strong>NFR-OFF-006</strong></td><td>ADR-008 · BR-212 · BR-137</td><td>—</td><td>TEST-097 · TEST-236</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>NFR-OFF-007</strong> · <strong>NFR-OFF-008</strong></td><td><span class="badge b-proposed" title="مقترح">🔵</span> مقترح</td><td>—</td><td>—</td><td><span class="badge b-proposed" title="مقترح">🔵</span></td></tr><tr><td><strong>NFR-OPS-001</strong> … <strong>NFR-OPS-004</strong></td><td><span class="badge b-proposed" title="مقترح">🔵</span> مقترح</td><td>RPO 15د · RTO 4س</td><td>—</td><td><span class="badge b-proposed" title="مقترح">🔵</span></td></tr><tr><td><strong>NFR-OPS-005</strong> … <strong>NFR-OPS-012</strong></td><td>BR-233 · BR-190 · BR-193 · BR-194 · BR-157</td><td>—</td><td>—</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>NFR-OPS-013</strong></td><td><span class="badge b-proposed" title="مقترح">🔵</span> مقترح</td><td>ضعف أحجام 2026</td><td>—</td><td><span class="badge b-proposed" title="مقترح">🔵</span></td></tr><tr><td><strong>NFR-USE-001</strong> · <strong>NFR-USE-003</strong> · <strong>NFR-USE-005</strong> · <strong>NFR-USE-006</strong> · <strong>NFR-USE-009</strong></td><td>BR-203 · BR-205 · BR-027 · BR-055 · BR-207</td><td>—</td><td>TEST-060 … TEST-077</td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td></tr><tr><td><strong>NFR-USE-002</strong> · <strong>NFR-USE-004</strong> · <strong>NFR-USE-007</strong> · <strong>NFR-USE-008</strong></td><td><span class="badge b-proposed" title="مقترح">🔵</span> مقترح</td><td>—</td><td>—</td><td><span class="badge b-proposed" title="مقترح">🔵</span></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="5.-تتبع-المخاطر-إلى-الضوابط">5. <span class="mark m-critical" title="حرج">⭐</span> تتبع المخاطر إلى الضوابط</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>RISK</th><th>الضابط</th><th>FR / BR</th><th>TEST</th></tr></thead><tbody><tr><td><strong>RISK-001</strong> Serilog بديلًا للتدقيق</td><td>BR-183 · BR-192</td><td>FR-AUD-014 · FR-AUD-010</td><td>TEST-263</td></tr><tr><td><strong>RISK-002</strong> رصيد من التدقيق</td><td>BR-184 · BR-246</td><td>FR-AUD-006</td><td>TEST-255</td></tr><tr><td><strong>RISK-003</strong> التدقيق خارج المعاملة</td><td>BR-186</td><td>FR-AUD-001</td><td>TEST-249 · TEST-250</td></tr><tr><td><strong>RISK-004</strong> تسريب في لقطات القيم</td><td>BR-191</td><td>FR-AUD-008</td><td>TEST-257</td></tr><tr><td><strong>RISK-005</strong> حذف سجلات تدقيق</td><td>BR-190</td><td>FR-AUD-013</td><td>TEST-262</td></tr><tr><td><strong>RISK-009</strong> التفاف بحدث زائف</td><td>BR-187</td><td>FR-AUD-007</td><td>TEST-256</td></tr><tr><td><strong>RISK-011</strong> <span class="mark m-critical" title="حرج">⭐</span> <strong>الترحيل يضاعف الأثر</strong></td><td>BR-100 … BR-106</td><td>FR-IMP-005 … FR-IMP-008</td><td>TEST-236 … TEST-239</td></tr><tr><td><strong>RISK-012</strong> عيوب العقد التوثيقية</td><td>BR-130</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>مراجعة قانونية لا كود</strong></td><td>—</td></tr><tr><td><strong>RISK-014</strong> رصيد المحتجزات الافتتاحي</td><td>BR-171</td><td>FR-CLM-033</td><td>TEST-183</td></tr><tr><td><strong>RISK-015</strong> 11,138,575 معلَّقة</td><td>DEP-07</td><td>FR-CLM-034</td><td>TEST-184</td></tr><tr><td><strong>RISK-016</strong> دمج طرفين حقيقيين</td><td>BR-100 · BR-168</td><td>FR-004 · FR-005</td><td>TEST-015 · TEST-016</td></tr><tr><td><strong>RISK-017</strong> إزاحة ثابتة للكتل</td><td><span class="badge b-evidence" title="دليل تاريخي">📊</span></td><td>FR-IMP-008</td><td>TEST-239</td></tr><tr><td><strong>RISK-018</strong> الملف يتغيّر يوميًا</td><td>BR-151 · BR-155</td><td>FR-IMP-001</td><td>TEST-232</td></tr><tr><td><strong>RISK-019</strong> تسريب الرواتب</td><td>BR-235 · BR-245</td><td>FR-REP-021 · FR-AUD-016</td><td>TEST-224 · TEST-265</td></tr><tr><td><strong>RISK-020</strong> توزيع راتب عشوائي</td><td>BR-225 · BR-226</td><td>FR-PAY-002 · FR-PAY-004</td><td>TEST-125 · TEST-127</td></tr><tr><td><strong>RISK-021</strong> إضافة حقل «طريقة الدفع»</td><td>BR-208</td><td>FR-EXP-001</td><td>TEST-060</td></tr><tr><td><strong>RISK-022</strong> جعل المرفق إجباريًا</td><td>BR-207</td><td>FR-EXP-005</td><td>TEST-076 · TEST-077</td></tr><tr><td><strong>RISK-023</strong> <span class="mono">CHECK</span> عابر للجداول</td><td>BR-180</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>قواعد النزاهة §5</strong></td><td>—</td></tr><tr><td><strong>RISK-024</strong> الاعتماد على الواجهة</td><td>BR-018 · BR-138</td><td>FR-AUTH-008 · FR-EXP-015</td><td>TEST-008 · TEST-087 … 096</td></tr><tr><td><strong>RISK-025</strong> 21.8 مليون غير مصنَّف</td><td>BR-149</td><td>FR-012 · FR-IMP-015</td><td>TEST-023 · TEST-246</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="6.-تتبع-القرارات-المفتوحة-إلى-ما-تعلّقه">6. <span class="mark m-critical" title="حرج">⭐</span> تتبع القرارات المفتوحة إلى ما تعلّقه</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>OQ</th><th>يعلّق</th><th>هل يمنع التصميم؟</th></tr></thead><tbody><tr><td><strong>OQ-001</strong> مدة الاحتفاظ بالتدقيق</td><td>FR-AUD-013 · NFR-OPS-006</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا — الحقل موجود والسياسة تُملأ</strong></td></tr><tr><td><strong>OQ-003</strong> سقف الاعتماد</td><td>FR-AUTH-011 · FR-EXP-007</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا — الفارغ يعني بلا سقف</strong></td></tr><tr><td><strong>OQ-004</strong> التقارير الأساسية</td><td>FR-REP-001 … FR-REP-004</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا — يطيل النسخة الأولى فقط</strong></td></tr><tr><td><strong>OQ-016</strong> <span class="mark m-critical" title="حرج">⭐</span> المعالجة المحاسبية للاسترداد</td><td>FR-SUP-015 · قيد الإنشاء</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا — قيد محاسبي واحد والدورة تدعم الاثنين</strong></td></tr><tr><td><strong>OQ-019</strong> <span class="mark m-critical" title="حرج">⭐</span> تصنيف المحتجزات</td><td>FR-CLM-028 · <strong>15,819,871.65</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا — قيمة حقل مرجعي</strong></td></tr><tr><td><strong>OQ-020 · OQ-021 · OQ-022</strong></td><td>تصنيف <strong>20,573,254</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا</strong></td></tr><tr><td><strong>OQ-023</strong> التسويات المتطابقة</td><td>FR-SUP-010 · الترحيل</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا — تُستورد بعلامة</strong></td></tr><tr><td><strong>OQ-024</strong> أمر الإسناد 64</td><td>الترحيل — <strong>7,802,857</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا — التصميم يمنع التكرار مستقبلًا</strong></td></tr><tr><td><strong>OQ-025</strong> الأرصدة الافتتاحية</td><td>FR-IMP-016</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا — الحقل موجود</strong></td></tr><tr><td><strong>OQ-027</strong> المستفيد البنكي</td><td>FR-CLM-024</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا — تنبيه تدقيق</strong></td></tr><tr><td><strong>OQ-029</strong> صف <span class="mono">U251</span></td><td>RC-20</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا — فرق معلوم موقَّع</strong></td></tr><tr><td><strong>OQ-030</strong> بصمات ناقصة</td><td>FR-IMP-001</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا للتصميم — <span class="mark m-ok" title="مستوفى">✅</span> نعم للترحيل</strong></td></tr><tr><td><span class="badge b-open" title="قرار مفتوح">🟡</span> <strong>قاعدة توزيع الراتب</strong></td><td>FR-PAY-003</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا — الكيان مُصدَّر ويقبل أي خيار</strong></td></tr></tbody></table></div></div>
+<div class="info-box ok"><p class="box-title"><span class="mark m-ok" title="مستوفى">✅</span> <strong>صفر قرار مفتوح يمنع التصميم — وصفر Blocking Decision.</strong></p></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="7.-الإحصاء-النهائي">7. <span class="mark m-critical" title="حرج">⭐</span> الإحصاء النهائي</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>العدد</th></tr></thead><tbody><tr><td><strong>قواعد العمل</strong></td><td><strong>246</strong></td></tr><tr><td>منها <strong>لها متطلب مباشر</strong></td><td><strong>235</strong></td></tr><tr><td>منها <strong>بلا متطلب — مُعلَنة ومبرَّرة</strong></td><td><strong>11</strong></td></tr><tr><td><strong>المتطلبات الوظيفية</strong></td><td><strong>226</strong></td></tr><tr><td>منها <span class="mark m-critical" title="حرج">⭐</span> <strong>حرجة</strong></td><td><strong>48</strong></td></tr><tr><td><strong>المتطلبات غير الوظيفية</strong></td><td><strong>54</strong></td></tr><tr><td><strong>حالات الاستخدام</strong></td><td><strong>32</strong></td></tr><tr><td><strong>معايير القبول</strong></td><td><strong>232</strong></td></tr><tr><td>منها <span class="mark m-critical" title="حرج">⭐</span> <strong>بصيغة Given/When/Then</strong></td><td><strong>24</strong></td></tr><tr><td><strong>حالات الاختبار</strong></td><td><strong>267</strong></td></tr><tr><td><strong>الكيانات المنطقية</strong></td><td><strong>125</strong></td></tr><tr><td><strong>أحداث التدقيق</strong></td><td><strong>96</strong></td></tr><tr><td><strong>الصلاحيات الدقيقة</strong></td><td><strong>49</strong></td></tr><tr><td><strong>القرارات المعمارية</strong></td><td><strong>18</strong></td></tr><tr><td><strong>القرارات المفتوحة</strong></td><td><strong>30</strong></td></tr><tr><td><strong>المخاطر</strong></td><td><strong>25</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>المتطلبات اليتيمة</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>صفر</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>معايير القبول بلا اختبار</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>صفر</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>Blocking Decisions</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>صفر</strong></td></tr></tbody></table></div></div></div>
+</div>
+
+<div class="mini-toc" id="toc"></div>
+<div class="fab"><button id="tocBtn" type="button">الفهرس</button></div>
+<div class="fab up"><button id="upBtn" type="button">أعلى</button></div>
+
+<script>
+(function(){
+  var q=document.getElementById('q'), hits=document.getElementById('hits');
+  var toc=document.getElementById('toc'), links;
+
+  /* ارتفاع الترويسة والتبويبات متغيّر (سطر أو سطران) — نقيسه بدل تثبيته */
+  var hdrEl=document.querySelector('.site-header'), navEl=document.querySelector('.nav');
+  function syncSticky(){
+    var h=hdrEl.offsetHeight;
+    navEl.style.top=h+'px';
+    document.documentElement.style.setProperty('--stick',(h+navEl.offsetHeight+14)+'px');
+  }
+  syncSticky();
+  window.addEventListener('resize',syncSticky);
+  if(window.ResizeObserver){ new ResizeObserver(syncSticky).observe(hdrEl); }
+
+  function show(id,btn){
+    document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
+    document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active')});
+    var el=document.getElementById(id); if(el) el.classList.add('active');
+    if(btn) btn.classList.add('active');
+    buildToc(id);
+    window.scrollTo({top:0,behavior:'instant'});
+    history.replaceState(null,'','#'+id);
+  }
+  window.__show=show;
+  document.querySelectorAll('.nav-btn').forEach(function(b){
+    b.addEventListener('click',function(){show(b.dataset.tab,b)});
+  });
+
+  function buildToc(id){
+    var p=document.getElementById(id); if(!p) return;
+    var hs=p.querySelectorAll('.panel-title,.section-title,.card-title');
+    var h='';
+    hs.forEach(function(x){
+      var cls=x.classList.contains('panel-title')?'l2':'l3';
+      h+='<a class="'+cls+'" href="#'+x.id+'">'+x.textContent.replace(/#$/,'')+'</a>';
+    });
+    toc.innerHTML=h;
+    links=Array.prototype.slice.call(toc.querySelectorAll('a'));
+  }
+
+  document.getElementById('tocBtn').addEventListener('click',function(){
+    toc.classList.toggle('open');
+  });
+  document.getElementById('upBtn').addEventListener('click',function(){
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  // ── تكبير وتحريك المخططات المرسومة ──────────────────
+  document.querySelectorAll('.erd').forEach(function(box){
+    var view=box.querySelector('.erd-view'), stage=box.querySelector('.erd-stage');
+    var svg=stage.querySelector('svg'); if(!svg) return;
+    var w=parseFloat(svg.getAttribute('width'))||svg.getBoundingClientRect().width;
+    var h=parseFloat(svg.getAttribute('height'))||svg.getBoundingClientRect().height;
+    svg.removeAttribute('width'); svg.removeAttribute('height');
+    svg.style.width=w+'px'; svg.style.height=h+'px';
+    var s=1,x=0,y=0;
+    function apply(){stage.style.transform='translate('+x+'px,'+y+'px) scale('+s+')'}
+    function fit(){            // ملء العرض: العرض كاملًا والتمرير رأسيًا بالسحب
+      s=Math.max(0.05,Math.min(view.clientWidth/w,1));
+      x=(view.clientWidth-w*s)/2; y=10; apply();
+    }
+    function fitAll(){         // ملء الإطار: المخطط كله داخل الإطار
+      var k=Math.min(view.clientWidth/w, view.clientHeight/h);
+      s=Math.max(0.03,Math.min(k,1)); x=(view.clientWidth-w*s)/2; y=6; apply();
+    }
+    function zoom(f,cx,cy){
+      var ns=Math.min(4,Math.max(0.05,s*f));
+      x=cx-(cx-x)*(ns/s); y=cy-(cy-y)*(ns/s); s=ns; apply();
+    }
+    box.querySelectorAll('.erd-bar button').forEach(function(b){
+      b.addEventListener('click',function(){
+        var k=b.dataset.z;
+        if(k==='in')  zoom(1.25,view.clientWidth/2,view.clientHeight/2);
+        if(k==='out') zoom(0.8, view.clientWidth/2,view.clientHeight/2);
+        if(k==='fit') fit();
+        if(k==='all') fitAll();
+        if(k==='reset'){s=1;x=0;y=0;apply()}
+      });
+    });
+    view.addEventListener('wheel',function(e){
+      e.preventDefault();
+      var r=view.getBoundingClientRect();
+      zoom(e.deltaY<0?1.12:0.89, e.clientX-r.left, e.clientY-r.top);
+    },{passive:false});
+    var dx=0,dy=0,down=false;
+    view.addEventListener('pointerdown',function(e){
+      down=true; dx=e.clientX-x; dy=e.clientY-y;
+      view.classList.add('drag'); view.setPointerCapture(e.pointerId);
+    });
+    view.addEventListener('pointermove',function(e){
+      if(!down) return; x=e.clientX-dx; y=e.clientY-dy; apply();
+    });
+    ['pointerup','pointercancel'].forEach(function(ev){
+      view.addEventListener(ev,function(){down=false; view.classList.remove('drag')});
+    });
+    // اللوحة قد تكون مخفية عند التحميل — فالضبط يتم أول ما تظهر بمقاس حقيقي
+    var fitted=false;
+    function tryFit(){
+      if(fitted || view.clientWidth<40 || view.clientHeight<40) return;
+      fitted=true; fit();
+    }
+    tryFit();
+    if(window.ResizeObserver){ new ResizeObserver(tryFit).observe(view); }
+    window.addEventListener('resize',function(){ if(fitted && s<=0.25) fit(); });
+  });
+
+  // بحث عبر كل التبويبات
+  function clearMarks(){
+    Array.prototype.slice.call(document.querySelectorAll('mark')).forEach(function(m){
+      m.parentNode.replaceChild(document.createTextNode(m.textContent),m);
+    });
+    document.querySelectorAll('.panel').forEach(function(p){p.normalize()});
+  }
+  var timer;
+  q.addEventListener('input',function(){
+    clearTimeout(timer); timer=setTimeout(runSearch,260);
+  });
+  function runSearch(){
+    clearMarks();
+    var v=q.value.trim();
+    document.querySelectorAll('.nav-btn .cnt').forEach(function(c){c.textContent=c.dataset.n});
+    if(v.length<2){ hits.textContent=''; return; }
+    var total=0;
+    document.querySelectorAll('.panel').forEach(function(p){
+      var c=0;
+      var w=document.createTreeWalker(p,NodeFilter.SHOW_TEXT,null), nodes=[], nd;
+      while((nd=w.nextNode())){ if(nd.nodeValue.indexOf(v)!==-1) nodes.push(nd); }
+      nodes.forEach(function(node){
+        var parts=node.nodeValue.split(v), frag=document.createDocumentFragment();
+        for(var i=0;i<parts.length;i++){
+          frag.appendChild(document.createTextNode(parts[i]));
+          if(i<parts.length-1){ var m=document.createElement('mark'); m.textContent=v; frag.appendChild(m); c++; }
+        }
+        node.parentNode.replaceChild(frag,node);
+      });
+      total+=c;
+      var btn=document.querySelector('.nav-btn[data-tab="'+p.id+'"] .cnt');
+      if(btn) btn.textContent=c?c:'0';
+    });
+    hits.textContent = total ? ('مطابقات: '+total) : 'لا مطابقات';
+    var first=document.querySelector('.panel.active mark');
+    if(first) first.scrollIntoView({block:'center'});
+  }
+
+  // فتح التبويب من الرابط
+  var h=location.hash.slice(1);
+  var start=document.querySelector('.nav-btn[data-tab="'+h+'"]');
+  if(start) show(h,start); else buildToc(document.querySelector('.panel.active').id);
+
+  // روابط الفهرس تغلقه بعد القفز
+  document.addEventListener('click',function(e){
+    if(e.target.closest('#toc a')) toc.classList.remove('open');
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contractra — باتش تصحيح النموذج المنطقي</title>
+<meta name="description" content="النسخة التفاعلية المولَّدة من باتش تصحيح النموذج المنطقي — Markdown هو المصدر الرسمي.">
+<meta name="generator" content="generate-html.py v2.0">
+<style>
+:root{
+  --purple:#7F77DD; --purple-dk:#3C3489; --purple-lt:#EEEDFE;
+  --teal:#1D9E75;   --teal-lt:#E1F5EE;
+  --coral:#D85A30;  --coral-lt:#FAECE7;
+  --amber:#BA7517;  --amber-lt:#FAEEDA;
+  --blue:#378ADD;   --blue-lt:#EEF4FD;
+  --gray-dk:#2C2C2A; --gray-md:#6B6B68; --gray-lt:#F1EFE8;
+  --gray-bd:#D3D1C7; --white:#fff; --bg:#F8F7F4;
+  --font-sans:"Segoe UI","Noto Naskh Arabic","Tahoma",system-ui,-apple-system,sans-serif;
+  --font-mono:"Cascadia Mono","SF Mono","Consolas","Courier New",monospace;
+  --radius:8px; --radius-lg:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-sans); background:var(--bg); color:var(--gray-dk);
+  font-size:14px; line-height:1.7; direction:rtl; text-align:right;
+}
+
+/* ── الترويسة ─────────────────────────────────────── */
+.site-header{
+  background:var(--purple-dk); padding:26px 40px; position:sticky; top:0; z-index:100;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+}
+.site-header .ttl{flex:1; min-width:240px}
+.site-header h1{font-size:21px; font-weight:700; color:#fff; letter-spacing:-.2px}
+.site-header p{font-size:12.5px; color:rgba(255,255,255,.55); margin-top:3px}
+.hdr-meta{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.chip-v{
+  font-size:11px; font-weight:700; padding:4px 11px; border-radius:20px;
+  background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.22);
+}
+#q{
+  width:220px; padding:7px 12px; border-radius:20px; font-family:inherit; font-size:12.5px;
+  border:1px solid rgba(255,255,255,.22); background:rgba(255,255,255,.1); color:#fff;
+}
+#q::placeholder{color:rgba(255,255,255,.5)}
+#q:focus{outline:none; background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.45)}
+
+/* ── التبويبات ────────────────────────────────────── */
+.nav{
+  background:var(--white); border-bottom:1px solid var(--gray-bd);
+  padding:0 40px; display:flex; flex-wrap:wrap; gap:0 2px;
+  position:sticky; top:81px; z-index:99;   /* يُضبط من JS حسب ارتفاع الترويسة */
+}
+.nav-btn{
+  font-size:13px; font-weight:600; padding:12px 15px; border:none; background:none;
+  color:var(--gray-md); cursor:pointer; border-bottom:2px solid transparent;
+  white-space:nowrap; transition:all .15s; font-family:inherit;
+}
+.nav-btn:hover{color:var(--gray-dk)}
+.nav-btn.active{color:var(--purple); border-bottom-color:var(--purple)}
+.nav-btn .cnt{font-size:10px; color:var(--gray-bd); margin-inline-start:5px; font-weight:700}
+.nav-btn.active .cnt{color:var(--purple)}
+
+/* ── المخطط المرسوم ───────────────────────────────── */
+.erd{border-bottom:1px solid var(--gray-bd); background:#fbfbf9}
+.erd-bar{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  padding:8px 14px; border-bottom:1px solid var(--gray-bd); background:var(--white);
+}
+.erd-bar button{
+  font-family:inherit; font-size:12px; font-weight:700; cursor:pointer;
+  padding:5px 11px; border-radius:7px; border:1px solid var(--gray-bd);
+  background:var(--white); color:var(--gray-dk); line-height:1.2;
+}
+.erd-bar button:hover{background:var(--purple-lt); border-color:var(--purple); color:var(--purple-dk)}
+.erd-hint{font-size:11.5px; color:var(--gray-md); margin-inline-start:auto}
+.erd-view{
+  height:min(74vh,720px); overflow:hidden; position:relative;
+  cursor:grab; background:
+    linear-gradient(90deg,rgba(0,0,0,.028) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(rgba(0,0,0,.028) 1px,transparent 1px) 0 0/22px 22px, #fff;
+}
+.erd-view.drag{cursor:grabbing}
+.erd-stage{transform-origin:0 0; will-change:transform; direction:ltr}
+.erd-stage svg{display:block; max-width:none; height:auto}
+.erd-src{border-top:1px solid var(--gray-bd)}
+.erd-src summary{
+  cursor:pointer; padding:9px 16px; font-size:12.5px; font-weight:700;
+  color:var(--purple-dk); background:#fcfcfa; list-style:none;
+}
+.erd-src summary::-webkit-details-marker{display:none}
+.erd-src summary::before{content:"▸ "; font-size:11px}
+.erd-src[open] summary::before{content:"▾ "}
+.erd-src pre{border-top:1px solid var(--gray-bd)}
+
+/* ── المحتوى ──────────────────────────────────────── */
+.content{max-width:1180px; margin:0 auto; padding:30px 40px 80px}
+.panel{display:none}
+.panel.active{display:block}
+
+.panel-title{
+  font-size:19px; font-weight:700; color:var(--gray-dk);
+  margin:34px 0 4px; padding-bottom:9px; border-bottom:2px solid var(--purple);
+  scroll-margin-top:var(--stick,150px);
+}
+.panel > .panel-title:first-child{margin-top:0}
+.section-title{
+  font-size:14.5px; font-weight:700; color:var(--purple-dk);
+  margin:26px 0 10px; padding-inline-start:10px;
+  border-inline-start:3px solid var(--purple); scroll-margin-top:var(--stick,150px);
+}
+.sub-title{
+  font-size:13px; font-weight:700; color:var(--gray-dk);
+  margin:18px 0 8px; scroll-margin-top:var(--stick,150px);
+}
+.para{font-size:13.5px; color:var(--gray-dk); margin:10px 2px}
+.rule-sep{height:1px; background:var(--gray-bd); margin:26px 0; opacity:.6}
+
+/* ── البطاقات ─────────────────────────────────────── */
+.card{
+  background:var(--white); border:1px solid var(--gray-bd);
+  border-radius:var(--radius-lg); overflow:hidden; margin-bottom:12px;
+}
+.card.bare{border-style:solid}
+.card-header{
+  display:flex; align-items:center; gap:10px; padding:11px 16px;
+  border-bottom:1px solid var(--gray-bd); background:#fcfcfa;
+}
+.card-header h3{font-size:13.5px; font-weight:700; color:var(--gray-dk); line-height:1.5}
+.card-title{scroll-margin-top:var(--stick,150px)}
+.card-header span{
+  font-size:10.5px; color:var(--gray-md); margin-inline-start:auto;
+  white-space:nowrap; flex-shrink:0;
+}
+.dot{width:9px; height:9px; border-radius:50%; flex-shrink:0}
+.dot-purple{background:var(--purple)} .dot-teal{background:var(--teal)}
+.dot-coral{background:var(--coral)}  .dot-amber{background:var(--amber)}
+.dot-blue{background:var(--blue)}
+
+/* ── الجداول ──────────────────────────────────────── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%; border-collapse:collapse; font-size:12.8px}
+th{
+  text-align:right; font-size:10.5px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--gray-md); padding:9px 13px;
+  background:var(--gray-lt); border-bottom:1px solid var(--gray-bd);
+  position:sticky; top:0; z-index:1; white-space:nowrap;
+}
+td{padding:9px 13px; border-bottom:1px solid var(--gray-bd); vertical-align:top; line-height:1.65}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--gray-lt)}
+td strong{font-weight:700}
+
+/* ── القوائم ──────────────────────────────────────── */
+.rule-list{list-style:none; padding:14px 16px; display:flex; flex-direction:column; gap:7px}
+.rule-list.tight{padding:6px 0}
+.rule-list li{
+  display:flex; gap:9px; align-items:flex-start;
+  font-size:13px; color:var(--gray-dk); line-height:1.65;
+}
+.rule-list li::before{content:'—'; color:var(--gray-bd); flex-shrink:0; margin-top:1px}
+ol.rule-list{counter-reset:ri}
+ol.rule-list li{counter-increment:ri}
+ol.rule-list li::before{
+  content:counter(ri); color:var(--purple); font-weight:700; font-size:11px;
+  min-width:17px; text-align:center;
+}
+
+/* ── الصناديق ─────────────────────────────────────── */
+.info-box{
+  border-inline-start:3px solid var(--blue); background:var(--blue-lt);
+  border-radius:0 var(--radius) var(--radius) 0;
+  padding:11px 15px; font-size:13px; color:var(--gray-dk); margin:12px 0;
+}
+.info-box.warn{border-inline-start-color:var(--amber); background:var(--amber-lt)}
+.info-box.danger{border-inline-start-color:var(--coral); background:var(--coral-lt)}
+.info-box.tech{border-inline-start-color:var(--purple); background:var(--purple-lt)}
+.info-box.ok{border-inline-start-color:var(--teal); background:var(--teal-lt)}
+.info-box p{margin:5px 0}
+.info-box p:first-child{margin-top:0}
+.info-box p:last-child{margin-bottom:0}
+.info-box .box-title{font-size:13.5px; font-weight:700; margin-bottom:6px}
+.info-box table{font-size:12.3px; margin-top:8px}
+.info-box th{background:rgba(255,255,255,.55)}
+.info-box td{border-bottom-color:rgba(0,0,0,.07)}
+.info-box tbody tr:hover td{background:rgba(255,255,255,.4)}
+
+/* ── الكود ────────────────────────────────────────── */
+.code-card pre{
+  margin:0; padding:14px 16px; overflow-x:auto; direction:ltr; text-align:left;
+  font-family:var(--font-mono); font-size:12px; line-height:1.7;
+  background:#fbfaf7; color:var(--gray-dk);
+}
+.code-card.gherkin pre{background:var(--teal-lt)}
+.code-card.diagram pre{background:var(--gray-lt); max-height:420px}
+.mono{
+  font-family:var(--font-mono); font-size:.9em; direction:ltr;
+  unicode-bidi:isolate; display:inline-block; background:var(--gray-lt);
+  padding:.1em .38em; border-radius:4px;
+}
+th .mono, .card-header .mono{background:transparent; padding:0}
+
+/* ── الشارات ──────────────────────────────────────── */
+.badge{
+  display:inline-block; font-size:11px; line-height:1.5; padding:1px 7px;
+  border-radius:20px; font-weight:600; vertical-align:middle;
+}
+.b-confirmed{background:var(--teal-lt)}
+.b-proposed{background:var(--blue-lt)}
+.b-open{background:var(--amber-lt)}
+.b-assumption{background:var(--gray-lt)}
+.b-evidence{background:var(--purple-lt)}
+.b-migration{background:var(--coral-lt)}
+.b-future{background:var(--gray-lt)}
+.mark{font-style:normal}
+.m-forbidden,.m-no{color:var(--coral)}
+.m-critical{color:var(--amber)}
+.m-ok{color:var(--teal)}
+.m-warn{color:var(--amber)}
+.m-idem{color:var(--purple)}
+.m-sensitive{color:var(--coral)}
+del{color:var(--gray-md)}
+a{color:var(--purple-dk)}
+mark{background:#FFE9A8; color:var(--gray-dk); border-radius:3px; padding:0 2px}
+
+/* ── فهرس جانبي عائم ──────────────────────────────── */
+.mini-toc{
+  position:fixed; inset-inline-start:14px; bottom:60px; z-index:60;
+  background:var(--white); border:1px solid var(--gray-bd); border-radius:var(--radius-lg);
+  max-width:280px; max-height:min(66vh,560px); overflow-y:auto; padding:9px 6px;
+  box-shadow:0 4px 18px rgba(0,0,0,.09); display:none;
+}
+.mini-toc.open{display:block}
+.mini-toc a{
+  display:block; padding:4px 9px; border-radius:6px; font-size:11.8px;
+  color:var(--gray-dk); text-decoration:none; line-height:1.5;
+}
+.mini-toc a:hover{background:var(--gray-lt)}
+.mini-toc a.l3{padding-inline-start:20px; font-size:11.2px; color:var(--gray-md)}
+.mini-toc a.hide{display:none}
+
+/* ── أزرار عائمة ──────────────────────────────────── */
+.fab{position:fixed; inset-inline-start:14px; bottom:14px; z-index:70; display:flex; gap:6px}
+.fab.up{inset-inline-start:auto; inset-inline-end:14px}
+.fab button{
+  border:1px solid var(--gray-bd); background:var(--white); color:var(--gray-dk);
+  border-radius:20px; padding:7px 13px; cursor:pointer; font-family:inherit;
+  font-size:12px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,.07);
+}
+.fab button:hover{background:var(--gray-lt)}
+.hits{
+  font-size:11px; color:rgba(255,255,255,.7); white-space:nowrap;
+}
+
+/* ── الاستجابة ────────────────────────────────────── */
+@media (max-width:820px){
+  .site-header{padding:16px; position:static}
+  .nav{padding:0 12px; position:static}
+  .content{padding:20px 14px 70px}
+  #q{width:100%}
+  .mini-toc{max-width:min(250px,84vw)}
+}
+
+/* ── الطباعة ──────────────────────────────────────── */
+@media print{
+  .nav,.fab,.mini-toc,#q,.hits,.erd-bar{display:none !important}
+  .erd-view{height:auto; overflow:visible}
+  .erd-src{display:none}
+  .site-header{position:static; background:#fff; border-bottom:2px solid #000; padding:0 0 10px}
+  .site-header h1,.site-header p{color:#000}
+  .chip-v{background:#eee; color:#000; border-color:#999}
+  body{background:#fff; font-size:10pt}
+  .content{max-width:100%; padding:0}
+  .panel{display:block !important}
+  .panel-title{page-break-before:always; page-break-after:avoid}
+  .panel:first-child .panel-title:first-child{page-break-before:avoid}
+  .card,.info-box,.code-card{page-break-inside:avoid; box-shadow:none}
+  table{font-size:8pt}
+  tr{page-break-inside:avoid}
+  th{position:static; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+  .badge,.dot{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  a{color:#000; text-decoration:none}
+  @page{size:A4; margin:14mm 12mm}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="ttl">
+    <h1>Contractra &nbsp;·&nbsp; كونتراكترا</h1>
+    <p>باتش تصحيح النموذج المنطقي &nbsp;·&nbsp; Logical Model Correction Patch v2.0.1</p>
+  </div>
+  <div class="hdr-meta">
+    <span class="chip-v">الإصدار —</span>
+    <span class="chip-v">توليد 2026-09-20 · 14:29</span>
+    <input id="q" type="search" placeholder="ابحث في كل التبويبات…" autocomplete="off">
+    <span class="hits" id="hits"></span>
+  </div>
+</header>
+
+<nav class="nav"><button class="nav-btn active" data-tab="summary">المشكلات والقرارات<span class="cnt" data-n="2">2</span></button><button class="nav-btn" data-tab="effects">آثار الحدث المالي<span class="cnt" data-n="2">2</span></button><button class="nav-btn" data-tab="adjust">التصحيح والقيود<span class="cnt" data-n="3">3</span></button><button class="nav-btn" data-tab="naming">التسميات والأدوات<span class="cnt" data-n="2">2</span></button><button class="nav-btn" data-tab="imports">الاستيراد والتنظيف<span class="cnt" data-n="3">3</span></button><button class="nav-btn" data-tab="scope">الفرض والنطاق<span class="cnt" data-n="4">4</span></button><button class="nav-btn" data-tab="result">النتيجة والحكم<span class="cnt" data-n="3">3</span></button></nav>
+
+<div class="content">
+<div id="summary" class="panel active"><h2 class="panel-title" id="0.-إدارة-الوثيقة">0. إدارة الوثيقة</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>القيمة</th></tr></thead><tbody><tr><td><strong>اسم المشروع</strong></td><td><strong>Contractra</strong></td></tr><tr><td><strong>المعرّف</strong></td><td><span class="mono">logical-model-correction-patch-v2.0.1-ar</span></td></tr><tr><td><strong>رقم الباتش</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>v2.0.1</strong></td></tr><tr><td><strong>الحالة</strong></td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>مكتمل — جاهز للمراجعة</strong></td></tr><tr><td><strong>التاريخ</strong></td><td>2026-09-20</td></tr><tr><td><strong>الغرض</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>إغلاق آخر مشكلات النموذج المنطقي قبل التصميم الفيزيائي</strong> — <strong>بأبسط تصميم آمن</strong></td></tr><tr><td><strong>الباتش السابق</strong></td><td><span class="mono">logical-model-patch-v1.2.1-ar.md</span> — <span class="mark m-critical" title="حرج">⭐</span> <strong>سجل تاريخي <span class="mark m-forbidden" title="ممنوع">⛔</span> لا يُحذف ولا يُكتب فوقه</strong> · <strong>وهذا الباتش يصحّح ما يلزم منه</strong></td></tr><tr><td><strong>النطاق التقني</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا SQL · لا DDL · لا Migrations · لا Backend · لا Frontend · لا أنواع PostgreSQL · لا صيغة فهارس · لا إعدادات EF Core</strong></td></tr><tr><td><strong>الكيانات المضافة</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>واحد فقط</strong>: <span class="mono">accounting_adjustments</span></td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-teal"></div><h3 class="card-title" id="0.1-الرموز">0.1 الرموز</h3><span>4 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الرمز</th><th>المعنى</th><th></th><th>الرمز</th><th>المعنى</th></tr></thead><tbody><tr><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td><td><strong>مؤكد في هذا الباتش</strong></td><td></td><td><span class="mark m-idem" title="منع تكرار">⚡</span></td><td>يتطلب <strong>Idempotency</strong></td></tr><tr><td><span class="badge b-proposed" title="مقترح">🔵</span></td><td><strong>مقترح يحتاج اعتمادًا</strong></td><td></td><td>📝</td><td>يدخل سجل التدقيق</td></tr><tr><td><span class="badge b-open" title="قرار مفتوح">🟡</span></td><td><strong>قرار مفتوح</strong></td><td></td><td>🏗️</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>Physical Design Candidate — Not Yet Approved</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span></td><td>بند حرج</td><td></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td>ممنوع</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="1.-المشكلات-التي-صُحِّحت--والقرار-النهائي-لكل-منها">1. <span class="mark m-critical" title="حرج">⭐</span> المشكلات التي صُحِّحت — والقرار النهائي لكل منها</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>المشكلة</th><th><span class="mark m-forbidden" title="ممنوع">⛔</span> الخطأ في v1.2.1</th><th><span class="badge b-confirmed" title="مؤكدة">🟢</span> القرار النهائي</th><th>§</th></tr></thead><tbody><tr><td><strong>1</strong></td><td><strong>ادعاء اكتمال الأثر</strong></td><td><strong>«ربط القيد والحركة بالحدث يجعل اكتمالهما مضمونًا»</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>الربط لا يفرض الوجود</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>مصفوفة آثار الحدث المالي + شرط <span class="mono">Posted</span></strong></td><td>§2</td></tr><tr><td><strong>2</strong></td><td><strong>عدد قيود الحدث</strong></td><td><span class="mono">1 : 0..N</span> + <span class="mono">posting_sequence</span> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>يسمح بقيدين للحدث الواحد</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">1 : 0..1</span> · و<span class="mono">1 : 1</span> بعد <span class="mono">Posted</span></strong> · <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>وإلغاء <span class="mono">posting_sequence</span></strong></td><td>§3</td></tr><tr><td><strong>3</strong></td><td><strong>التصحيح والعكس</strong></td><td><strong>بلا مستند رسمي</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>فيصبح العكس تعديلًا صامتًا</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">accounting_adjustments</span></strong> — <strong>الكيان الوحيد المضاف</strong></td><td>§4</td></tr><tr><td><strong>4</strong></td><td><strong>سطور القيد</strong></td><td><strong>«أحدهما صفر»</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يمنع القيم السالبة</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>قواعد صريحة: لا سالب · واحد فقط موجب · لا صفران · لا موجبان</strong></td><td>§5</td></tr><tr><td><strong>5</strong></td><td><strong>تخصيصات الخزينة</strong></td><td><span class="mono">document_type</span> + <span class="mono">document_id</span> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>مرجع متعدد الأشكال غير قابل للتحقق</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">allocated_financial_event_id</span></strong> — <strong>مفتاح أجنبي حقيقي</strong></td><td>§6</td></tr><tr><td><strong>6</strong></td><td><strong>تسمية <span class="mono">funding_source</span></strong></td><td><strong>توحي باختيار المستخدم</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">settlement_mode</span></strong> بأربع قيم</td><td>§7</td></tr><tr><td><strong>7</strong></td><td><strong>أداة الدفع</strong></td><td><strong>غير موحَّدة الإلزام</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>إلزامية في الحركات النقدية الفعلية فقط بقواعد شرطية</strong></td><td>§8</td></tr><tr><td><strong>8</strong></td><td><strong>الاستيراد التاريخي</strong></td><td><strong>«قيد واحد لكل دفعة»</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>يفقد الأبعاد</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>فصل الأرصدة الافتتاحية عن المعاملات التفصيلية</strong></td><td>§9</td></tr><tr><td><strong>9</strong></td><td><strong><span class="mono">financial_accounts</span></strong></td><td><strong>اسم يوحي بحساب محاسبي</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">treasury_accounts</span></strong></td><td>§10</td></tr><tr><td><strong>10</strong></td><td><strong>مصطلحات قديمة</strong></td><td><span class="mono">source_type</span> · <span class="mono">source_id</span> · <span class="mono">posting_event</span> · <span class="mono">cash_movements</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>تدقيق شامل: ما أُلغي وما بقي مقصودًا ولماذا</strong></td><td>§11</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div></div><div id="effects" class="panel"><h2 class="panel-title" id="2.-التصحيح-1--اكتمال-آثار-الحدث-المالي">2. <span class="mark m-critical" title="حرج">⭐</span> التصحيح 1 — اكتمال آثار الحدث المالي</h2>
+<div class="card"><div class="card-header"><div class="dot dot-purple"></div><h3 class="card-title" id="2.1-الخطأ-والتصحيح">2.1 الخطأ والتصحيح</h3><span>4 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>المحتوى</th></tr></thead><tbody><tr><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>الادعاء الخاطئ</strong></td><td><strong>«يستحيل أن يوجد قيد بلا نقده أو نقد بلا قيده صامتًا — لأن كليهما يشير إلى الحدث نفسه»</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>لماذا خاطئ</strong></td><td><strong>الإشارة إلى الحدث لا تفرض وجود الأثر.</strong> <strong>يمكن إنشاء حدث وقيد بلا حركة خزينة مطلوبة، أو حركة بلا قيد</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>والربط وحده لا يكشف ذلك</strong></td></tr><tr><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>القاعدة الصحيحة</strong></td><td>## <span class="mark m-critical" title="حرج">⭐</span> <strong>لا يجوز تحويل <span class="mono">financial_event</span> إلى <span class="mono">Posted</span> قبل اكتمال الآثار المطلوبة لنوع الحدث.</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الصياغة الدقيقة</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>وقد يكون الحدث محاسبيًا بلا حركة نقدية إذا كان استحقاقًا غير مدفوع</strong> — <strong>اعتماد مستخلص · فاتورة مورد آجلة · اعتماد كشف أجور</strong></td></tr></tbody></table></div></div>
+<p class="section-title" id="2.2-Financial-Event-Effects-Matrix">2.2 <span class="mark m-critical" title="حرج">⭐</span> Financial Event Effects Matrix</p>
+<div class="info-box danger"><p><span class="mark m-critical" title="حرج">⭐</span> <strong>قاعدة Domain ثابتة</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا جدول إعدادات لها <span class="mark m-forbidden" title="ممنوع">⛔</span> ولا قابلية تغيير من الواجهة.</strong></p></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th><span class="mono">event_type</span></th><th>القيد؟</th><th>حركات الخزينة</th><th>حركة العهدة؟</th><th>التدقيق؟</th><th>المستند المصدر</th><th><span class="mark m-critical" title="حرج">⭐</span> شرط <span class="mono">Posted</span></th></tr></thead><tbody><tr><td><strong>تسليم عهدة</strong> <span class="mono">CustodyDisbursement</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>واحدة صادرة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>واردة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>طلب صرف عهدة</td><td><strong>قيد + حركة خزينة + حركة عهدة + تدقيق</strong></td></tr><tr><td><strong>رد عهدة</strong> <span class="mono">CustodyReturn</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>واحدة واردة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>صادرة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>إيصال إيداع</td><td><strong>الأربعة بالاتجاه العكسي</strong></td></tr><tr><td><strong>تحويل عهدة</strong> <span class="mono">CustodyTransfer</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ممنوعة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>حركتان</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>أمر تحويل</td><td><strong>قيد + حركتا عهدة + تدقيق</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>اعتماد مصروف من عهدة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ممنوعة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>حركة مصروف</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>المصروف المعتمد</td><td><strong>قيد + حركة عهدة + تدقيق</strong></td></tr><tr><td><strong>مصروف مباشر من الخزينة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>واحدة صادرة</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>المصروف المعتمد</td><td><strong>قيد + حركة خزينة + تدقيق</strong></td></tr><tr><td><strong>اعتماد فاتورة مورد آجلة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ممنوعة</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>فاتورة المورد</td><td><strong>قيد + تدقيق</strong> (<span class="mono">OnAccount</span>)</td></tr><tr><td><strong>دفع مورد</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>واحدة صادرة</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>دفعة المورد</td><td><strong>قيد + حركة + تدقيق</strong></td></tr><tr><td><strong>اعتماد مستخلص عميل</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ممنوعة</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>المستخلص</td><td><strong>قيد + تدقيق</strong> (<span class="mono">NonCash</span>)</td></tr><tr><td><strong>تحصيل من عميل</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>واحدة واردة</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>إشعار التحصيل</td><td><strong>قيد + حركة + تدقيق</strong></td></tr><tr><td><strong>تحويل بين حسابين</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>حركتان متساويتان</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>أمر التحويل</td><td><strong>قيد + حركتان + تدقيق</strong></td></tr><tr><td><strong>اعتماد كشف أجور</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ممنوعة</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>الكشف</td><td><strong>قيد + تدقيق</strong> (<span class="mono">NonCash</span>)</td></tr><tr><td><strong>سلفة عامل · دفعة عامل</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>واحدة صادرة</strong></td><td><strong>أو من العهدة بحسب المسار</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>السند</td><td><strong>قيد + الأثر المطابق للمسار + تدقيق</strong></td></tr><tr><td><strong>تسوية مقاول</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ممنوعة</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>التسوية</td><td><strong>قيد + تدقيق</strong> (<span class="mono">OnAccount</span>)</td></tr><tr><td><strong>حجز تعلية</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ممنوعة</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>سطر الاستقطاع</td><td><strong>قيد + تدقيق</strong> (<span class="mono">NonCash</span>)</td></tr><tr><td><strong>رد تعلية</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>واردة عند التحصيل الفعلي</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>أمر الدفع</td><td><strong>قيد + تدقيق</strong></td></tr><tr><td><strong>إصدار أمر دفع · حصة شركة خارجية · مطالبة استرداد</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ممنوعة</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>المستند المقابل</td><td><strong>قيد + تدقيق</strong></td></tr><tr><td><strong>تحصيل استرداد</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>بحسب طريقة التحصيل</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>مستند التحصيل</td><td><strong>قيد + الأثر المطابق + تدقيق</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>رصيد افتتاحي</strong> <span class="mono">OpeningBalance</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>صفر أو واحدة</strong></td><td><strong>بحسب الحساب</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">accounting_adjustments</span> معتمَد</strong></td><td><strong>قيد + مستند معتمَد + تدقيق</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>عكس حركة</strong> <span class="mono">Reversal</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>طبقًا للحركة الأصلية</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>طبقًا للأصل</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">accounting_adjustments</span></strong></td><td><strong>قيد عكسي مطابق + الأثر المعاكس + تدقيق</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>تصحيح</strong> <span class="mono">Correction</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><strong>بحسب الأثر المصحَّح</strong></td><td><strong>بحسب الأثر</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">accounting_adjustments</span></strong></td><td><strong>حدث عكس + حدث صحيح — مستقلان تحت المستند نفسه</strong></td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-coral"></div><h3 class="card-title" id="2.3-مكان-الفرض">2.3 <span class="mark m-critical" title="حرج">⭐</span> مكان الفرض</h3><span>4 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الطبقة</th><th>ما تفرضه</th></tr></thead><tbody><tr><td><strong>1 — Domain / Application Service</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>إنشاء كل الآثار المطلوبة داخل معاملة واحدة قبل <span class="mono">Posted</span></strong></td></tr><tr><td><strong>2 — Database Transaction</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الذرّية: فشل أي أثر يُفشل المعاملة كلها</strong></td></tr><tr><td><strong>3 — قيود قاعدة البيانات الممكنة</strong></td><td><strong>صحة القيم · التفرّد · المفاتيح الأجنبية</strong></td></tr><tr><td><strong>4 — فحص مطابقة دوري</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>شبكة أمان تكشف أي حدث <span class="mono">Posted</span> بآثار ناقصة</strong> — <strong>RC-29 · RC-30</strong></td></tr></tbody></table></div></div>
+<div class="info-box danger"><p><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا يُفرض هذا بـ<span class="mono">CHECK</span> عابر للجداول.</strong></p></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="3.-التصحيح-2--قيد-واحد-لكل-حدث">3. <span class="mark m-critical" title="حرج">⭐</span> التصحيح 2 — قيد واحد لكل حدث</h2>
+<div class="card"><div class="card-header"><div class="dot dot-amber"></div><h3 class="card-title" id="3.1-قبل-وبعد">3.1 قبل وبعد</h3><span>5 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>البند</th><th><span class="mark m-forbidden" title="ممنوع">⛔</span> قبل (v1.2.1)</th><th><span class="badge b-confirmed" title="مؤكدة">🟢</span> بعد (v2.0.1)</th></tr></thead><tbody><tr><td><strong>العلاقة</strong></td><td><span class="mono">Financial Event 1 : 0..N Journal Entry</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">1 : 0..1</span></strong> · <strong>و<span class="mono">1 : 1</span> إلزامية بعد <span class="mono">Posted</span></strong></td></tr><tr><td><strong>القيد</strong></td><td><span class="mono">UNIQUE(financial_event_id, entry_type, posting_sequence)</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">UNIQUE(journal_entries.financial_event_id)</span></strong></td></tr><tr><td><strong><span class="mono">financial_event_id</span></strong></td><td>إلزامي</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>إلزامي وفريد</strong></td></tr><tr><td><strong><span class="mono">posting_sequence</span></strong></td><td>موجود</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>أُلغي</strong></td></tr><tr><td><strong><span class="mono">source_type</span> · <span class="mono">source_id</span> · <span class="mono">posting_event</span></strong></td><td>مذكورة في قيود قديمة</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>أُلغيت من <span class="mono">journal_entries</span></strong></td></tr></tbody></table></div></div>
+<p class="section-title" id="3.2-القاعدة-عند-الحاجة-لأكثر-من-قيد">3.2 <span class="mark m-critical" title="حرج">⭐</span> القاعدة عند الحاجة لأكثر من قيد</p>
+<div class="info-box danger"><p class="box-title"><span class="mark m-critical" title="حرج">⭐</span> <strong>كل أثر مستقل يحصل على <span class="mono">financial_event</span> مستقل بقيده الواحد.</strong></p>
+<p><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا تُوضع قيود متعددة على الحدث نفسه.</strong></p></div>
+<p class="para"><strong>مثال — تصحيح قيمة معتمدة:</strong> <strong>حدث عكس مستقل بقيده</strong> + <strong>حدث صحيح مستقل بقيده</strong> — <span class="mark m-critical" title="حرج">⭐</span> <strong>وكلاهما تحت <span class="mono">accounting_adjustment</span> واحد</strong>.</p>
+<p class="para"><strong>لماذا:</strong> <strong>القيد الواحد يحتمل سطورًا متعددة، فلا حاجة لقيود متعددة للأثر الواحد</strong> · <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>وتعدد القيود على الحدث يفتح باب قيد ثانٍ بلا سند ويُعقّد المطابقة</strong>.</p>
+<div class="rule-sep"></div></div><div id="adjust" class="panel"><h2 class="panel-title" id="4.-التصحيح-3--accountingadjustments">4. <span class="mark m-critical" title="حرج">⭐</span> التصحيح 3 — <span class="mono">accounting_adjustments</span></h2>
+<div class="card"><div class="card-header"><div class="dot dot-purple"></div><h3 class="card-title" id="4.1-لماذا-كيان-جديد--والضرورة-المثبتة">4.1 <span class="mark m-critical" title="حرج">⭐</span> لماذا كيان جديد — والضرورة المثبتة</h3><span>4 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>المحتوى</th></tr></thead><tbody><tr><td><strong>المشكلة</strong></td><td><strong>العكس والتصحيح والرصيد الافتتاحي بلا مستند رسمي</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>فيصبح العكس المالي تعديلًا صامتًا لا يُراجَع ولا يُعتمد</strong></td></tr><tr><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لماذا لا يكفي حقل «سبب» على القيد</strong></td><td><strong>لا يحمل مسار اعتماد</strong> · <strong>ولا يربط حدثين (عكس + صحيح) بمستند واحد</strong> · <strong>ولا يحمل مستندًا مؤيِّدًا</strong></td></tr><tr><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لماذا لا كيان لكل نوع</strong></td><td><strong>أربعة كيانات بنفس الحقول تعقيد بلا فائدة</strong></td></tr><tr><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>القرار</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كيان واحد يغطي الأنواع الأربعة</strong> — <strong>وهو الكيان الوحيد المضاف في هذا الباتش</strong></td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-teal"></div><h3 class="card-title" id="4.2-الحقول">4.2 الحقول</h3><span>9 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الحقل</th><th>إلزامي</th><th>ملاحظة</th></tr></thead><tbody><tr><td><span class="mono">id</span> · <span class="mono">managed_company_id</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>—</td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <span class="mono">adjustment_type</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mono">OpeningBalance</span> · <span class="mono">Correction</span> · <span class="mono">Reclassification</span> · <span class="mono">ManualAdjustment</span></td></tr><tr><td><span class="mono">original_financial_event_id</span></td><td><strong>مشروط</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>إلزامي مع <span class="mono">Correction</span> و<span class="mono">Reclassification</span></strong> · <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>فارغ مع <span class="mono">OpeningBalance</span></strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <span class="mono">reason</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا تصحيح بلا سبب</strong></td></tr><tr><td><span class="mono">status</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mono">Draft</span> · <span class="mono">PendingApproval</span> · <span class="mono">Approved</span> · <span class="mono">Posted</span> · <span class="mono">Cancelled</span></td></tr><tr><td><span class="mono">requested_by</span> · <span class="mono">requested_at</span> 📝</td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>—</td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <span class="mono">approved_by</span> · <span class="mono">approved_at</span> 📝</td><td><strong>مشروط</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>إلزامية قبل <span class="mono">Approved</span></strong></td></tr><tr><td><span class="mono">supporting_document_id</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><strong>اختياري — ويُسجَّل عند وجوده</strong></td></tr><tr><td><span class="mono">correlation_id</span></td><td><span class="mark m-ok" title="مستوفى">✅</span></td><td>—</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-coral"></div><h3 class="card-title" id="4.3-قواعد-التصحيح-والعكس">4.3 <span class="mark m-critical" title="حرج">⭐</span> قواعد التصحيح والعكس</h3><span>9 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>#</th><th>القاعدة</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>السبب إلزامي</strong> · <strong>والمستند المؤيِّد اختياري ويُسجَّل عند وجوده</strong></td></tr><tr><td>2</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا ترحيل قبل الاعتماد</strong></td></tr><tr><td>3</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا تعديل ولا حذف للتصحيح بعد ترحيله</strong></td></tr><tr><td>4</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يُعدَّل القيد الأصلي إطلاقًا</strong></td></tr><tr><td>5</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>قيد العكس مطابق للأصل بعكس المدين والدائن سطرًا بسطر</strong></td></tr><tr><td>6</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>لاستبدال قيمة</strong>: <strong>حدث عكس مستقل + حدث صحيح مستقل — تحت نفس المستند</strong></td></tr><tr><td>7</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">financial_events</span> اكتسب حقلين</strong>: <span class="mono">accounting_adjustment_id</span> · <span class="mono">reverses_financial_event_id</span></td></tr><tr><td>8</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>قاعدة المصدر الواحد باقية</strong>: <strong>مصدر حدث العكس هو مستند التصحيح</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا مفتاح مصدري تشغيلي ثانٍ</strong></td></tr><tr><td>9</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>النطاق: W1-D · MVP Required</strong> — <strong>لأن التصحيح الآمن شرط تشغيلي</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="5.-التصحيح-4--سطور-القيد">5. <span class="mark m-critical" title="حرج">⭐</span> التصحيح 4 — سطور القيد</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>القاعدة</th><th>مكان الفرض</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">debit_amount &gt;= 0</span></strong> · <strong><span class="mono">credit_amount &gt;= 0</span></strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا قيمة سالبة</strong></td><td><strong>قيد صف في قاعدة البيانات</strong></td></tr><tr><td>2</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>واحد فقط موجب</strong>: <span class="mono">(debit &gt; 0 AND credit = 0)</span> <strong>أو</strong> <span class="mono">(credit &gt; 0 AND debit = 0)</span></td><td><strong>قيد صف</strong></td></tr><tr><td>3</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>يُمنع أن يكونا صفرين معًا</strong></td><td><strong>قيد صف</strong></td></tr><tr><td>4</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>يُمنع أن يكونا موجبين معًا</strong></td><td><strong>قيد صف</strong></td></tr><tr><td>5</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>عند الترحيل</strong>: <span class="mono">SUM(debit) = SUM(credit)</span> <strong>وسطران على الأقل</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>Domain Service داخل معاملة</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="6.-التصحيح-5--تخصيصات-حركة-الخزينة">6. <span class="mark m-critical" title="حرج">⭐</span> التصحيح 5 — تخصيصات حركة الخزينة</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th><span class="mark m-forbidden" title="ممنوع">⛔</span> قبل</th><th><span class="badge b-confirmed" title="مؤكدة">🟢</span> بعد</th></tr></thead><tbody><tr><td><strong>الحقول</strong></td><td><span class="mono">document_type</span> + <span class="mono">document_id</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">treasury_movement_id</span> + <span class="mono">allocated_financial_event_id</span> + <span class="mono">allocated_amount</span></strong></td></tr><tr><td><strong>التكامل المرجعي</strong></td><td><span class="mark m-no" title="غير مستوفى">❌</span> <strong>معدوم</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <span class="mark m-critical" title="حرج">⭐</span> <strong>مفتاح أجنبي حقيقي</strong></td></tr><tr><td><strong>معرفة المستند الأصلي</strong></td><td>من النوع والمعرّف</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>من مصدر <span class="mono">financial_event</span></strong></td></tr><tr><td><strong>القيد</strong></td><td><span class="mono">UNIQUE(movement_id, document_type, document_id)</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">UNIQUE(treasury_movement_id, allocated_financial_event_id)</span></strong></td></tr></tbody></table></div></div>
+<p class="para"><strong>القواعد:</strong> <span class="mark m-critical" title="حرج">⭐</span> <strong>المبلغ &gt; صفر</strong> · <strong>ومجموع التخصيصات ≤ مبلغ الحركة</strong> · <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا يتكرر الحدث داخل الحركة نفسها</strong> · <span class="mark m-critical" title="حرج">⭐</span> <strong>والفائض يظهر <span class="mono">Unallocated</span> صراحةً</strong> · <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا تعديل صامت بعد الاعتماد — التصحيح بحركة أو تخصيص عكسي موثَّق</strong>.</p>
+<div class="info-box danger"><p><span class="mark m-critical" title="حرج">⭐</span> <strong>والنمط نفسه طُبِّق على <span class="mono">custody_ledger_entries</span></strong> (<span class="mono">financial_event_id</span> بدل <span class="mono">source_type</span>/<span class="mono">source_id</span>) <strong>و<span class="mono">recoverable_expense_allocations</span></strong> (ثلاثة مفاتيح مُنمَّطة) — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>فلا مرجعان مختلفان لنفس المفهوم</strong>.</p></div>
+<div class="rule-sep"></div></div><div id="naming" class="panel"><h2 class="panel-title" id="7.-التصحيح-6--settlementmode">7. <span class="mark m-critical" title="حرج">⭐</span> التصحيح 6 — <span class="mono">settlement_mode</span></h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>القيمة</th><th>المعنى</th><th><span class="mark m-critical" title="حرج">⭐</span> الأثر على الخزينة</th></tr></thead><tbody><tr><td><span class="mono">Custody</span></td><td><strong>الأثر تم من عهدة المهندس</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا حركة خزينة — النقد خرج عند تسليم العهدة</strong></td></tr><tr><td><span class="mono">Treasury</span></td><td><strong>دفع أو قبض فعلي من خزينة أو بنك أو محفظة</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>حركة مطلوبة بحسب المصفوفة</strong></td></tr><tr><td><span class="mono">OnAccount</span></td><td><strong>استحقاق آجل على طرف — مثل مورد</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا حركة الآن</strong></td></tr><tr><td><span class="mono">NonCash</span></td><td><strong>أثر محاسبي بلا حركة نقدية — مثل اعتماد مستخلص</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا حركة</strong></td></tr></tbody></table></div></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>القاعدة</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>قيمة نظامية يحددها مسار الاعتماد ونوع المعاملة</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يكتبها المهندس</strong></td></tr><tr><td>2</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>المهندس لا يرى ولا يختار طريقة الدفع ولا مصدر التمويل</strong></td></tr><tr><td>3</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>اعتماد المستخلص <span class="mono">NonCash</span></strong> · <strong>والتحصيل اللاحق حدث مستقل بـ<span class="mono">Treasury</span></strong></td></tr><tr><td>4</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الاسم الجديد أدق</strong>: <strong>«مصدر التمويل» يوحي باختيار، والمقصود كيف سُوِّي الأثر ماليًا</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="8.-التصحيح-7--أداة-الدفع-instrument">8. <span class="mark m-critical" title="حرج">⭐</span> التصحيح 7 — أداة الدفع <span class="mono">instrument</span></h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>الحالة</th><th>القاعدة</th></tr></thead><tbody><tr><td><span class="mono">Receipt</span> · <span class="mono">Payment</span> · <span class="mono">TransferIn</span> · <span class="mono">TransferOut</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">instrument</span> إلزامي</strong></td></tr><tr><td><span class="mono">Cheque</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">cheque_id</span> إلزامي</strong></td></tr><tr><td><span class="mono">BankTransfer</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>حساب خزينة من نوع بنك</strong></td></tr><tr><td><span class="mono">Wallet</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>حساب خزينة من نوع محفظة</strong></td></tr><tr><td><span class="mono">Cash</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>حساب خزينة نقدية</strong></td></tr><tr><td><span class="mono">OpeningBalance</span> · <span class="mono">Adjustment</span> · <strong>غير النقدي</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>يجوز فارغًا</strong></td></tr><tr><td><strong>حركة العكس</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>ترث أداة الأصل أو تشير إليها</strong></td></tr><tr><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>مصروف المهندس</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يُضاف هذا الحقل إلى نموذجه إطلاقًا</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div></div><div id="imports" class="panel"><h2 class="panel-title" id="9.-التصحيح-8--استراتيجية-الاستيراد-التاريخي">9. <span class="mark m-critical" title="حرج">⭐</span> التصحيح 8 — استراتيجية الاستيراد التاريخي</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>الحالة</th><th>المعالجة</th><th><span class="mark m-critical" title="حرج">⭐</span> لماذا</th></tr></thead><tbody><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الأرصدة الافتتاحية</strong></td><td><strong>تُدخل مجمَّعة بحدث <span class="mono">OpeningBalance</span> ومستند <span class="mono">accounting_adjustments</span> معتمَد</strong> — <strong>مع الدفعة والمصدر والبصمة</strong></td><td><strong>لا تفصيل تاريخيًا لها · والرصيد الافتتاحي غير متاح لبعض الدفاتر</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>المعاملات التاريخية التفصيلية</strong></td><td><strong>تُستورد سجلات تشغيلية تفصيلية مرتبطة بصف Excel الأصلي</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>واختزالها في رصيد يفقد التفاصيل نهائيًا</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>قيود المعاملات التاريخية</strong></td><td><strong>يجوز ترحيلها مجمَّعة بأبعاد</strong> <span class="mono">(شركة · فترة مالية · حساب · عملية · موقع · طرف)</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>وقيد واحد ضخم للملف كله يفقد الأبعاد فيستحيل استخراج تكلفة عملية أو موقع</strong></td></tr></tbody></table></div></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>القاعدة</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا تُخترع أحداث تدقيق تاريخية كأنها وقعت وقتها</strong> — <strong>حدث استيراد واحد لكل دفعة بمصدره ونتيجته</strong></td></tr><tr><td>2</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل قيد مجمَّع مرتبط بصفوف الاستيراد الداخلة فيه عبر <span class="mono">record_lineage</span></strong></td></tr><tr><td>3</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>المطابقة تبقى ممكنة بين Excel والسجلات التشغيلية والقيود المحاسبية</strong></td></tr><tr><td>4</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>إعادة الاستيراد لا تضاعف الأثر المالي</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="10.-التصحيح-9--treasuryaccounts">10. <span class="mark m-critical" title="حرج">⭐</span> التصحيح 9 — <span class="mono">treasury_accounts</span></h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>المحتوى</th></tr></thead><tbody><tr><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>الاسم القديم</strong></td><td><span class="mono">financial_accounts</span> — <strong>يوحي بحساب في دليل الحسابات</strong></td></tr><tr><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>الاسم المعتمد</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">treasury_accounts</span></strong> — <strong>خزينة نقدية · حساب بنكي · محفظة أو InstaPay</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>ما يبقى مستقلًا</strong></td><td><strong><span class="mono">chart_of_accounts</span> — دليل الحسابات المحاسبي</strong></td></tr><tr><td><strong>المواضع المحدَّثة</strong></td><td><strong>النموذج المنطقي · قاموس البيانات · قواعد النزاهة · سجل القرارات · المصفوفة · ERD · وكل مرجع نصي وخريطة Excel</strong></td></tr><tr><td><strong>الاستثناء</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الاسم القديم يبقى مذكورًا في السجل التاريخي فقط</strong> (<span class="mono">logical-model-patch-v1.2.1-ar.md</span> · <strong>وسطر واحد معلَّم في هذه الوثيقة</strong>)</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="11.-التصحيح-10--تدقيق-المصطلحات">11. <span class="mark m-critical" title="حرج">⭐</span> التصحيح 10 — تدقيق المصطلحات</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>المصطلح</th><th>الحالة</th><th><span class="mark m-critical" title="حرج">⭐</span> القرار وسبب الحماية</th></tr></thead><tbody><tr><td><span class="mono">source_type</span> + <span class="mono">source_id</span> على <span class="mono">journal_entries</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>قديم — أُلغي</strong></td><td><strong>استُبدل بـ<span class="mono">financial_event_id</span> الفريد</strong></td></tr><tr><td><span class="mono">posting_event</span> · <span class="mono">posting_sequence</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>قديمان — أُلغيا</strong></td><td><strong>قيد واحد لكل حدث ⟹ لا حاجة لتسلسل</strong></td></tr><tr><td><span class="mono">source_type</span> + <span class="mono">source_id</span> على <span class="mono">custody_ledger_entries</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>قديم — أُلغي</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>استُبدل بـ<span class="mono">UNIQUE(financial_event_id, movement_type)</span></strong> — <strong>مفتاح أجنبي حقيقي</strong></td></tr><tr><td><span class="mono">allocated_source_type</span> + <span class="mono">allocated_source_id</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>قديمان — أُلغيا</strong></td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>ثلاثة مفاتيح مُنمَّطة — واحد غير فارغ</strong>: <span class="mono">expense_id</span> · <span class="mono">supplier_invoice_id</span> · <span class="mono">payroll_line_id</span></td></tr><tr><td><span class="mono">document_type</span> + <span class="mono">document_id</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>قديمان — أُلغيا</strong></td><td><strong>استُبدلا بـ<span class="mono">allocated_financial_event_id</span></strong></td></tr><tr><td><span class="mono">funding_source</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>قديم — أُلغي</strong></td><td><strong>صار <span class="mono">settlement_mode</span> بأربع قيم</strong></td></tr><tr><td><span class="mono">financial_accounts</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>قديم — أُلغي</strong></td><td><strong>صار <span class="mono">treasury_accounts</span></strong></td></tr><tr><td><span class="mono">cash_movements</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>قديم — أُلغي</strong></td><td><strong>صار <span class="mono">treasury_movements</span></strong> (v1.2.1)</td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <span class="mono">entity_type</span> + <span class="mono">entity_id</span> على <span class="mono">document_links</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> <span class="mark m-critical" title="حرج">⭐</span> <strong>مقصود — يبقى</strong></td><td><strong>ربط عام للمستندات بأي كيان</strong> · <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا FK ممكن</strong> ⟹ <span class="mark m-critical" title="حرج">⭐</span> <strong>الحماية</strong>: <span class="mono">UNIQUE(document_id, entity_type, entity_id)</span> + <strong>تحقق تطبيقي عند الربط</strong> + <strong>فحص مطابقة يكشف المراجع اليتيمة</strong> · <span class="mark m-critical" title="حرج">⭐</span> <strong>ولا يحمل أثرًا ماليًا</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <span class="mono">entity_type</span> + <span class="mono">entity_id</span> على <span class="mono">record_lineage</span> · <span class="mono">audit_events</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> <span class="mark m-critical" title="حرج">⭐</span> <strong>مقصود — يبقى</strong></td><td><strong>سجلّان عامّان يغطيان كل الكيانات</strong> · <span class="mark m-critical" title="حرج">⭐</span> <strong>الحماية</strong>: <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يُحسب منهما رصيد</strong> · <strong>الكتابة من النظام وحده</strong> · <strong>وفحص مطابقة دوري</strong></td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-blue"></div><h3 class="card-title" id="11.1-تصحيح-العبارة">11.1 <span class="mark m-critical" title="حرج">⭐</span> تصحيح العبارة</h3><span>3 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>النص</th></tr></thead><tbody><tr><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>العبارة القديمة</strong></td><td><strong>«يستحيل وجود قيد بلا نقده أو نقد بلا قيده»</strong></td></tr><tr><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>المعنى الصحيح</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>«يستحيل ترحيل حدث مالي قبل اكتمال الآثار المطلوبة لنوعه؛ وقد يكون الحدث المحاسبي بلا حركة نقدية إذا كان استحقاقًا غير مدفوع.»</strong></td></tr><tr><td><strong>المواضع المصحَّحة</strong></td><td><span class="mono">logical-data-model-ar.md</span> §19.4 · <span class="mono">database-design-ar.md</span> §6.17.1 · <span class="mono">database-integrity-rules-ar.md</span> §14.2.1 · <span class="mono">system-specification-and-team-reference-ar.md</span> §17.5.4</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div></div><div id="scope" class="panel"><h2 class="panel-title" id="12.-طريقة-الفرض-الآمنة">12. <span class="mark m-critical" title="حرج">⭐</span> طريقة الفرض الآمنة</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>القاعدة</th><th>مكان الفرض</th></tr></thead><tbody><tr><td><strong>صحة القيمة داخل الصف</strong> (<span class="mono">debit &gt;= 0</span> · <span class="mono">amount &gt; 0</span>)</td><td><strong>قيد قاعدة بيانات</strong></td></tr><tr><td><strong>منع التكرار</strong></td><td><strong>قيد تفرّد / Idempotency</strong></td></tr><tr><td><strong>صحة المفتاح الأجنبي</strong></td><td><strong>مفتاح أجنبي</strong></td></tr><tr><td><strong>مجموع سطور القيد</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>Domain Service داخل معاملة</strong></td></tr><tr><td><strong>عدد حركات الخزينة المطلوبة</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>Domain Service داخل معاملة</strong></td></tr><tr><td><strong>منع <span class="mono">Posted</span> قبل اكتمال الآثار</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>Domain Service</strong> + 🏗️ <strong>آلية أمان في القاعدة تُحدَّد فيزيائيًا</strong></td></tr><tr><td><strong>التدقيق</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>داخل المعاملة نفسها</strong></td></tr><tr><td><strong>المطابقة</strong></td><td><strong>مهمة مطابقة خلفية دورية</strong></td></tr></tbody></table></div></div>
+<div class="info-box danger"><p><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا تُفرض قاعدة عابرة لعدة جداول بـ<span class="mono">CHECK</span>.</strong></p></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="13.-أثر-التغييرات-على-W1">13. <span class="mark m-critical" title="حرج">⭐</span> أثر التغييرات على W1</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>الخطوة</th><th>المحتوى</th><th>العدد</th></tr></thead><tbody><tr><td><strong>W1-A</strong></td><td>الهوية والبيانات المرجعية</td><td><strong>18</strong></td></tr><tr><td><strong>W1-B</strong></td><td>العمليات وأوامر الإسناد والمواقع والتكليفات</td><td><strong>7</strong></td></tr><tr><td><strong>W1-C</strong></td><td>المستندات والتدقيق</td><td><strong>6</strong></td></tr><tr><td><strong>W1-D</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>المحاسبة والخزينة والأحداث المالية — وتشمل <span class="mono">accounting_adjustments</span></strong></td><td><strong>13</strong></td></tr><tr><td><strong>W1-E</strong></td><td>العهدة والمصروفات ودورة المراجعة</td><td><strong>10</strong></td></tr><tr><td><strong>الإجمالي W1</strong></td><td>—</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>54</strong></td></tr></tbody></table></div></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>القاعدة</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>التقسيم لا يغيّر نطاق MVP</strong></td></tr><tr><td>2</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>يمكن إنشاء Migrations تدريجيًا</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا يُفترض أن كل W1 في Migration واحدة</strong></td></tr><tr><td>3</td><td>## <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ممنوع تشغيل أي حركة مالية حقيقية قبل اكتمال W1-C وW1-D</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="14.-القرارات-المعمارية">14. <span class="mark m-critical" title="حرج">⭐</span> القرارات المعمارية</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>ADR</th><th>القرار</th><th>الحالة</th></tr></thead><tbody><tr><td><strong>ADR-027</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>مصفوفة آثار الحدث المالي قاعدةَ Domain ثابتة</strong></td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>جديد</strong></td></tr><tr><td><strong>ADR-028</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>قيد واحد لكل حدث — وإلغاء <span class="mono">posting_sequence</span></strong></td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>جديد</strong></td></tr><tr><td><strong>ADR-029</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">accounting_adjustments</span> مستندًا رسميًا لكل تصحيح</strong></td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>جديد</strong></td></tr><tr><td><strong>ADR-030</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>تخصيص الخزينة بحدث مالي لا بمرجع متعدد الأشكال</strong></td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>جديد</strong></td></tr><tr><td><strong>ADR-031</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">settlement_mode</span> و<span class="mono">instrument</span> قيمًا نظامية بقواعد شرطية</strong></td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>جديد</strong></td></tr><tr><td><strong>ADR-032</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>فصل الأرصدة الافتتاحية عن المعاملات التفصيلية</strong></td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>جديد</strong></td></tr><tr><td><strong>ADR-020</strong></td><td><strong>سجل الأحداث المالية</strong></td><td><span class="mark m-warn" title="تنبيه">⚠️</span> <strong>مُعدَّل</strong>: <span class="mono">1 : 0..1</span> بدل <span class="mono">1 : 0..N</span></td></tr></tbody></table></div></div>
+<p class="para"><strong>وقواعد عمل جديدة:</strong> <span class="mark m-critical" title="حرج">⭐</span> <strong>BR-263 … BR-272</strong> — <strong>عشر قواعد</strong> <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>بلا حذف أو تعديل قاعدة مؤكدة سابقة</strong>.</p>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="15.-الأعداد-بعد-الباتش--محسوبة-آليًا">15. <span class="mark m-critical" title="حرج">⭐</span> الأعداد بعد الباتش — محسوبة آليًا</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>v2.0.0</th><th><span class="badge b-confirmed" title="مؤكدة">🟢</span> v2.0.1</th></tr></thead><tbody><tr><td><strong>المجالات</strong></td><td><strong>20</strong></td><td><strong>20</strong></td></tr><tr><td><strong>الكيانات</strong></td><td><strong>148</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>149</strong></td></tr><tr><td><strong>العلاقات الموثَّقة</strong></td><td><strong>199</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>204</strong></td></tr><tr><td><strong>قواعد العمل</strong></td><td><strong>262</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>272</strong></td></tr><tr><td><strong>قرارات معمارية</strong></td><td><strong>26</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>32</strong></td></tr><tr><td><strong>كيانات W1</strong></td><td><strong>53</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>54</strong></td></tr><tr><td><strong>MVP Required</strong></td><td><strong>109</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>112</strong></td></tr><tr><td><strong>Post-MVP</strong></td><td><strong>32</strong></td><td><strong>30</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div></div><div id="result" class="panel"><h2 class="panel-title" id="16.-فحوص-القبول-الاثنان-والعشرون">16. <span class="mark m-critical" title="حرج">⭐</span> فحوص القبول الاثنان والعشرون</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>الفحص</th><th>النتيجة</th></tr></thead><tbody><tr><td>1</td><td><strong>كل <span class="mono">Posted Financial Event</span> له قيد واحد فقط</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>2</td><td><strong>لا <span class="mono">posting_sequence</span> في النموذج النهائي</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>3</td><td><strong>كل عكس حدث مستقل يشير إلى الأصل</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>4</td><td><strong>كل تصحيح له مستند <span class="mono">accounting_adjustment</span></strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>5</td><td><strong>لا تعديل لقيد أو حركة خزينة معتمدة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>6</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا <span class="mono">document_type</span> + <span class="mono">document_id</span> في تخصيصات الخزينة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>7</td><td><strong>كل تخصيص يشير إلى <span class="mono">allocated_financial_event_id</span></strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>8</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا <span class="mono">funding_source</span> بعد التعديل</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>9</td><td><strong><span class="mono">settlement_mode</span> لا يُطلب من المهندس</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>10</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>اعتماد مصروف العهدة لا ينشئ حركة خزينة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>11</td><td><strong>تسليم العهدة ينشئ حركة خزينة واحدة فقط</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>12</td><td><strong>التحويل ينشئ حركتين متساويتين فقط</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>13</td><td><strong>كل سطر قيد فيه مدين أو دائن موجب واحد فقط</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>14</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا قيمة سالبة في المدين أو الدائن</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>15</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا استخدام غير مبرر لـ<span class="mono">financial_accounts</span></strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>16</td><td><strong>قواعد <span class="mono">instrument</span> موحدة في كل المستندات</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>17</td><td><strong>الأرصدة الافتتاحية منفصلة عن المعاملات التفصيلية</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>18</td><td><strong>كل سجل مستورد يُتتبع إلى صف Excel</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>19</td><td><strong>الأعداد أُعيد حسابها آليًا بعد الإضافة</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr><tr><td>20</td><td><strong>كل كيان في المصفوفة مرة واحدة فقط</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>149/149</strong></td></tr><tr><td>21</td><td><strong>كل علاقة في ERD لها تعريف في النموذج</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>204/204</strong></td></tr><tr><td>22</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا SQL ولا DDL ولا Migrations ولا كود</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="17.-الحكم-النهائي">17. <span class="mark m-critical" title="حرج">⭐</span> الحكم النهائي</h2>
+<div class="info-box tech"><p class="box-title"><span class="badge b-confirmed" title="مؤكدة">🟢</span> <span class="mark m-critical" title="حرج">⭐</span> <strong>جاهز للتصميم الفيزيائي.</strong></p></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>الحالة</th></tr></thead><tbody><tr><td><strong>اكتمال الأثر المالي</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>مصفوفة صريحة + شرط <span class="mono">Posted</span> + مكان فرض محدَّد</strong></td></tr><tr><td><strong>قابلية التصحيح الآمن</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>مستند تصحيح معتمَد + عكس مطابق + لا تعديل للأصل</strong></td></tr><tr><td><strong>التكامل المرجعي</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>لا مرجع متعدد الأشكال في أي مسار مالي</strong></td></tr><tr><td><strong>منع الخصم المزدوج</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>قاعدة صريحة + فحص مطابقة</strong></td></tr><tr><td><strong>وضوح المصطلحات</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>تدقيق شامل — ولا مصطلحان لمفهوم واحد</strong></td></tr><tr><td><strong>قابلية التنفيذ التدريجي</strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>W1 مقسَّمة إلى خمس خطوات</strong></td></tr><tr><td><span class="badge b-open" title="قرار مفتوح">🟡</span> <strong>ما يبقى مفتوحًا <span class="mark m-forbidden" title="ممنوع">⛔</span> ولا يمنع</strong></td><td><strong>محتوى شجرة الحسابات وقواعد الترحيل</strong> (OQ-031) — <span class="mark m-critical" title="حرج">⭐</span> <strong>بيانات يعتمدها المحاسب</strong> · <strong>والبنية تحتملها كاملة</strong></td></tr></tbody></table></div></div>
+<div class="info-box danger"><p><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا يبدأ أي SQL أو DDL أو Migrations قبل موافقة صريحة على هذا النموذج.</strong></p></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="18.-سجل-التغيير">18. سجل التغيير</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>الإصدار</th><th>التاريخ</th><th>التغيير</th></tr></thead><tbody><tr><td><strong>v2.0.1</strong></td><td>2026-09-20</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>عشرة تصحيحات</strong> · <strong>كيان واحد مضاف</strong> · <strong>10 قواعد عمل</strong> · <strong>6 قرارات معمارية جديدة وواحد معدَّل</strong> · <strong>وإعادة حساب كل الأعداد آليًا</strong></td></tr></tbody></table></div></div></div>
+</div>
+
+<div class="mini-toc" id="toc"></div>
+<div class="fab"><button id="tocBtn" type="button">الفهرس</button></div>
+<div class="fab up"><button id="upBtn" type="button">أعلى</button></div>
+
+<script>
+(function(){
+  var q=document.getElementById('q'), hits=document.getElementById('hits');
+  var toc=document.getElementById('toc'), links;
+
+  /* ارتفاع الترويسة والتبويبات متغيّر (سطر أو سطران) — نقيسه بدل تثبيته */
+  var hdrEl=document.querySelector('.site-header'), navEl=document.querySelector('.nav');
+  function syncSticky(){
+    var h=hdrEl.offsetHeight;
+    navEl.style.top=h+'px';
+    document.documentElement.style.setProperty('--stick',(h+navEl.offsetHeight+14)+'px');
+  }
+  syncSticky();
+  window.addEventListener('resize',syncSticky);
+  if(window.ResizeObserver){ new ResizeObserver(syncSticky).observe(hdrEl); }
+
+  function show(id,btn){
+    document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
+    document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active')});
+    var el=document.getElementById(id); if(el) el.classList.add('active');
+    if(btn) btn.classList.add('active');
+    buildToc(id);
+    window.scrollTo({top:0,behavior:'instant'});
+    history.replaceState(null,'','#'+id);
+  }
+  window.__show=show;
+  document.querySelectorAll('.nav-btn').forEach(function(b){
+    b.addEventListener('click',function(){show(b.dataset.tab,b)});
+  });
+
+  function buildToc(id){
+    var p=document.getElementById(id); if(!p) return;
+    var hs=p.querySelectorAll('.panel-title,.section-title,.card-title');
+    var h='';
+    hs.forEach(function(x){
+      var cls=x.classList.contains('panel-title')?'l2':'l3';
+      h+='<a class="'+cls+'" href="#'+x.id+'">'+x.textContent.replace(/#$/,'')+'</a>';
+    });
+    toc.innerHTML=h;
+    links=Array.prototype.slice.call(toc.querySelectorAll('a'));
+  }
+
+  document.getElementById('tocBtn').addEventListener('click',function(){
+    toc.classList.toggle('open');
+  });
+  document.getElementById('upBtn').addEventListener('click',function(){
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  // ── تكبير وتحريك المخططات المرسومة ──────────────────
+  document.querySelectorAll('.erd').forEach(function(box){
+    var view=box.querySelector('.erd-view'), stage=box.querySelector('.erd-stage');
+    var svg=stage.querySelector('svg'); if(!svg) return;
+    var w=parseFloat(svg.getAttribute('width'))||svg.getBoundingClientRect().width;
+    var h=parseFloat(svg.getAttribute('height'))||svg.getBoundingClientRect().height;
+    svg.removeAttribute('width'); svg.removeAttribute('height');
+    svg.style.width=w+'px'; svg.style.height=h+'px';
+    var s=1,x=0,y=0;
+    function apply(){stage.style.transform='translate('+x+'px,'+y+'px) scale('+s+')'}
+    function fit(){            // ملء العرض: العرض كاملًا والتمرير رأسيًا بالسحب
+      s=Math.max(0.05,Math.min(view.clientWidth/w,1));
+      x=(view.clientWidth-w*s)/2; y=10; apply();
+    }
+    function fitAll(){         // ملء الإطار: المخطط كله داخل الإطار
+      var k=Math.min(view.clientWidth/w, view.clientHeight/h);
+      s=Math.max(0.03,Math.min(k,1)); x=(view.clientWidth-w*s)/2; y=6; apply();
+    }
+    function zoom(f,cx,cy){
+      var ns=Math.min(4,Math.max(0.05,s*f));
+      x=cx-(cx-x)*(ns/s); y=cy-(cy-y)*(ns/s); s=ns; apply();
+    }
+    box.querySelectorAll('.erd-bar button').forEach(function(b){
+      b.addEventListener('click',function(){
+        var k=b.dataset.z;
+        if(k==='in')  zoom(1.25,view.clientWidth/2,view.clientHeight/2);
+        if(k==='out') zoom(0.8, view.clientWidth/2,view.clientHeight/2);
+        if(k==='fit') fit();
+        if(k==='all') fitAll();
+        if(k==='reset'){s=1;x=0;y=0;apply()}
+      });
+    });
+    view.addEventListener('wheel',function(e){
+      e.preventDefault();
+      var r=view.getBoundingClientRect();
+      zoom(e.deltaY<0?1.12:0.89, e.clientX-r.left, e.clientY-r.top);
+    },{passive:false});
+    var dx=0,dy=0,down=false;
+    view.addEventListener('pointerdown',function(e){
+      down=true; dx=e.clientX-x; dy=e.clientY-y;
+      view.classList.add('drag'); view.setPointerCapture(e.pointerId);
+    });
+    view.addEventListener('pointermove',function(e){
+      if(!down) return; x=e.clientX-dx; y=e.clientY-dy; apply();
+    });
+    ['pointerup','pointercancel'].forEach(function(ev){
+      view.addEventListener(ev,function(){down=false; view.classList.remove('drag')});
+    });
+    // اللوحة قد تكون مخفية عند التحميل — فالضبط يتم أول ما تظهر بمقاس حقيقي
+    var fitted=false;
+    function tryFit(){
+      if(fitted || view.clientWidth<40 || view.clientHeight<40) return;
+      fitted=true; fit();
+    }
+    tryFit();
+    if(window.ResizeObserver){ new ResizeObserver(tryFit).observe(view); }
+    window.addEventListener('resize',function(){ if(fitted && s<=0.25) fit(); });
+  });
+
+  // بحث عبر كل التبويبات
+  function clearMarks(){
+    Array.prototype.slice.call(document.querySelectorAll('mark')).forEach(function(m){
+      m.parentNode.replaceChild(document.createTextNode(m.textContent),m);
+    });
+    document.querySelectorAll('.panel').forEach(function(p){p.normalize()});
+  }
+  var timer;
+  q.addEventListener('input',function(){
+    clearTimeout(timer); timer=setTimeout(runSearch,260);
+  });
+  function runSearch(){
+    clearMarks();
+    var v=q.value.trim();
+    document.querySelectorAll('.nav-btn .cnt').forEach(function(c){c.textContent=c.dataset.n});
+    if(v.length<2){ hits.textContent=''; return; }
+    var total=0;
+    document.querySelectorAll('.panel').forEach(function(p){
+      var c=0;
+      var w=document.createTreeWalker(p,NodeFilter.SHOW_TEXT,null), nodes=[], nd;
+      while((nd=w.nextNode())){ if(nd.nodeValue.indexOf(v)!==-1) nodes.push(nd); }
+      nodes.forEach(function(node){
+        var parts=node.nodeValue.split(v), frag=document.createDocumentFragment();
+        for(var i=0;i<parts.length;i++){
+          frag.appendChild(document.createTextNode(parts[i]));
+          if(i<parts.length-1){ var m=document.createElement('mark'); m.textContent=v; frag.appendChild(m); c++; }
+        }
+        node.parentNode.replaceChild(frag,node);
+      });
+      total+=c;
+      var btn=document.querySelector('.nav-btn[data-tab="'+p.id+'"] .cnt');
+      if(btn) btn.textContent=c?c:'0';
+    });
+    hits.textContent = total ? ('مطابقات: '+total) : 'لا مطابقات';
+    var first=document.querySelector('.panel.active mark');
+    if(first) first.scrollIntoView({block:'center'});
+  }
+
+  // فتح التبويب من الرابط
+  var h=location.hash.slice(1);
+  var start=document.querySelector('.nav-btn[data-tab="'+h+'"]');
+  if(start) show(h,start); else buildToc(document.querySelector('.panel.active').id);
+
+  // روابط الفهرس تغلقه بعد القفز
+  document.addEventListener('click',function(e){
+    if(e.target.closest('#toc a')) toc.classList.remove('open');
+  });
+})();
+</script>
+</body>
+</html>

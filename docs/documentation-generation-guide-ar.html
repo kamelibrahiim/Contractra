@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contractra — دليل توليد التوثيق وصيانته</title>
+<meta name="description" content="النسخة التفاعلية المولَّدة من دليل توليد التوثيق وصيانته — Markdown هو المصدر الرسمي.">
+<meta name="generator" content="generate-html.py v2.0">
+<style>
+:root{
+  --purple:#7F77DD; --purple-dk:#3C3489; --purple-lt:#EEEDFE;
+  --teal:#1D9E75;   --teal-lt:#E1F5EE;
+  --coral:#D85A30;  --coral-lt:#FAECE7;
+  --amber:#BA7517;  --amber-lt:#FAEEDA;
+  --blue:#378ADD;   --blue-lt:#EEF4FD;
+  --gray-dk:#2C2C2A; --gray-md:#6B6B68; --gray-lt:#F1EFE8;
+  --gray-bd:#D3D1C7; --white:#fff; --bg:#F8F7F4;
+  --font-sans:"Segoe UI","Noto Naskh Arabic","Tahoma",system-ui,-apple-system,sans-serif;
+  --font-mono:"Cascadia Mono","SF Mono","Consolas","Courier New",monospace;
+  --radius:8px; --radius-lg:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-sans); background:var(--bg); color:var(--gray-dk);
+  font-size:14px; line-height:1.7; direction:rtl; text-align:right;
+}
+
+/* ── الترويسة ─────────────────────────────────────── */
+.site-header{
+  background:var(--purple-dk); padding:26px 40px; position:sticky; top:0; z-index:100;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+}
+.site-header .ttl{flex:1; min-width:240px}
+.site-header h1{font-size:21px; font-weight:700; color:#fff; letter-spacing:-.2px}
+.site-header p{font-size:12.5px; color:rgba(255,255,255,.55); margin-top:3px}
+.hdr-meta{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.chip-v{
+  font-size:11px; font-weight:700; padding:4px 11px; border-radius:20px;
+  background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.22);
+}
+#q{
+  width:220px; padding:7px 12px; border-radius:20px; font-family:inherit; font-size:12.5px;
+  border:1px solid rgba(255,255,255,.22); background:rgba(255,255,255,.1); color:#fff;
+}
+#q::placeholder{color:rgba(255,255,255,.5)}
+#q:focus{outline:none; background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.45)}
+
+/* ── التبويبات ────────────────────────────────────── */
+.nav{
+  background:var(--white); border-bottom:1px solid var(--gray-bd);
+  padding:0 40px; display:flex; flex-wrap:wrap; gap:0 2px;
+  position:sticky; top:81px; z-index:99;   /* يُضبط من JS حسب ارتفاع الترويسة */
+}
+.nav-btn{
+  font-size:13px; font-weight:600; padding:12px 15px; border:none; background:none;
+  color:var(--gray-md); cursor:pointer; border-bottom:2px solid transparent;
+  white-space:nowrap; transition:all .15s; font-family:inherit;
+}
+.nav-btn:hover{color:var(--gray-dk)}
+.nav-btn.active{color:var(--purple); border-bottom-color:var(--purple)}
+.nav-btn .cnt{font-size:10px; color:var(--gray-bd); margin-inline-start:5px; font-weight:700}
+.nav-btn.active .cnt{color:var(--purple)}
+
+/* ── المخطط المرسوم ───────────────────────────────── */
+.erd{border-bottom:1px solid var(--gray-bd); background:#fbfbf9}
+.erd-bar{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  padding:8px 14px; border-bottom:1px solid var(--gray-bd); background:var(--white);
+}
+.erd-bar button{
+  font-family:inherit; font-size:12px; font-weight:700; cursor:pointer;
+  padding:5px 11px; border-radius:7px; border:1px solid var(--gray-bd);
+  background:var(--white); color:var(--gray-dk); line-height:1.2;
+}
+.erd-bar button:hover{background:var(--purple-lt); border-color:var(--purple); color:var(--purple-dk)}
+.erd-hint{font-size:11.5px; color:var(--gray-md); margin-inline-start:auto}
+.erd-view{
+  height:min(74vh,720px); overflow:hidden; position:relative;
+  cursor:grab; background:
+    linear-gradient(90deg,rgba(0,0,0,.028) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(rgba(0,0,0,.028) 1px,transparent 1px) 0 0/22px 22px, #fff;
+}
+.erd-view.drag{cursor:grabbing}
+.erd-stage{transform-origin:0 0; will-change:transform; direction:ltr}
+.erd-stage svg{display:block; max-width:none; height:auto}
+.erd-src{border-top:1px solid var(--gray-bd)}
+.erd-src summary{
+  cursor:pointer; padding:9px 16px; font-size:12.5px; font-weight:700;
+  color:var(--purple-dk); background:#fcfcfa; list-style:none;
+}
+.erd-src summary::-webkit-details-marker{display:none}
+.erd-src summary::before{content:"▸ "; font-size:11px}
+.erd-src[open] summary::before{content:"▾ "}
+.erd-src pre{border-top:1px solid var(--gray-bd)}
+
+/* ── المحتوى ──────────────────────────────────────── */
+.content{max-width:1180px; margin:0 auto; padding:30px 40px 80px}
+.panel{display:none}
+.panel.active{display:block}
+
+.panel-title{
+  font-size:19px; font-weight:700; color:var(--gray-dk);
+  margin:34px 0 4px; padding-bottom:9px; border-bottom:2px solid var(--purple);
+  scroll-margin-top:var(--stick,150px);
+}
+.panel > .panel-title:first-child{margin-top:0}
+.section-title{
+  font-size:14.5px; font-weight:700; color:var(--purple-dk);
+  margin:26px 0 10px; padding-inline-start:10px;
+  border-inline-start:3px solid var(--purple); scroll-margin-top:var(--stick,150px);
+}
+.sub-title{
+  font-size:13px; font-weight:700; color:var(--gray-dk);
+  margin:18px 0 8px; scroll-margin-top:var(--stick,150px);
+}
+.para{font-size:13.5px; color:var(--gray-dk); margin:10px 2px}
+.rule-sep{height:1px; background:var(--gray-bd); margin:26px 0; opacity:.6}
+
+/* ── البطاقات ─────────────────────────────────────── */
+.card{
+  background:var(--white); border:1px solid var(--gray-bd);
+  border-radius:var(--radius-lg); overflow:hidden; margin-bottom:12px;
+}
+.card.bare{border-style:solid}
+.card-header{
+  display:flex; align-items:center; gap:10px; padding:11px 16px;
+  border-bottom:1px solid var(--gray-bd); background:#fcfcfa;
+}
+.card-header h3{font-size:13.5px; font-weight:700; color:var(--gray-dk); line-height:1.5}
+.card-title{scroll-margin-top:var(--stick,150px)}
+.card-header span{
+  font-size:10.5px; color:var(--gray-md); margin-inline-start:auto;
+  white-space:nowrap; flex-shrink:0;
+}
+.dot{width:9px; height:9px; border-radius:50%; flex-shrink:0}
+.dot-purple{background:var(--purple)} .dot-teal{background:var(--teal)}
+.dot-coral{background:var(--coral)}  .dot-amber{background:var(--amber)}
+.dot-blue{background:var(--blue)}
+
+/* ── الجداول ──────────────────────────────────────── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%; border-collapse:collapse; font-size:12.8px}
+th{
+  text-align:right; font-size:10.5px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--gray-md); padding:9px 13px;
+  background:var(--gray-lt); border-bottom:1px solid var(--gray-bd);
+  position:sticky; top:0; z-index:1; white-space:nowrap;
+}
+td{padding:9px 13px; border-bottom:1px solid var(--gray-bd); vertical-align:top; line-height:1.65}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--gray-lt)}
+td strong{font-weight:700}
+
+/* ── القوائم ──────────────────────────────────────── */
+.rule-list{list-style:none; padding:14px 16px; display:flex; flex-direction:column; gap:7px}
+.rule-list.tight{padding:6px 0}
+.rule-list li{
+  display:flex; gap:9px; align-items:flex-start;
+  font-size:13px; color:var(--gray-dk); line-height:1.65;
+}
+.rule-list li::before{content:'—'; color:var(--gray-bd); flex-shrink:0; margin-top:1px}
+ol.rule-list{counter-reset:ri}
+ol.rule-list li{counter-increment:ri}
+ol.rule-list li::before{
+  content:counter(ri); color:var(--purple); font-weight:700; font-size:11px;
+  min-width:17px; text-align:center;
+}
+
+/* ── الصناديق ─────────────────────────────────────── */
+.info-box{
+  border-inline-start:3px solid var(--blue); background:var(--blue-lt);
+  border-radius:0 var(--radius) var(--radius) 0;
+  padding:11px 15px; font-size:13px; color:var(--gray-dk); margin:12px 0;
+}
+.info-box.warn{border-inline-start-color:var(--amber); background:var(--amber-lt)}
+.info-box.danger{border-inline-start-color:var(--coral); background:var(--coral-lt)}
+.info-box.tech{border-inline-start-color:var(--purple); background:var(--purple-lt)}
+.info-box.ok{border-inline-start-color:var(--teal); background:var(--teal-lt)}
+.info-box p{margin:5px 0}
+.info-box p:first-child{margin-top:0}
+.info-box p:last-child{margin-bottom:0}
+.info-box .box-title{font-size:13.5px; font-weight:700; margin-bottom:6px}
+.info-box table{font-size:12.3px; margin-top:8px}
+.info-box th{background:rgba(255,255,255,.55)}
+.info-box td{border-bottom-color:rgba(0,0,0,.07)}
+.info-box tbody tr:hover td{background:rgba(255,255,255,.4)}
+
+/* ── الكود ────────────────────────────────────────── */
+.code-card pre{
+  margin:0; padding:14px 16px; overflow-x:auto; direction:ltr; text-align:left;
+  font-family:var(--font-mono); font-size:12px; line-height:1.7;
+  background:#fbfaf7; color:var(--gray-dk);
+}
+.code-card.gherkin pre{background:var(--teal-lt)}
+.code-card.diagram pre{background:var(--gray-lt); max-height:420px}
+.mono{
+  font-family:var(--font-mono); font-size:.9em; direction:ltr;
+  unicode-bidi:isolate; display:inline-block; background:var(--gray-lt);
+  padding:.1em .38em; border-radius:4px;
+}
+th .mono, .card-header .mono{background:transparent; padding:0}
+
+/* ── الشارات ──────────────────────────────────────── */
+.badge{
+  display:inline-block; font-size:11px; line-height:1.5; padding:1px 7px;
+  border-radius:20px; font-weight:600; vertical-align:middle;
+}
+.b-confirmed{background:var(--teal-lt)}
+.b-proposed{background:var(--blue-lt)}
+.b-open{background:var(--amber-lt)}
+.b-assumption{background:var(--gray-lt)}
+.b-evidence{background:var(--purple-lt)}
+.b-migration{background:var(--coral-lt)}
+.b-future{background:var(--gray-lt)}
+.mark{font-style:normal}
+.m-forbidden,.m-no{color:var(--coral)}
+.m-critical{color:var(--amber)}
+.m-ok{color:var(--teal)}
+.m-warn{color:var(--amber)}
+.m-idem{color:var(--purple)}
+.m-sensitive{color:var(--coral)}
+del{color:var(--gray-md)}
+a{color:var(--purple-dk)}
+mark{background:#FFE9A8; color:var(--gray-dk); border-radius:3px; padding:0 2px}
+
+/* ── فهرس جانبي عائم ──────────────────────────────── */
+.mini-toc{
+  position:fixed; inset-inline-start:14px; bottom:60px; z-index:60;
+  background:var(--white); border:1px solid var(--gray-bd); border-radius:var(--radius-lg);
+  max-width:280px; max-height:min(66vh,560px); overflow-y:auto; padding:9px 6px;
+  box-shadow:0 4px 18px rgba(0,0,0,.09); display:none;
+}
+.mini-toc.open{display:block}
+.mini-toc a{
+  display:block; padding:4px 9px; border-radius:6px; font-size:11.8px;
+  color:var(--gray-dk); text-decoration:none; line-height:1.5;
+}
+.mini-toc a:hover{background:var(--gray-lt)}
+.mini-toc a.l3{padding-inline-start:20px; font-size:11.2px; color:var(--gray-md)}
+.mini-toc a.hide{display:none}
+
+/* ── أزرار عائمة ──────────────────────────────────── */
+.fab{position:fixed; inset-inline-start:14px; bottom:14px; z-index:70; display:flex; gap:6px}
+.fab.up{inset-inline-start:auto; inset-inline-end:14px}
+.fab button{
+  border:1px solid var(--gray-bd); background:var(--white); color:var(--gray-dk);
+  border-radius:20px; padding:7px 13px; cursor:pointer; font-family:inherit;
+  font-size:12px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,.07);
+}
+.fab button:hover{background:var(--gray-lt)}
+.hits{
+  font-size:11px; color:rgba(255,255,255,.7); white-space:nowrap;
+}
+
+/* ── الاستجابة ────────────────────────────────────── */
+@media (max-width:820px){
+  .site-header{padding:16px; position:static}
+  .nav{padding:0 12px; position:static}
+  .content{padding:20px 14px 70px}
+  #q{width:100%}
+  .mini-toc{max-width:min(250px,84vw)}
+}
+
+/* ── الطباعة ──────────────────────────────────────── */
+@media print{
+  .nav,.fab,.mini-toc,#q,.hits,.erd-bar{display:none !important}
+  .erd-view{height:auto; overflow:visible}
+  .erd-src{display:none}
+  .site-header{position:static; background:#fff; border-bottom:2px solid #000; padding:0 0 10px}
+  .site-header h1,.site-header p{color:#000}
+  .chip-v{background:#eee; color:#000; border-color:#999}
+  body{background:#fff; font-size:10pt}
+  .content{max-width:100%; padding:0}
+  .panel{display:block !important}
+  .panel-title{page-break-before:always; page-break-after:avoid}
+  .panel:first-child .panel-title:first-child{page-break-before:avoid}
+  .card,.info-box,.code-card{page-break-inside:avoid; box-shadow:none}
+  table{font-size:8pt}
+  tr{page-break-inside:avoid}
+  th{position:static; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+  .badge,.dot{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  a{color:#000; text-decoration:none}
+  @page{size:A4; margin:14mm 12mm}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="ttl">
+    <h1>Contractra &nbsp;·&nbsp; كونتراكترا</h1>
+    <p>دليل توليد التوثيق وصيانته &nbsp;·&nbsp; Documentation Generation &amp; Maintenance Guide</p>
+  </div>
+  <div class="hdr-meta">
+    <span class="chip-v">الإصدار 2.0.1</span>
+    <span class="chip-v">توليد 2026-09-20 · 14:29</span>
+    <input id="q" type="search" placeholder="ابحث في كل التبويبات…" autocomplete="off">
+    <span class="hits" id="hits"></span>
+  </div>
+</header>
+
+<nav class="nav"><button class="nav-btn active" data-tab="t1">إدارة الوثيقة<span class="cnt" data-n="4">4</span></button><button class="nav-btn" data-tab="t2">ما يفعله المولّد بالضبط<span class="cnt" data-n="4">4</span></button><button class="nav-btn" data-tab="t3">ما لا يفعله المولّد — حدود م<span class="cnt" data-n="4">4</span></button></nav>
+
+<div class="content">
+<div id="t1" class="panel active"><h2 class="panel-title" id="0.-إدارة-الوثيقة">0. إدارة الوثيقة</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>القيمة</th></tr></thead><tbody><tr><td><strong>المعرّف</strong></td><td><span class="mono">documentation-generation-guide-ar</span></td></tr><tr><td><strong>الإصدار</strong></td><td><strong>2.0.1</strong></td></tr><tr><td><strong>الحالة</strong></td><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> مكتمل — <strong>Informative</strong></td></tr><tr><td><strong>التاريخ</strong></td><td>2026-09-18</td></tr><tr><td><strong>الغرض</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كيف تُحدَّث وثائق Contractra، وكيف تُعاد توليد النسخة التفاعلية</strong> — بحيث <strong>لا تنشأ نسختان متعارضتان أبدًا</strong></td></tr><tr><td><strong>يخدم</strong></td><td><strong>ADR-012</strong> (Markdown هو المصدر) · <strong>ADR-013</strong> (نسخة تفاعلية مولَّدة)</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="1.-القاعدة-الحاكمة">1. <span class="mark m-critical" title="حرج">⭐</span> القاعدة الحاكمة</h2>
+<div class="info-box danger"><p class="box-title"><span class="mark m-critical" title="حرج">⭐</span> <strong>Markdown هو المصدر الرسمي الوحيد.</strong></p>
+<p class="box-title"><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>وHTML نسخة مولَّدة — لا تُعدَّل يدويًا أبدًا.</strong></p></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>القاعدة</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل معلومة في HTML لها أصل في Markdown</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا معلومة مضافة في HTML</strong></td></tr><tr><td>2</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يُفتح HTML للتعديل إطلاقًا</strong> — <strong>التعديل في Markdown ثم إعادة التوليد</strong></td></tr><tr><td>3</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الإصدار وتاريخ التوليد ظاهران في ترويسة الصفحة</strong> — <strong>فأي تأخر يُكتشف بالنظر</strong></td></tr><tr><td>4</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا CDN ولا إنترنت ولا Framework كبير ولا Backend</strong> — <strong>ملف واحد يعمل بلا شبكة</strong></td></tr><tr><td>5</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>المولّد بلا اعتماديات خارجية</strong> — <strong>مكتبة Python القياسية فقط</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="2.-بنية-الملفات">2. <span class="mark m-critical" title="حرج">⭐</span> بنية الملفات</h2>
+<div class="card code-card snippet"><div class="card-header"><div class="dot dot-coral"></div><h3>مقتطف</h3></div><pre><code>docs/
+├── system-specification-and-team-reference-ar.md    ← ⭐ المصدر الرسمي
+├── system-specification-and-team-reference-ar.html  ← ⭐ مولَّد — ⛔ لا يُعدَّل
+├── database-design-ar.md                            ← ⭐ مصدر — تصميم قاعدة البيانات
+├── logical-model-patch-v1.2.1-ar.md                 ← ⭐ سجل تاريخي — ⛔ لا يُعدَّل
+├── logical-model-correction-patch-v2.0.1-ar.md      ← ⭐ مصدر — الباتش الحاكم
+├── mvp-entity-scope-matrix-ar.md                    ← ⭐ مصدر — نطاق التنفيذ
+├── database-design-ar.html                          ← ⭐ مولَّد — ⛔ لا يُعدَّل
+├── generate-html.py                                 ← ⭐ مولّد الصفحات
+├── generate-erd.py                                  ← ⭐ مولّد مخططات ERD
+├── erd-*.svg                                        ← ⭐ مولَّد — ⛔ لا يُعدَّل
+├── erd-render-map.json                              ← ⭐ خريطة الرسم — مولَّدة
+├── logical-data-model-ar.md
+├── data-dictionary-ar.md
+├── database-integrity-rules-ar.md
+├── database-design-review-checklist-ar.md
+├── requirements-traceability-matrix-ar.md
+├── architecture-decision-records-ar.md
+├── documentation-index-ar.md
+├── documentation-generation-guide-ar.md              ← هذه الوثيقة
+│
+└── ── مستندات المرحلة صفر — المصادر · ⛔ لا تُعدَّل ──
+    ├── phase-zero-patch-v1.1.4-ar.md
+    ├── monthly-financial-report-addendum-ar.md
+    ├── phase-zero-patch-v1.1.3-ar.md
+    ├── operations-sites-and-expense-entry-addendum-ar.md
+    ├── audit-and-operational-logging-addendum-ar.md
+    ├── phase-zero-patch-v1.1.2-ar.md
+    ├── phase-zero-patch-v1.1.1-ar.md
+    ├── phase-zero-errata-v1.1-ar.md
+    ├── confirmed-business-rules-ar.md
+    ├── conceptual-data-model-ar.md
+    ├── contracts-and-payments-addendum-ar.md
+    ├── wages-and-subcontractors-addendum-ar.md
+    ├── excel-source-mapping-ar.md
+    ├── evidence-matrix-ar.md
+    ├── reconciliation-exceptions-ar.md
+    ├── consistency-matrix-ar.md
+    ├── open-questions-ar.md
+    ├── diff-summary-v1.1-ar.md
+    ├── phase-zero-final-report-ar.md
+    ├── phase-zero-closure-checklist-ar.md
+    └── business-validation-pack-ar.md</code></pre></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="3.-إعادة-توليد-النسخة-التفاعلية">3. <span class="mark m-critical" title="حرج">⭐</span> إعادة توليد النسخة التفاعلية</h2>
+<div class="card code-card snippet"><div class="card-header"><div class="dot dot-amber"></div><h3 class="card-title" id="3.1-الأمر">3.1 الأمر</h3><span>مقتطف</span></div><pre><code>cd docs
+python3 generate-html.py</code></pre></div>
+<p class="para"><strong>بلا وسائط</strong> يستخدم المولّد الافتراضيات:</p>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>القيمة الافتراضية</th></tr></thead><tbody><tr><td>المدخل</td><td><span class="mono">system-specification-and-team-reference-ar.md</span></td></tr><tr><td>المخرج</td><td><span class="mono">system-specification-and-team-reference-ar.html</span></td></tr></tbody></table></div></div>
+<p class="para"><strong>ولتوليد ملف آخر:</strong></p>
+<div class="card code-card snippet"><div class="card-header"><div class="dot dot-purple"></div><h3>مقتطف</h3></div><pre><code>python3 generate-html.py &lt;input.md&gt; &lt;output.html&gt;</code></pre></div>
+<div class="card code-card snippet"><div class="card-header"><div class="dot dot-teal"></div><h3 class="card-title" id="3.1.1-وثيقة-تصميم-قاعدة-البيانات--أمران-بالترتيب">3.1.1 <span class="mark m-critical" title="حرج">⭐</span> وثيقة تصميم قاعدة البيانات — أمران بالترتيب</h3><span>مقتطف</span></div><pre><code>cd docs
+python3 generate-erd.py  database-design-ar.md                          ← أولًا: الرسم
+python3 generate-html.py database-design-ar.md database-design-ar.html  ← ثانيًا: الصفحة</code></pre></div>
+<div class="info-box danger"><p><span class="mark m-critical" title="حرج">⭐</span> <strong>الترتيب ملزم:</strong> <strong>الصفحة تدمج الرسم الموجود على القرص.</strong> <strong>وتوليد الصفحة وحدها بعد تعديل المخطط يعرض المصدر النصي بدل الرسم</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا يكسر شيئًا لكنه لا يُحدِّث الصورة.</strong></p></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>القيمة</th></tr></thead><tbody><tr><td><strong>متطلب <span class="mono">generate-erd.py</span></strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>Graphviz (الأمر <span class="mono">dot</span>)</strong> — <span class="mono">apt install graphviz</span> · <span class="mono">brew install graphviz</span> · <span class="mono">choco install graphviz</span></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>متى يُطلب</strong></td><td><strong>وقت التوليد فقط</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>والصفحة الناتجة لا تحتاج شيئًا: الـSVG مدموج داخلها</strong></td></tr><tr><td><strong>إن لم يكن مثبَّتًا</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>يتوقف برسالة واضحة <span class="mark m-forbidden" title="ممنوع">⛔</span> ولا يحذف أي رسم سابق</strong> — فتبقى الصفحة سليمة</td></tr><tr><td><strong>كيف يعرف المولّد أي رسم لأي مخطط</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>ببصمة نص المخطط نفسه</strong> في <span class="mono">erd-render-map.json</span> — <strong>فتعديل المخطط يُبطل الرسم القديم تلقائيًا ولا تُعرض صورة قديمة خطأً</strong></td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-amber"></div><h3 class="card-title" id="3.2-المتطلبات">3.2 المتطلبات</h3><span>3 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>القيمة</th></tr></thead><tbody><tr><td><strong>Python</strong></td><td><strong>3.8 أو أحدث</strong></td></tr><tr><td><strong>الاعتماديات</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>لا شيء — مكتبة Python القياسية فقط</strong></td></tr><tr><td><strong>الإنترنت</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>غير مطلوب</strong></td></tr></tbody></table></div></div>
+<div class="card code-card snippet"><div class="card-header"><div class="dot dot-blue"></div><h3 class="card-title" id="3.3-المخرَج-المتوقَّع">3.3 المخرَج المتوقَّع</h3><span>مقتطف</span></div><pre><code>✅ تم التوليد: system-specification-and-team-reference-ar.html
+   الأقسام: 35   ·   التبويبات: 11
+   حجم الملف: &lt;عدد&gt; حرفًا
+   ⛔ لا تعدّل HTML يدويًا — أعد التوليد بعد أي تعديل على Markdown.</code></pre></div>
+<div class="info-box tech"><p><span class="mark m-critical" title="حرج">⭐</span> <strong>«الأقسام: 35» فحص ذاتي</strong> — إن ظهر عدد مختلف فمعناه أن قسمًا <span class="mono">## N.</span> أُضيف أو حُذف أو تغيّر ترقيمه، <strong>فراجع خريطة التبويبات في §4.5</strong>.</p></div>
+<div class="card"><div class="card-header"><div class="dot dot-purple"></div><h3 class="card-title" id="3.4-متى-تُعاد-التوليد">3.4 <span class="mark m-critical" title="حرج">⭐</span> متى تُعاد التوليد</h3><span>4 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الحالة</th><th>إعادة التوليد؟</th></tr></thead><tbody><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>أي تعديل على <span class="mono">system-specification-and-team-reference-ar.md</span></strong></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>إلزامية</strong></td></tr><tr><td>تعديل على مستند آخر</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا</strong> — إلا إن غيّر محتوى الوثيقة الرئيسية</td></tr><tr><td>تعديل على <span class="mono">generate-html.py</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>نعم</strong></td></tr><tr><td>رفع رقم الإصدار</td><td><span class="mark m-ok" title="مستوفى">✅</span> <strong>نعم</strong> — لأن الإصدار يظهر في ترويسة الصفحة</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div></div><div id="t2" class="panel"><h2 class="panel-title" id="4.-ما-يفعله-المولّد-بالضبط">4. <span class="mark m-critical" title="حرج">⭐</span> ما يفعله المولّد بالضبط</h2>
+<div class="card"><div class="card-header"><div class="dot dot-purple"></div><h3 class="card-title" id="4.1-التحويلات-المدعومة">4.1 التحويلات المدعومة</h3><span>14 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>عنصر Markdown</th><th>⟹ HTML</th><th>ملاحظة</th></tr></thead><tbody><tr><td><span class="mono">## N. عنوان</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>عنوان لوحة</strong> <span class="mono">panel-title</span> <strong>داخل التبويب الذي يضمّ القسم N</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الخريطة في §4.5</strong></td></tr><tr><td><span class="mono">### عنوان</span> <strong>يليه جدول أو قائمة أو كتلة كود</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>ترويسة بطاقة</strong> <span class="mono">card-header</span> — <strong>نقطة ملوّنة · العنوان · عدّاد الصفوف</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>بمعرّف ثابت — فيدخل فهرس التبويب</strong></td></tr><tr><td><span class="mono">### عنوان</span> <strong>يليه نص</strong></td><td><strong>عنوان فرعي بحدّ بنفسجي جانبي</strong> <span class="mono">section-title</span></td><td>—</td></tr><tr><td><span class="mono">#### … ######</span></td><td><strong>عنوان فرعي أصغر</strong> <span class="mono">sub-title</span> — أو <strong>ترويسة بطاقة</strong> بحسب ما يليه</td><td>—</td></tr><tr><td><span class="mono">| جدول |</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>بطاقة</strong> تحوي <span class="mono">&lt;table&gt;</span> في حاوية قابلة للتمرير</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>ورأس الجدول ثابت عند التمرير · وعدد الصفوف في الترويسة</strong></td></tr><tr><td><span class="mono"> </span>`<span class="mono">mermaid </span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كتلة مصدر مُسمّاة «مخطط Mermaid — المصدر النصي»</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>§4.3</strong></td></tr><tr><td><span class="mono"> </span>`<span class="mono">gherkin </span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>بطاقة كود مُسمّاة «معيار قبول — Given / When / Then»</strong></td><td>لمعايير القبول</td></tr><tr><td><span class="mono"> </span>`<span class="mono"> </span> عامة</td><td><strong>بطاقة كود مُسمّاة «مقتطف»</strong></td><td>باتجاه LTR</td></tr><tr><td><span class="mono">&gt; اقتباس</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>صندوق ملوّن</strong> <span class="mono">info-box</span> — <strong>ولونه يُشتق من رمز السطر نفسه</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>danger</strong> · <span class="mark m-warn" title="تنبيه">⚠️</span> <strong>warn</strong> · <span class="mark m-critical" title="حرج">⭐</span> <strong>tech</strong> · <span class="mark m-ok" title="مستوفى">✅</span> <strong>ok</strong> · وإلا <strong>info</strong></td></tr><tr><td><span class="mono">- قائمة</span> · <span class="mono">1. قائمة</span></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>بطاقة قائمة</strong> <span class="mono">rule-list</span> — <strong>وبترويسة إن سبقها عنوان</strong></td><td>—</td></tr><tr><td><span class="mono"><strong>عريض</strong></span> · <span class="mono"><em>مائل</em></span> · <span class="mono"><del>مشطوب</del></span></td><td><span class="mono">&lt;strong&gt;</span> · <span class="mono">&lt;em&gt;</span> · <span class="mono">&lt;del&gt;</span></td><td>—</td></tr><tr><td>`<span class="mono"> </span>كود<span class="mono"> </span>`</td><td><span class="mono">&lt;code&gt;</span></td><td><strong>باتجاه LTR داخل نص عربي</strong></td></tr><tr><td><span class="mono"><a href="رابط">نص</a></span></td><td><span class="mono">&lt;a&gt;</span></td><td>—</td></tr><tr><td><span class="mono">---</span></td><td><span class="mono">&lt;hr&gt;</span></td><td>—</td></tr></tbody></table></div></div>
+<p class="section-title" id="4.2-الشارات--مشتقة-من-رموز-Markdown-نفسها">4.2 <span class="mark m-critical" title="حرج">⭐</span> الشارات — مشتقة من رموز Markdown نفسها</p>
+<p class="para"><span class="mark m-critical" title="حرج">⭐</span> <strong>المولّد لا يخترع شارة</strong> — بل <strong>يلفّ الرموز الموجودة في Markdown</strong> بعنصر يحمل وصفًا يظهر عند التمرير:</p>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>الرمز</th><th>الشارة</th><th>الوصف</th></tr></thead><tbody><tr><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td><td><span class="mono">b-confirmed</span></td><td>مؤكدة</td></tr><tr><td><span class="badge b-proposed" title="مقترح">🔵</span></td><td><span class="mono">b-proposed</span></td><td>مقترح</td></tr><tr><td><span class="badge b-open" title="قرار مفتوح">🟡</span></td><td><span class="mono">b-open</span></td><td>قرار مفتوح</td></tr><tr><td><span class="badge b-assumption" title="افتراض">⚪</span></td><td><span class="mono">b-assumption</span></td><td>افتراض</td></tr><tr><td><span class="badge b-evidence" title="دليل تاريخي">📊</span></td><td><span class="mono">b-evidence</span></td><td>دليل تاريخي</td></tr><tr><td><span class="badge b-migration" title="مسألة ترحيل">🔧</span></td><td><span class="mono">b-migration</span></td><td>مسألة ترحيل</td></tr><tr><td><span class="badge b-future" title="نطاق مستقبلي">🔮</span></td><td><span class="mono">b-future</span></td><td>نطاق مستقبلي</td></tr><tr><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><span class="mono">b-forbidden</span></td><td>ممنوع</td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span></td><td><span class="mono">b-critical</span></td><td>حرج</td></tr><tr><td><span class="mark m-idem" title="منع تكرار">⚡</span></td><td><span class="mono">b-idempotent</span></td><td>منع تكرار</td></tr><tr><td><span class="mark m-sensitive" title="حساس">🔒</span></td><td><span class="mono">b-sensitive</span></td><td>حساس</td></tr><tr><td><span class="mark m-warn" title="تنبيه">⚠️</span></td><td><span class="mono">b-warning</span></td><td>تنبيه</td></tr><tr><td><span class="mark m-ok" title="مستوفى">✅</span></td><td><span class="mono">b-ok</span></td><td>مستوفى</td></tr><tr><td><span class="mark m-no" title="غير مستوفى">❌</span></td><td><span class="mono">b-no</span></td><td>غير مستوفى</td></tr></tbody></table></div></div>
+<div class="info-box danger"><p><span class="mark m-critical" title="حرج">⭐</span> <strong>ولهذا: لإضافة شارة، أضف رمزها في Markdown — <span class="mark m-forbidden" title="ممنوع">⛔</span> لا تعدّل HTML.</strong></p></div>
+<div class="card"><div class="card-header"><div class="dot dot-coral"></div><h3 class="card-title" id="4.3-مخططات-Mermaid--قرار-معلَن">4.3 <span class="mark m-critical" title="حرج">⭐</span> مخططات Mermaid — قرار معلَن</h3><span>5 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>القرار</th></tr></thead><tbody><tr><td><strong>المشكلة</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>عرض Mermaid كصورة يتطلب محرّك رسم</strong> — و<strong>تحميله من CDN مخالف للقاعدة 4 في §1</strong></td></tr><tr><td><strong>القرار</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>يُعرض المصدر النصي للمخطط داخل كتلة مُسمّاة</strong></td></tr><tr><td><strong>لماذا مقبول</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل مخطط في الوثيقة مصحوب بشرح عربي نصي يليه</strong> — <strong>فالمعنى لا يضيع</strong></td></tr><tr><td><strong>البديل عند الحاجة</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>نسخ المصدر ولصقه في أي محرّر Mermaid</strong> للحصول على الصورة</td></tr><tr><td><strong>إن أُريد الرسم داخل الملف</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الشرط: تضمين محرّك الرسم داخل الملف نفسه — <span class="mark m-forbidden" title="ممنوع">⛔</span> لا من CDN</strong> · و<strong>هذا يزيد حجم الملف كثيرًا ويحتاج قرارًا صريحًا</strong></td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-amber"></div><h3 class="card-title" id="4.4-القدرات-التفاعلية">4.4 <span class="mark m-critical" title="حرج">⭐</span> القدرات التفاعلية</h3><span>10 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>القدرة</th><th>كيف تعمل</th></tr></thead><tbody><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>تبويبات</strong></td><td><strong>أحد عشر تبويبًا</strong> يعرض كلٌّ منها <strong>لوحة واحدة</strong> — <span class="mark m-critical" title="حرج">⭐</span> <strong>فلا تمرير طويل عبر 35 قسمًا</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>فهرس التبويب</strong></td><td><strong>زر «الفهرس» أسفل الصفحة</strong> — <strong>يُبنى تلقائيًا للتبويب المفتوح</strong> من عناوين اللوحات والبطاقات</td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>بحث في كل التبويبات</strong></td><td><strong>مربع البحث في الترويسة</strong> — <strong>يميّز كل المطابقات في كل التبويبات</strong> · <span class="mark m-critical" title="حرج">⭐</span> <strong>ويعرض عدّاد المطابقات بجانب اسم كل تبويب</strong> · <strong>ويقفز إلى أول مطابقة في التبويب المفتوح</strong></td></tr><tr><td><strong>مسح البحث</strong></td><td><strong>إفراغ المربع</strong> يزيل التمييز ويعيد العدّادات إلى عدد الأقسام</td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>روابط داخلية</strong></td><td><strong>كل عنوان — لوحةً كان أو بطاقة — له معرّف ثابت</strong> · <strong>و<span class="mono">#اسم-التبويب</span> في الرابط يفتح ذلك التبويب مباشرة</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>ترويسة لاصقة</strong></td><td><strong>الترويسة وشريط التبويبات ملتصقان أعلى الصفحة</strong> — <span class="mark m-critical" title="حرج">⭐</span> <strong>وارتفاعهما يُقاس بـJS ولا يُثبَّت برقم</strong>، فلا يختفي عنوان خلفهما</td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>طباعة</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>تفتح كل التبويبات دفعةً واحدة</strong> · <strong>وتزيل الشريط والأزرار والتمييز</strong> · <strong>A4 بهوامش مضبوطة</strong> · <strong>وتمنع قص البطاقات والصفوف</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الوضع الداكن</strong></td><td><strong>تلقائي بحسب إعداد النظام</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>RTL كامل</strong></td><td><strong>بخصائص منطقية</strong> (<span class="mono">border-inline-start</span> · <span class="mono">margin-inline-start</span>) — والكود وحده بـLTR لأنه إنجليزي</td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الاستجابة</strong></td><td><strong>شريط التبويبات يلتف على أكثر من سطر</strong> · <strong>والجداول تتمرّر أفقيًا داخل بطاقاتها</strong></td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-blue"></div><h3 class="card-title" id="4.4.1-المخططات-المرسومة">4.4.1 <span class="mark m-critical" title="حرج">⭐</span> المخططات المرسومة</h3><span>6 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>المحتوى</th></tr></thead><tbody><tr><td><strong>ما يُرسم</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل كتلة <span class="mono"> </span>`<span class="mono">mermaid </span> تحوي <span class="mono">erDiagram</span></strong> — <strong>إن كان لها رسم في <span class="mono">erd-render-map.json</span></strong></td></tr><tr><td><strong>كيف تظهر</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>SVG مدموج داخل الصفحة</strong> بأزرار: <strong>＋ · − · ملء العرض · ملء الإطار · 100%</strong> · <strong>وسحب للتحريك وعجلة الفأرة للتكبير</strong></td></tr><tr><td><strong>المصدر النصي</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>يبقى مطويًا تحت الرسم</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>فلا معلومة تضيع ولا تنفصل الصورة عن مصدرها</strong></td></tr><tr><td><strong>مخطط بلا رسم</strong></td><td><strong>يُعرض مصدره النصي كما كان</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>بلا كسر</strong></td></tr><tr><td><strong>الطباعة</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الرسم يُطبع والأزرار والمصدر النصي لا</strong></td></tr><tr><td><strong>التجميع بالمجالات</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>من تعليقات <span class="mono">%% domain N: …</span> و<span class="mono">%% entity …</span> داخل المخطط نفسه</strong> — <strong>فالتجميع مكتوب في Markdown لا في المولّد</strong></td></tr></tbody></table></div></div>
+<p class="section-title" id="4.5-خريطة-التبويبات--التنظيم-الوحيد-الذي-يضيفه-المولّد">4.5 <span class="mark m-critical" title="حرج">⭐</span> خريطة التبويبات — التنظيم الوحيد الذي يضيفه المولّد</p>
+<div class="info-box danger"><p><span class="mark m-critical" title="حرج">⭐</span> <strong>هذه هي الإضافة الوحيدة فوق Markdown: تجميع الأقسام الـ35 في أحد عشر تبويبًا.</strong> <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا تضيف معلومة واحدة</strong> — كل قسم يظهر كاملًا بنصه وترتيبه.</p></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>التبويب</th><th>الأقسام</th><th>المفتاح في الرابط</th></tr></thead><tbody><tr><td>1</td><td><strong>نظرة عامة</strong></td><td>§1 · §2 · §3</td><td><span class="mono">#overview</span></td></tr><tr><td>2</td><td><strong>النطاق والافتراضات</strong></td><td>§4 · §5 · §6</td><td><span class="mono">#scope</span></td></tr><tr><td>3</td><td><strong>الأدوار والوحدات</strong></td><td>§7 · §8</td><td><span class="mono">#roles</span></td></tr><tr><td>4</td><td><strong>قواعد العمل</strong></td><td>§9</td><td><span class="mono">#rules</span></td></tr><tr><td>5</td><td><strong>المتطلبات الوظيفية</strong></td><td>§10</td><td><span class="mono">#reqs</span></td></tr><tr><td>6</td><td><strong>حالات الاستخدام</strong></td><td>§11 · §12</td><td><span class="mono">#usecases</span></td></tr><tr><td>7</td><td><strong>غير الوظيفية والأمان</strong></td><td>§13 · §14 · §15</td><td><span class="mono">#nfr</span></td></tr><tr><td>8</td><td><strong>البيانات</strong></td><td>§16 · §17 · §18 · §19</td><td><span class="mono">#data</span></td></tr><tr><td>9</td><td><strong>الواجهات والتشغيل</strong></td><td>§20 … §27</td><td><span class="mono">#interfaces</span></td></tr><tr><td>10</td><td><strong>الاختبارات والتتبع</strong></td><td>§28 · §29 · §30</td><td><span class="mono">#testing</span></td></tr><tr><td>11</td><td><strong>القرارات والمخاطر</strong></td><td>§31 … §35</td><td><span class="mono">#decisions</span></td></tr></tbody></table></div></div>
+<p class="para"><strong><span class="mark m-critical" title="حرج">⭐</span> ولكل وثيقة خريطتها:</strong> <span class="mono">generate-html.py</span> يحمل خريطتين — <strong>إحداهما للمواصفة (11 تبويبًا) والأخرى لوثيقة تصميم قاعدة البيانات (8 تبويبات)</strong> — <strong>ويختار بحسب اسم الملف المصدر</strong>. <span class="mark m-critical" title="حرج">⭐</span> <strong>وأي وثيقة ثالثة بلا خريطة تُجمَّع تلقائيًا كل أربعة أقسام في تبويب</strong> <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>بلا ضياع قسم</strong>.</p>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>المفتاح</th><th>التبويب</th><th>الأقسام</th></tr></thead><tbody><tr><td><span class="mono">principles</span></td><td><strong>المبادئ</strong></td><td>§0 · §1 · §2</td></tr><tr><td><span class="mono">relations</span></td><td><strong>العلاقات والأنماط</strong></td><td>§3 · §4 · §5</td></tr><tr><td><span class="mono">core</span></td><td><strong>الجداول النواة</strong></td><td>§6</td></tr><tr><td><span class="mono">rest</span></td><td><strong>بقية الجداول</strong></td><td>§7</td></tr><tr><td><span class="mono">matrix</span></td><td><strong>مصفوفة العلاقات</strong></td><td>§8</td></tr><tr><td><span class="mono">constraints</span></td><td><strong>القيود والمحسوبات</strong></td><td>§9 · §10 · §11</td></tr><tr><td><span class="mono">erd</span></td><td><strong>المخطط الشامل</strong></td><td>§12</td></tr><tr><td><span class="mono">notes</span></td><td><strong>الملاحظات والقرارات</strong></td><td>§13 … §16</td></tr></tbody></table></div></div>
+<p class="para"><strong>عند إضافة قسم جديد <span class="mono">## 36.</span>:</strong></p>
+<div class="card code-card snippet"><div class="card-header"><div class="dot dot-coral"></div><h3>مقتطف</h3></div><pre><code>1. ⭐ افتح generate-html.py وأضف رقمه إلى قائمة TABS في التبويب المناسب
+2. ⭐ إن لم يُضَف: لا تضيع المعلومة — يُلحق القسم بآخر تبويب تلقائيًا
+        ⛔ لكنه يظهر في مكان غير منطقي — فالإضافة إلى TABS هي الصواب
+3. أعد التوليد وتحقّق أن السطر يقول: الأقسام: 36</code></pre></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="5.-إجراء-التعديل--خطوة-بخطوة">5. <span class="mark m-critical" title="حرج">⭐</span> إجراء التعديل — خطوة بخطوة</h2>
+<div class="card code-card snippet"><div class="card-header"><div class="dot dot-amber"></div><h3 class="card-title" id="5.1-تعديل-الوثيقة-الرئيسية">5.1 تعديل الوثيقة الرئيسية</h3><span>مقتطف</span></div><pre><code>1. افتح  system-specification-and-team-reference-ar.md
+2. عدّل المحتوى
+3. ⭐ ارفع رقم الإصدار في §1.1
+        PATCH  →  تصحيح توثيقي بلا تغيير قاعدة
+        MINOR  →  إضافة متطلبات أو مجال
+        MAJOR  →  ⭐ تغيير بنيوي في النموذج المنطقي
+4. ⭐ سجّل التغيير في §35 Change Log:
+        رقم الإصدار · التاريخ · نوع التغيير · ما تغيّر · السبب
+5. ⭐ نفّذ:  python3 generate-html.py
+6. تحقّق أن الإصدار الجديد ظهر في ترويسة الـHTML</code></pre></div>
+<div class="card code-card snippet"><div class="card-header"><div class="dot dot-blue"></div><h3 class="card-title" id="5.2-إضافة-قاعدة-عمل-جديدة">5.2 <span class="mark m-critical" title="حرج">⭐</span> إضافة قاعدة عمل جديدة</h3><span>مقتطف</span></div><pre><code>1. ⭐ أضفها في confirmed-business-rules-ar.md بالرقم  ح-263  فصاعدًا
+        ⭐ وقواعد الباتش BR-247…BR-262 مصدرها قرار صاحب المشروع لا ح-XXX
+2. ⭐ أضفها في الوثيقة الرئيسية §9 بالرقم المقابل  BR-263
+        ⭐ القاعدة: BR-XXX ≡ ح-XXX — تطابق رقمي تام
+3. أضف المتطلب الذي يطبّقها في §10
+4. أضف معيار القبول في §28
+5. ⭐ أضف الصف في requirements-traceability-matrix-ar.md
+6. ⭐ إن مسّت النموذج: عدّل logical-data-model-ar.md و data-dictionary-ar.md
+7. ⭐ إن مسّت قيدًا: عدّل database-integrity-rules-ar.md
+8. سجّل في §35 Change Log
+9. أعد التوليد</code></pre></div>
+<div class="info-box danger"><p><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يُعاد استخدام أي معرّف محذوف — <span class="mono">BR-134</span> محجوز إلى الأبد.</strong></p></div>
+<div class="card"><div class="card-header"><div class="dot dot-purple"></div><h3 class="card-title" id="5.2.1-ترقيم-الإصدارات-بعد-الباتش-v1.2.1">5.2.1 <span class="badge b-confirmed" title="مؤكدة">🟢</span> <span class="mark m-critical" title="حرج">⭐</span> ترقيم الإصدارات بعد الباتش v1.2.1</h3><span>4 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>القاعدة</th></tr></thead><tbody><tr><td><strong>الباتش وحدة تغيير</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>يحمل رقمه الخاص</strong> (<span class="mono">v1.2.1</span>) <strong>في اسم ملفه وسجله</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الوثائق المتأثرة</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>تنتقل إلى <span class="mono">MAJOR</span> إن مسّها تغيير بنيوي</strong> — <strong>وإضافة مجالين وتغيير Cardinality جوهرية هما تعريف <span class="mono">MAJOR</span> في §5.1</strong></td></tr><tr><td><strong>المطبَّق فعليًا</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">2.0.0</span></strong> لـ: <strong>المواصفة · النموذج المنطقي · قاموس البيانات · قواعد النزاهة · قائمة المراجعة · مصفوفة التتبع · سجل القرارات · وثيقة التصميم · الفهرس</strong></td></tr><tr><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ما لا يُفعل</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ترقيم صامت يخالف القاعدة المكتوبة</strong> — <strong>والتعارض يُعلَن ويُحسم لا يُخفى</strong></td></tr></tbody></table></div></div>
+<div class="card code-card snippet"><div class="card-header"><div class="dot dot-teal"></div><h3 class="card-title" id="5.3-حسم-قرار-مفتوح">5.3 <span class="mark m-critical" title="حرج">⭐</span> حسم قرار مفتوح</h3><span>مقتطف</span></div><pre><code>1. ⭐ غيّر حالته في §32 من 🟡 إلى ✅ — ⛔ ولا تحذف السطر
+2. ⭐ اذكر: مَن قرر · ومتى · وما القرار
+3. ⭐ إن كان له افتراض عامل ⚪ في §6.1: حدّثه أو أزله
+4. ⭐ إن غيّر قاعدة: اتبع §5.2
+5. ⭐ إن غيّر معيار قبول: حدّث §28 ومصفوفة التتبع
+6. سجّل في §35 وأعد التوليد</code></pre></div>
+<div class="card code-card snippet"><div class="card-header"><div class="dot dot-coral"></div><h3 class="card-title" id="5.4-إضافة-قرار-معماري">5.4 <span class="mark m-critical" title="حرج">⭐</span> إضافة قرار معماري</h3><span>مقتطف</span></div><pre><code>1. ⭐ أضف ADR كاملًا في architecture-decision-records-ar.md
+        ⭐ بالحقول الاثني عشر — والبدائل المرفوضة مع سبب رفض كل بديل
+2. ⭐ أضف صفه في فهرس §0.3 هناك وفي §31 من الوثيقة الرئيسية
+3. ⛔ لا تخترع اسم مَن اعتمد القرار
+        ⭐ اكتب «صاحب المشروع» أو «قرار تصميمي — يحتاج اعتمادًا»
+4. سجّل في §35 وأعد التوليد</code></pre></div>
+<div class="card"><div class="card-header"><div class="dot dot-amber"></div><h3 class="card-title" id="5.5-ما-لا-يُعدَّل-أبدًا">5.5 <span class="mark m-forbidden" title="ممنوع">⛔</span> ما لا يُعدَّل أبدًا</h3><span>4 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>#</th><th>البند</th><th>لماذا</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>مستندات المرحلة صفر الـ21</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>مصادر — والتعديل عليها يفقد سجل التغيير معناه</strong></td></tr><tr><td>2</td><td><span class="mark m-critical" title="حرج">⭐</span> **<span class="mono">*.html</span>**</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>مولَّد — يُعاد توليده</strong></td></tr><tr><td>3</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الملفات الستة <span class="mono">Superseded</span></strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>تاريخ لا يُعاد كتابته</strong></td></tr><tr><td>4</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>معرّف محذوف</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>محجوز إلى الأبد</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="6.-فحص-الاتساق-بعد-أي-تعديل">6. <span class="mark m-critical" title="حرج">⭐</span> فحص الاتساق بعد أي تعديل</h2>
+<div class="info-box tech"><p><span class="mark m-critical" title="حرج">⭐</span> <strong>نفّذ هذه الفحوص الثمانية بعد كل تعديل جوهري.</strong></p></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>الفحص</th><th>كيف</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل <span class="mono">BR-XXX</span> مذكور موجود في §9</strong></td><td>بحث نصي عن <span class="mono">BR-</span> ومقابلته بالسجل</td></tr><tr><td>2</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل <span class="mono">FR-XXX</span> مذكور موجود في §10</strong></td><td>بحث نصي</td></tr><tr><td>3</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل <span class="mono">AC-XXX</span> مذكور له سطر في §28 أو مصفوفة التتبع</strong></td><td>بحث نصي</td></tr><tr><td>4</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل <span class="mono">UC-XXX</span> موجود في §11</strong></td><td><strong>§11.1 يعرض التغطية 32/32</strong></td></tr><tr><td>5</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل <span class="mono">ADR-XXX</span> موجود في سجل القرارات</strong></td><td><strong>§0.3 هناك</strong></td></tr><tr><td>6</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل <span class="mono">OQ-XXX</span> موجود في §32</strong></td><td>بحث نصي</td></tr><tr><td>7</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل <span class="mono">RISK-XXX</span> موجود في §33</strong></td><td>بحث نصي</td></tr><tr><td>8</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>لا تعارض مع أحدث Patch</strong></td><td><strong><span class="mono">database-design-review-checklist-ar.md</span> §3 — عشرون فحصًا</strong></td></tr></tbody></table></div></div>
+<p class="para"><strong>فحص سريع بالطرفية:</strong></p>
+<div class="card code-card snippet"><div class="card-header"><div class="dot dot-purple"></div><h3>مقتطف</h3></div><pre><code>cd docs
+grep -o &#x27;BR-[0-9]\{3\}&#x27;   system-specification-and-team-reference-ar.md | sort -u | wc -l
+grep -o &#x27;FR-[A-Z]*-*[0-9]\{3\}&#x27; system-specification-and-team-reference-ar.md | sort -u | wc -l
+grep -o &#x27;AC-[0-9]\{3\}&#x27;   system-specification-and-team-reference-ar.md | sort -u | wc -l
+grep -o &#x27;UC-[0-9]\{3\}&#x27;   system-specification-and-team-reference-ar.md | sort -u | wc -l</code></pre></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="7.-اصطلاحات-الكتابة">7. <span class="mark m-critical" title="حرج">⭐</span> اصطلاحات الكتابة</h2>
+<div class="card"><div class="card-header"><div class="dot dot-teal"></div><h3 class="card-title" id="7.1-الرموز--استخدمها-بانضباط">7.1 الرموز — استخدمها بانضباط</h3><span>11 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الرمز</th><th>متى</th><th><span class="mark m-forbidden" title="ممنوع">⛔</span> متى لا</th></tr></thead><tbody><tr><td><span class="badge b-confirmed" title="مؤكدة">🟢</span></td><td>قاعدة أو متطلب <strong>مؤكد بمصدر</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا للمقترحات</strong></td></tr><tr><td><span class="badge b-proposed" title="مقترح">🔵</span></td><td><strong>مقترح يحتاج اعتمادًا</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يُبنى عليه رقم مالي</strong></td></tr><tr><td><span class="badge b-open" title="قرار مفتوح">🟡</span></td><td><strong>قرار لم يُحسم</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يُعرض كأنه محسوم</strong></td></tr><tr><td><span class="badge b-assumption" title="افتراض">⚪</span></td><td><strong>افتراض مؤقت</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يتحول إلى قرار بلا اعتماد</strong></td></tr><tr><td><span class="badge b-evidence" title="دليل تاريخي">📊</span></td><td><strong>حقيقة من البيانات التاريخية</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا تتحول إلى متطلب تلقائيًا</strong></td></tr><tr><td><span class="badge b-migration" title="مسألة ترحيل">🔧</span></td><td><strong>مسألة ترحيل</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا تتحول إلى قاعدة عمل مستقبلية</strong></td></tr><tr><td><span class="badge b-future" title="نطاق مستقبلي">🔮</span></td><td><strong>خارج النسخة الحالية</strong></td><td>—</td></tr><tr><td><span class="mark m-forbidden" title="ممنوع">⛔</span></td><td><strong>ممنوع صراحةً</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>استخدمه للمنع القاطع فقط</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span></td><td><strong>بند حرج</strong></td><td><span class="mark m-warn" title="تنبيه">⚠️</span> <strong>لا تُفرط — يفقد معناه</strong></td></tr><tr><td><span class="mark m-idem" title="منع تكرار">⚡</span></td><td><strong>يتطلب Idempotency</strong></td><td>—</td></tr><tr><td><span class="mark m-sensitive" title="حساس">🔒</span></td><td><strong>بيانات حساسة</strong></td><td>—</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-coral"></div><h3 class="card-title" id="7.2-قواعد-كتابة-المتطلب">7.2 قواعد كتابة المتطلب</h3><span>6 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>#</th><th>القاعدة</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>التزام واحد قابل للاختبار</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا التزامان في متطلب</strong></td></tr><tr><td>2</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا «سريع» ولا «سهل» ولا «مرن» ولا «آمن» بلا معيار قابل للقياس</strong></td></tr><tr><td>3</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا وصف لطريقة التنفيذ</strong> إلا إن كانت <strong>قيدًا معماريًا معتمدًا</strong> — <strong>وحينها يُشار إلى ADR</strong></td></tr><tr><td>4</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا تكرار لوصف قاعدة</strong> — <span class="mark m-critical" title="حرج">⭐</span> <strong>يُشار إلى معرّفها</strong></td></tr><tr><td>5</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل متطلب مالي يحمل أثرًا ماليًا وأثر Audit صريحين</strong> — أو <strong>يُصرَّح بأنه بلا أثر</strong></td></tr><tr><td>6</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل متطلب يحمل مصدره</strong></td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-amber"></div><h3 class="card-title" id="7.3-قواعد-كتابة-الأرقام">7.3 <span class="mark m-critical" title="حرج">⭐</span> قواعد كتابة الأرقام</h3><span>5 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>#</th><th>القاعدة</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل رقم أداء إما <span class="badge b-confirmed" title="مؤكدة">🟢</span> معتمد أو <span class="badge b-proposed" title="مقترح">🔵</span> مقترح بسبب اقتراحه مكتوبًا</strong></td></tr><tr><td>2</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا رقم أداء عشوائي</strong></td></tr><tr><td>3</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل مبلغ دالة في تاريخ الاستعلام يُذكر بتاريخه</strong></td></tr><tr><td>4</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الأرقام المالية بتسميتها الملزمة</strong> — <strong>BR-171 · BR-172</strong></td></tr><tr><td>5</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل رقم مستخرج من البيانات يحمل مصدره</strong>: الورقة والعمود والعدد</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div></div><div id="t3" class="panel"><h2 class="panel-title" id="8.-ما-لا-يفعله-المولّد--حدود-معلَنة">8. <span class="mark m-critical" title="حرج">⭐</span> ما لا يفعله المولّد — حدود معلَنة</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>الحد</th><th>البديل</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يرسم مخططات Mermaid</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>يعرض مصدرها النصي — والشرح العربي يليها في الوثيقة</strong></td></tr><tr><td>2</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يدعم Markdown المتداخل داخل خلايا الجداول بعمق</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>التنسيق البسيط مدعوم: عريض · كود · شارات · روابط</strong></td></tr><tr><td>3</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يدعم القوائم المتداخلة متعددة المستويات</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>استخدم جدولًا أو قائمة مسطحة</strong></td></tr><tr><td>4</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يعرف في أي تبويب يضع قسمًا جديدًا</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>يُلحقه بآخر تبويب — وخريطة §4.5 هي الحل</strong></td></tr><tr><td>4</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يولّد فهرسًا للمستندات الأخرى</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">documentation-index-ar.md</span> يؤدي هذا الدور</strong></td></tr><tr><td>5</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يتحقق من صحة المعرّفات</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>§6 من هذه الوثيقة يشرح الفحص اليدوي</strong></td></tr><tr><td>6</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يعرف تعديلات Markdown بعد التوليد</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>تاريخ التوليد ظاهر — فالتأخر يُكتشف بالنظر</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="9.-استكشاف-الأخطاء">9. <span class="mark m-critical" title="حرج">⭐</span> استكشاف الأخطاء</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>العَرَض</th><th>السبب المرجَّح</th><th>الحل</th></tr></thead><tbody><tr><td><strong>جدول ظهر نصًا خامًا</strong></td><td><strong>سطر الفاصل <span class="mono">|---|</span> ناقص أو مختلف عدد الأعمدة</strong></td><td><strong>صحّح الفاصل وطابق عدد الأعمدة</strong></td></tr><tr><td><strong>قسم ظهر في تبويب غير منطقي</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>رقمه غير مذكور في <span class="mono">TABS</span></strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>أضفه إلى التبويب الصحيح — §4.5 — وأعد التوليد</strong></td></tr><tr><td><strong>عنوان لم يظهر في فهرس التبويب</strong></td><td><strong>ليس عنوان لوحة ولا ترويسة بطاقة ولا عنوانًا فرعيًا</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الفهرس يغطي هذه الثلاثة فقط</strong></td></tr><tr><td><strong>عدّاد التبويب يقول <span class="mono">0</span> بعد البحث</strong></td><td><strong>لا مطابقة في ذلك التبويب</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>افتح تبويبًا عدّاده أكبر من صفر</strong></td></tr><tr><td><strong>كتلة كود لم تُغلق</strong></td><td><strong><span class="mono"> </span>`<span class="mono"> </span> الختامية ناقصة</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>افحص أزواج السياجات</strong></td></tr><tr><td><strong>شارة لم تظهر</strong></td><td><strong>رمز مختلف عن قائمة §4.2</strong></td><td><strong>استخدم الرموز المعتمدة</strong></td></tr><tr><td><strong>رابط داخلي لا يعمل</strong></td><td><strong>العنوان تغيّر فتغيّر معرّفه</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>استخدم رقم القسم في الإشارة لا نصه</strong></td></tr><tr><td><strong>البحث لا يجد شيئًا</strong></td><td><strong>أقل من حرفين</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>البحث يبدأ من حرفين فأكثر</strong></td></tr><tr><td><strong>HTML لم يتغيّر بعد التعديل</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>نسيت إعادة التوليد</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>نفّذ <span class="mono">python3 generate-html.py</span></strong></td></tr><tr><td><strong>المخطط يظهر نصًا بدل رسم</strong></td><td><strong>لا رسم لبصمته</strong> — <strong>عُدِّل المخطط ولم يُعد رسمه</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>نفّذ <span class="mono">python3 generate-erd.py &lt;file&gt;.md</span> ثم أعد توليد HTML</strong></td></tr><tr><td><strong><span class="mono"><span class="mark m-forbidden" title="ممنوع">⛔</span> Graphviz غير مثبَّت</span></strong></td><td><strong>الأمر <span class="mono">dot</span> غير موجود</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>ثبّت Graphviz — والرسوم السابقة تبقى سليمة حتى ذلك الحين</strong></td></tr><tr><td><strong>الرسم قديم لا يطابق المخطط</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>مستحيل بنيويًا</strong> — <strong>الرسم مرتبط ببصمة نص المخطط</strong></td><td><strong>إن حدث: احذف <span class="mono">erd-render-map.json</span> وأعد التوليد</strong></td></tr><tr><td><strong><span class="mono"><span class="mark m-forbidden" title="ممنوع">⛔</span> الملف المصدر غير موجود</span></strong></td><td><strong>المسار خاطئ</strong></td><td><strong>نفّذ من داخل <span class="mono">docs/</span> أو مرّر المسار</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="10.-قائمة-تحقق-قبل-نشر-أي-إصدار">10. <span class="mark m-critical" title="حرج">⭐</span> قائمة تحقق قبل نشر أي إصدار</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>البند</th><th><span class="mark m-ok" title="مستوفى">✅</span></th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>رقم الإصدار مرفوع في §1.1</strong></td><td>☐</td></tr><tr><td>2</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>§35 Change Log محدَّث بالسبب والموضع</strong></td><td>☐</td></tr><tr><td>3</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>فحوص الاتساق الثمانية في §6 نُفِّذت</strong></td><td>☐</td></tr><tr><td>4</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>HTML أُعيد توليده</strong></td><td>☐</td></tr><tr><td>5</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>الإصدار الجديد يظهر في ترويسة الـHTML</strong> · <strong>والسطر يقول «الأقسام: 35»</strong></td><td>☐</td></tr><tr><td>6</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>لا معلومة في HTML بلا أصل في Markdown</strong></td><td>☐</td></tr><tr><td>7</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>مستندات المرحلة صفر لم تُمَس</strong></td><td>☐</td></tr><tr><td>8</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>لا معرّف محذوف أُعيد استخدامه</strong></td><td>☐</td></tr><tr><td>9</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كل قرار جديد موسوم بحالته الصحيحة</strong></td><td>☐</td></tr><tr><td>10</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">documentation-index-ar.md</span> محدَّث إن أُضيف مستند أو حُذف</strong></td><td>☐</td></tr><tr><td>11</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>إن مُسّ النموذج: <span class="mono">database-design-review-checklist-ar.md</span> أُعيد تنفيذها</strong></td><td>☐</td></tr><tr><td>12</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا SQL ولا DDL ولا Migrations ولا كود</strong></td><td>☐</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="11.-ملخص-الأوامر">11. <span class="mark m-critical" title="حرج">⭐</span> ملخص الأوامر</h2>
+<div class="card code-card snippet"><div class="card-header"><div class="dot dot-amber"></div><h3>مقتطف</h3></div><pre><code># إعادة توليد النسخة التفاعلية
+cd docs &amp;&amp; python3 generate-html.py
+
+# توليد ملف آخر
+python3 generate-html.py &lt;input.md&gt; &lt;output.html&gt;
+
+# عدّ المعرّفات للفحص السريع
+grep -o &#x27;BR-[0-9]\{3\}&#x27; system-specification-and-team-reference-ar.md | sort -u | wc -l
+
+# البحث عن معرّف بعينه
+grep -n &#x27;BR-170&#x27; *.md
+
+# التحقق من أن مستندات المرحلة صفر لم تُمَس
+git status docs/ 2&gt;/dev/null || ls -la docs/</code></pre></div>
+<div class="rule-sep"></div>
+<div class="info-box tech"><p class="box-title"><span class="mark m-critical" title="حرج">⭐</span> <strong>القاعدة الأخيرة: إن وجدت نفسك تعدّل HTML — توقّف. المصدر هو Markdown.</strong></p></div></div>
+</div>
+
+<div class="mini-toc" id="toc"></div>
+<div class="fab"><button id="tocBtn" type="button">الفهرس</button></div>
+<div class="fab up"><button id="upBtn" type="button">أعلى</button></div>
+
+<script>
+(function(){
+  var q=document.getElementById('q'), hits=document.getElementById('hits');
+  var toc=document.getElementById('toc'), links;
+
+  /* ارتفاع الترويسة والتبويبات متغيّر (سطر أو سطران) — نقيسه بدل تثبيته */
+  var hdrEl=document.querySelector('.site-header'), navEl=document.querySelector('.nav');
+  function syncSticky(){
+    var h=hdrEl.offsetHeight;
+    navEl.style.top=h+'px';
+    document.documentElement.style.setProperty('--stick',(h+navEl.offsetHeight+14)+'px');
+  }
+  syncSticky();
+  window.addEventListener('resize',syncSticky);
+  if(window.ResizeObserver){ new ResizeObserver(syncSticky).observe(hdrEl); }
+
+  function show(id,btn){
+    document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
+    document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active')});
+    var el=document.getElementById(id); if(el) el.classList.add('active');
+    if(btn) btn.classList.add('active');
+    buildToc(id);
+    window.scrollTo({top:0,behavior:'instant'});
+    history.replaceState(null,'','#'+id);
+  }
+  window.__show=show;
+  document.querySelectorAll('.nav-btn').forEach(function(b){
+    b.addEventListener('click',function(){show(b.dataset.tab,b)});
+  });
+
+  function buildToc(id){
+    var p=document.getElementById(id); if(!p) return;
+    var hs=p.querySelectorAll('.panel-title,.section-title,.card-title');
+    var h='';
+    hs.forEach(function(x){
+      var cls=x.classList.contains('panel-title')?'l2':'l3';
+      h+='<a class="'+cls+'" href="#'+x.id+'">'+x.textContent.replace(/#$/,'')+'</a>';
+    });
+    toc.innerHTML=h;
+    links=Array.prototype.slice.call(toc.querySelectorAll('a'));
+  }
+
+  document.getElementById('tocBtn').addEventListener('click',function(){
+    toc.classList.toggle('open');
+  });
+  document.getElementById('upBtn').addEventListener('click',function(){
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  // ── تكبير وتحريك المخططات المرسومة ──────────────────
+  document.querySelectorAll('.erd').forEach(function(box){
+    var view=box.querySelector('.erd-view'), stage=box.querySelector('.erd-stage');
+    var svg=stage.querySelector('svg'); if(!svg) return;
+    var w=parseFloat(svg.getAttribute('width'))||svg.getBoundingClientRect().width;
+    var h=parseFloat(svg.getAttribute('height'))||svg.getBoundingClientRect().height;
+    svg.removeAttribute('width'); svg.removeAttribute('height');
+    svg.style.width=w+'px'; svg.style.height=h+'px';
+    var s=1,x=0,y=0;
+    function apply(){stage.style.transform='translate('+x+'px,'+y+'px) scale('+s+')'}
+    function fit(){            // ملء العرض: العرض كاملًا والتمرير رأسيًا بالسحب
+      s=Math.max(0.05,Math.min(view.clientWidth/w,1));
+      x=(view.clientWidth-w*s)/2; y=10; apply();
+    }
+    function fitAll(){         // ملء الإطار: المخطط كله داخل الإطار
+      var k=Math.min(view.clientWidth/w, view.clientHeight/h);
+      s=Math.max(0.03,Math.min(k,1)); x=(view.clientWidth-w*s)/2; y=6; apply();
+    }
+    function zoom(f,cx,cy){
+      var ns=Math.min(4,Math.max(0.05,s*f));
+      x=cx-(cx-x)*(ns/s); y=cy-(cy-y)*(ns/s); s=ns; apply();
+    }
+    box.querySelectorAll('.erd-bar button').forEach(function(b){
+      b.addEventListener('click',function(){
+        var k=b.dataset.z;
+        if(k==='in')  zoom(1.25,view.clientWidth/2,view.clientHeight/2);
+        if(k==='out') zoom(0.8, view.clientWidth/2,view.clientHeight/2);
+        if(k==='fit') fit();
+        if(k==='all') fitAll();
+        if(k==='reset'){s=1;x=0;y=0;apply()}
+      });
+    });
+    view.addEventListener('wheel',function(e){
+      e.preventDefault();
+      var r=view.getBoundingClientRect();
+      zoom(e.deltaY<0?1.12:0.89, e.clientX-r.left, e.clientY-r.top);
+    },{passive:false});
+    var dx=0,dy=0,down=false;
+    view.addEventListener('pointerdown',function(e){
+      down=true; dx=e.clientX-x; dy=e.clientY-y;
+      view.classList.add('drag'); view.setPointerCapture(e.pointerId);
+    });
+    view.addEventListener('pointermove',function(e){
+      if(!down) return; x=e.clientX-dx; y=e.clientY-dy; apply();
+    });
+    ['pointerup','pointercancel'].forEach(function(ev){
+      view.addEventListener(ev,function(){down=false; view.classList.remove('drag')});
+    });
+    // اللوحة قد تكون مخفية عند التحميل — فالضبط يتم أول ما تظهر بمقاس حقيقي
+    var fitted=false;
+    function tryFit(){
+      if(fitted || view.clientWidth<40 || view.clientHeight<40) return;
+      fitted=true; fit();
+    }
+    tryFit();
+    if(window.ResizeObserver){ new ResizeObserver(tryFit).observe(view); }
+    window.addEventListener('resize',function(){ if(fitted && s<=0.25) fit(); });
+  });
+
+  // بحث عبر كل التبويبات
+  function clearMarks(){
+    Array.prototype.slice.call(document.querySelectorAll('mark')).forEach(function(m){
+      m.parentNode.replaceChild(document.createTextNode(m.textContent),m);
+    });
+    document.querySelectorAll('.panel').forEach(function(p){p.normalize()});
+  }
+  var timer;
+  q.addEventListener('input',function(){
+    clearTimeout(timer); timer=setTimeout(runSearch,260);
+  });
+  function runSearch(){
+    clearMarks();
+    var v=q.value.trim();
+    document.querySelectorAll('.nav-btn .cnt').forEach(function(c){c.textContent=c.dataset.n});
+    if(v.length<2){ hits.textContent=''; return; }
+    var total=0;
+    document.querySelectorAll('.panel').forEach(function(p){
+      var c=0;
+      var w=document.createTreeWalker(p,NodeFilter.SHOW_TEXT,null), nodes=[], nd;
+      while((nd=w.nextNode())){ if(nd.nodeValue.indexOf(v)!==-1) nodes.push(nd); }
+      nodes.forEach(function(node){
+        var parts=node.nodeValue.split(v), frag=document.createDocumentFragment();
+        for(var i=0;i<parts.length;i++){
+          frag.appendChild(document.createTextNode(parts[i]));
+          if(i<parts.length-1){ var m=document.createElement('mark'); m.textContent=v; frag.appendChild(m); c++; }
+        }
+        node.parentNode.replaceChild(frag,node);
+      });
+      total+=c;
+      var btn=document.querySelector('.nav-btn[data-tab="'+p.id+'"] .cnt');
+      if(btn) btn.textContent=c?c:'0';
+    });
+    hits.textContent = total ? ('مطابقات: '+total) : 'لا مطابقات';
+    var first=document.querySelector('.panel.active mark');
+    if(first) first.scrollIntoView({block:'center'});
+  }
+
+  // فتح التبويب من الرابط
+  var h=location.hash.slice(1);
+  var start=document.querySelector('.nav-btn[data-tab="'+h+'"]');
+  if(start) show(h,start); else buildToc(document.querySelector('.panel.active').id);
+
+  // روابط الفهرس تغلقه بعد القفز
+  document.addEventListener('click',function(e){
+    if(e.target.closest('#toc a')) toc.classList.remove('open');
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contractra — مصفوفة نطاق الكيانات</title>
+<meta name="description" content="النسخة التفاعلية المولَّدة من مصفوفة نطاق الكيانات — Markdown هو المصدر الرسمي.">
+<meta name="generator" content="generate-html.py v2.0">
+<style>
+:root{
+  --purple:#7F77DD; --purple-dk:#3C3489; --purple-lt:#EEEDFE;
+  --teal:#1D9E75;   --teal-lt:#E1F5EE;
+  --coral:#D85A30;  --coral-lt:#FAECE7;
+  --amber:#BA7517;  --amber-lt:#FAEEDA;
+  --blue:#378ADD;   --blue-lt:#EEF4FD;
+  --gray-dk:#2C2C2A; --gray-md:#6B6B68; --gray-lt:#F1EFE8;
+  --gray-bd:#D3D1C7; --white:#fff; --bg:#F8F7F4;
+  --font-sans:"Segoe UI","Noto Naskh Arabic","Tahoma",system-ui,-apple-system,sans-serif;
+  --font-mono:"Cascadia Mono","SF Mono","Consolas","Courier New",monospace;
+  --radius:8px; --radius-lg:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-sans); background:var(--bg); color:var(--gray-dk);
+  font-size:14px; line-height:1.7; direction:rtl; text-align:right;
+}
+
+/* ── الترويسة ─────────────────────────────────────── */
+.site-header{
+  background:var(--purple-dk); padding:26px 40px; position:sticky; top:0; z-index:100;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+}
+.site-header .ttl{flex:1; min-width:240px}
+.site-header h1{font-size:21px; font-weight:700; color:#fff; letter-spacing:-.2px}
+.site-header p{font-size:12.5px; color:rgba(255,255,255,.55); margin-top:3px}
+.hdr-meta{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.chip-v{
+  font-size:11px; font-weight:700; padding:4px 11px; border-radius:20px;
+  background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.22);
+}
+#q{
+  width:220px; padding:7px 12px; border-radius:20px; font-family:inherit; font-size:12.5px;
+  border:1px solid rgba(255,255,255,.22); background:rgba(255,255,255,.1); color:#fff;
+}
+#q::placeholder{color:rgba(255,255,255,.5)}
+#q:focus{outline:none; background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.45)}
+
+/* ── التبويبات ────────────────────────────────────── */
+.nav{
+  background:var(--white); border-bottom:1px solid var(--gray-bd);
+  padding:0 40px; display:flex; flex-wrap:wrap; gap:0 2px;
+  position:sticky; top:81px; z-index:99;   /* يُضبط من JS حسب ارتفاع الترويسة */
+}
+.nav-btn{
+  font-size:13px; font-weight:600; padding:12px 15px; border:none; background:none;
+  color:var(--gray-md); cursor:pointer; border-bottom:2px solid transparent;
+  white-space:nowrap; transition:all .15s; font-family:inherit;
+}
+.nav-btn:hover{color:var(--gray-dk)}
+.nav-btn.active{color:var(--purple); border-bottom-color:var(--purple)}
+.nav-btn .cnt{font-size:10px; color:var(--gray-bd); margin-inline-start:5px; font-weight:700}
+.nav-btn.active .cnt{color:var(--purple)}
+
+/* ── المخطط المرسوم ───────────────────────────────── */
+.erd{border-bottom:1px solid var(--gray-bd); background:#fbfbf9}
+.erd-bar{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  padding:8px 14px; border-bottom:1px solid var(--gray-bd); background:var(--white);
+}
+.erd-bar button{
+  font-family:inherit; font-size:12px; font-weight:700; cursor:pointer;
+  padding:5px 11px; border-radius:7px; border:1px solid var(--gray-bd);
+  background:var(--white); color:var(--gray-dk); line-height:1.2;
+}
+.erd-bar button:hover{background:var(--purple-lt); border-color:var(--purple); color:var(--purple-dk)}
+.erd-hint{font-size:11.5px; color:var(--gray-md); margin-inline-start:auto}
+.erd-view{
+  height:min(74vh,720px); overflow:hidden; position:relative;
+  cursor:grab; background:
+    linear-gradient(90deg,rgba(0,0,0,.028) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(rgba(0,0,0,.028) 1px,transparent 1px) 0 0/22px 22px, #fff;
+}
+.erd-view.drag{cursor:grabbing}
+.erd-stage{transform-origin:0 0; will-change:transform; direction:ltr}
+.erd-stage svg{display:block; max-width:none; height:auto}
+.erd-src{border-top:1px solid var(--gray-bd)}
+.erd-src summary{
+  cursor:pointer; padding:9px 16px; font-size:12.5px; font-weight:700;
+  color:var(--purple-dk); background:#fcfcfa; list-style:none;
+}
+.erd-src summary::-webkit-details-marker{display:none}
+.erd-src summary::before{content:"▸ "; font-size:11px}
+.erd-src[open] summary::before{content:"▾ "}
+.erd-src pre{border-top:1px solid var(--gray-bd)}
+
+/* ── المحتوى ──────────────────────────────────────── */
+.content{max-width:1180px; margin:0 auto; padding:30px 40px 80px}
+.panel{display:none}
+.panel.active{display:block}
+
+.panel-title{
+  font-size:19px; font-weight:700; color:var(--gray-dk);
+  margin:34px 0 4px; padding-bottom:9px; border-bottom:2px solid var(--purple);
+  scroll-margin-top:var(--stick,150px);
+}
+.panel > .panel-title:first-child{margin-top:0}
+.section-title{
+  font-size:14.5px; font-weight:700; color:var(--purple-dk);
+  margin:26px 0 10px; padding-inline-start:10px;
+  border-inline-start:3px solid var(--purple); scroll-margin-top:var(--stick,150px);
+}
+.sub-title{
+  font-size:13px; font-weight:700; color:var(--gray-dk);
+  margin:18px 0 8px; scroll-margin-top:var(--stick,150px);
+}
+.para{font-size:13.5px; color:var(--gray-dk); margin:10px 2px}
+.rule-sep{height:1px; background:var(--gray-bd); margin:26px 0; opacity:.6}
+
+/* ── البطاقات ─────────────────────────────────────── */
+.card{
+  background:var(--white); border:1px solid var(--gray-bd);
+  border-radius:var(--radius-lg); overflow:hidden; margin-bottom:12px;
+}
+.card.bare{border-style:solid}
+.card-header{
+  display:flex; align-items:center; gap:10px; padding:11px 16px;
+  border-bottom:1px solid var(--gray-bd); background:#fcfcfa;
+}
+.card-header h3{font-size:13.5px; font-weight:700; color:var(--gray-dk); line-height:1.5}
+.card-title{scroll-margin-top:var(--stick,150px)}
+.card-header span{
+  font-size:10.5px; color:var(--gray-md); margin-inline-start:auto;
+  white-space:nowrap; flex-shrink:0;
+}
+.dot{width:9px; height:9px; border-radius:50%; flex-shrink:0}
+.dot-purple{background:var(--purple)} .dot-teal{background:var(--teal)}
+.dot-coral{background:var(--coral)}  .dot-amber{background:var(--amber)}
+.dot-blue{background:var(--blue)}
+
+/* ── الجداول ──────────────────────────────────────── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%; border-collapse:collapse; font-size:12.8px}
+th{
+  text-align:right; font-size:10.5px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--gray-md); padding:9px 13px;
+  background:var(--gray-lt); border-bottom:1px solid var(--gray-bd);
+  position:sticky; top:0; z-index:1; white-space:nowrap;
+}
+td{padding:9px 13px; border-bottom:1px solid var(--gray-bd); vertical-align:top; line-height:1.65}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--gray-lt)}
+td strong{font-weight:700}
+
+/* ── القوائم ──────────────────────────────────────── */
+.rule-list{list-style:none; padding:14px 16px; display:flex; flex-direction:column; gap:7px}
+.rule-list.tight{padding:6px 0}
+.rule-list li{
+  display:flex; gap:9px; align-items:flex-start;
+  font-size:13px; color:var(--gray-dk); line-height:1.65;
+}
+.rule-list li::before{content:'—'; color:var(--gray-bd); flex-shrink:0; margin-top:1px}
+ol.rule-list{counter-reset:ri}
+ol.rule-list li{counter-increment:ri}
+ol.rule-list li::before{
+  content:counter(ri); color:var(--purple); font-weight:700; font-size:11px;
+  min-width:17px; text-align:center;
+}
+
+/* ── الصناديق ─────────────────────────────────────── */
+.info-box{
+  border-inline-start:3px solid var(--blue); background:var(--blue-lt);
+  border-radius:0 var(--radius) var(--radius) 0;
+  padding:11px 15px; font-size:13px; color:var(--gray-dk); margin:12px 0;
+}
+.info-box.warn{border-inline-start-color:var(--amber); background:var(--amber-lt)}
+.info-box.danger{border-inline-start-color:var(--coral); background:var(--coral-lt)}
+.info-box.tech{border-inline-start-color:var(--purple); background:var(--purple-lt)}
+.info-box.ok{border-inline-start-color:var(--teal); background:var(--teal-lt)}
+.info-box p{margin:5px 0}
+.info-box p:first-child{margin-top:0}
+.info-box p:last-child{margin-bottom:0}
+.info-box .box-title{font-size:13.5px; font-weight:700; margin-bottom:6px}
+.info-box table{font-size:12.3px; margin-top:8px}
+.info-box th{background:rgba(255,255,255,.55)}
+.info-box td{border-bottom-color:rgba(0,0,0,.07)}
+.info-box tbody tr:hover td{background:rgba(255,255,255,.4)}
+
+/* ── الكود ────────────────────────────────────────── */
+.code-card pre{
+  margin:0; padding:14px 16px; overflow-x:auto; direction:ltr; text-align:left;
+  font-family:var(--font-mono); font-size:12px; line-height:1.7;
+  background:#fbfaf7; color:var(--gray-dk);
+}
+.code-card.gherkin pre{background:var(--teal-lt)}
+.code-card.diagram pre{background:var(--gray-lt); max-height:420px}
+.mono{
+  font-family:var(--font-mono); font-size:.9em; direction:ltr;
+  unicode-bidi:isolate; display:inline-block; background:var(--gray-lt);
+  padding:.1em .38em; border-radius:4px;
+}
+th .mono, .card-header .mono{background:transparent; padding:0}
+
+/* ── الشارات ──────────────────────────────────────── */
+.badge{
+  display:inline-block; font-size:11px; line-height:1.5; padding:1px 7px;
+  border-radius:20px; font-weight:600; vertical-align:middle;
+}
+.b-confirmed{background:var(--teal-lt)}
+.b-proposed{background:var(--blue-lt)}
+.b-open{background:var(--amber-lt)}
+.b-assumption{background:var(--gray-lt)}
+.b-evidence{background:var(--purple-lt)}
+.b-migration{background:var(--coral-lt)}
+.b-future{background:var(--gray-lt)}
+.mark{font-style:normal}
+.m-forbidden,.m-no{color:var(--coral)}
+.m-critical{color:var(--amber)}
+.m-ok{color:var(--teal)}
+.m-warn{color:var(--amber)}
+.m-idem{color:var(--purple)}
+.m-sensitive{color:var(--coral)}
+del{color:var(--gray-md)}
+a{color:var(--purple-dk)}
+mark{background:#FFE9A8; color:var(--gray-dk); border-radius:3px; padding:0 2px}
+
+/* ── فهرس جانبي عائم ──────────────────────────────── */
+.mini-toc{
+  position:fixed; inset-inline-start:14px; bottom:60px; z-index:60;
+  background:var(--white); border:1px solid var(--gray-bd); border-radius:var(--radius-lg);
+  max-width:280px; max-height:min(66vh,560px); overflow-y:auto; padding:9px 6px;
+  box-shadow:0 4px 18px rgba(0,0,0,.09); display:none;
+}
+.mini-toc.open{display:block}
+.mini-toc a{
+  display:block; padding:4px 9px; border-radius:6px; font-size:11.8px;
+  color:var(--gray-dk); text-decoration:none; line-height:1.5;
+}
+.mini-toc a:hover{background:var(--gray-lt)}
+.mini-toc a.l3{padding-inline-start:20px; font-size:11.2px; color:var(--gray-md)}
+.mini-toc a.hide{display:none}
+
+/* ── أزرار عائمة ──────────────────────────────────── */
+.fab{position:fixed; inset-inline-start:14px; bottom:14px; z-index:70; display:flex; gap:6px}
+.fab.up{inset-inline-start:auto; inset-inline-end:14px}
+.fab button{
+  border:1px solid var(--gray-bd); background:var(--white); color:var(--gray-dk);
+  border-radius:20px; padding:7px 13px; cursor:pointer; font-family:inherit;
+  font-size:12px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,.07);
+}
+.fab button:hover{background:var(--gray-lt)}
+.hits{
+  font-size:11px; color:rgba(255,255,255,.7); white-space:nowrap;
+}
+
+/* ── الاستجابة ────────────────────────────────────── */
+@media (max-width:820px){
+  .site-header{padding:16px; position:static}
+  .nav{padding:0 12px; position:static}
+  .content{padding:20px 14px 70px}
+  #q{width:100%}
+  .mini-toc{max-width:min(250px,84vw)}
+}
+
+/* ── الطباعة ──────────────────────────────────────── */
+@media print{
+  .nav,.fab,.mini-toc,#q,.hits,.erd-bar{display:none !important}
+  .erd-view{height:auto; overflow:visible}
+  .erd-src{display:none}
+  .site-header{position:static; background:#fff; border-bottom:2px solid #000; padding:0 0 10px}
+  .site-header h1,.site-header p{color:#000}
+  .chip-v{background:#eee; color:#000; border-color:#999}
+  body{background:#fff; font-size:10pt}
+  .content{max-width:100%; padding:0}
+  .panel{display:block !important}
+  .panel-title{page-break-before:always; page-break-after:avoid}
+  .panel:first-child .panel-title:first-child{page-break-before:avoid}
+  .card,.info-box,.code-card{page-break-inside:avoid; box-shadow:none}
+  table{font-size:8pt}
+  tr{page-break-inside:avoid}
+  th{position:static; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+  .badge,.dot{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  a{color:#000; text-decoration:none}
+  @page{size:A4; margin:14mm 12mm}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="ttl">
+    <h1>Contractra &nbsp;·&nbsp; كونتراكترا</h1>
+    <p>مصفوفة نطاق الكيانات &nbsp;·&nbsp; MVP Entity Scope Matrix</p>
+  </div>
+  <div class="hdr-meta">
+    <span class="chip-v">الإصدار 2.0.1</span>
+    <span class="chip-v">توليد 2026-09-20 · 14:29</span>
+    <input id="q" type="search" placeholder="ابحث في كل التبويبات…" autocomplete="off">
+    <span class="hits" id="hits"></span>
+  </div>
+</header>
+
+<nav class="nav"><button class="nav-btn active" data-tab="t1">إدارة الوثيقة<span class="cnt" data-n="4">4</span></button><button class="nav-btn" data-tab="t2">المصفوفة الكاملة — 149 كيانً<span class="cnt" data-n="3">3</span></button></nav>
+
+<div class="content">
+<div id="t1" class="panel active"><h2 class="panel-title" id="0.-إدارة-الوثيقة">0. إدارة الوثيقة</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>القيمة</th></tr></thead><tbody><tr><td><strong>المعرّف</strong></td><td><span class="mono">mvp-entity-scope-matrix-ar</span></td></tr><tr><td><strong>الإصدار</strong></td><td><strong>2.0.1</strong> — <strong>محدَّثة بعد باتش التصحيح</strong></td></tr><tr><td><strong>الحالة</strong></td><td><span class="badge b-proposed" title="مقترح">🔵</span> <strong>مقترحة — تحتاج اعتماد ترتيب الموجات</strong></td></tr><tr><td><strong>التاريخ</strong></td><td>2026-09-20</td></tr><tr><td><strong>الغرض</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>تصنيف كل كيان: ما يُنفَّذ الآن وما يُؤجَّل</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>بلا حذف كيان صحيح</strong></td></tr><tr><td><strong>المصدر</strong></td><td><span class="mono">logical-data-model-ar.md</span> <strong>2.0.1</strong> · <span class="mono">logical-model-correction-patch-v2.0.1-ar.md</span></td></tr><tr><td><strong>التصنيف</strong></td><td><strong>Derived</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ليست مصدرًا لقاعدة عمل</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="1.-التصنيفات">1. <span class="mark m-critical" title="حرج">⭐</span> التصنيفات</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>التصنيف</th><th>المعنى</th><th><span class="mark m-forbidden" title="ممنوع">⛔</span> ما لا يعنيه</th></tr></thead><tbody><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>MVP Required</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>بدونه لا تكتمل دورة العمل الأساسية</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يعني أنه يُنفَّذ أولًا — الترتيب في «الموجة»</strong></td></tr><tr><td><strong>Post-MVP</strong></td><td><strong>مطلوب لاحقًا ولا يمنع الإطلاق</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يعني أنه اختياري إلى الأبد</strong></td></tr><tr><td><strong>Migration Only</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>للترحيل التاريخي ثم للقراءة والنسب</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا يُحذف بعد الترحيل</strong></td></tr><tr><td><strong>Reporting Only</strong></td><td><strong>قراءة تُعاد بناؤها</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ليس مصدر حقيقة</strong></td></tr></tbody></table></div></div>
+<h2 class="panel-title" id="2.-الموجات-وخطوات-التنفيذ">2. <span class="mark m-critical" title="حرج">⭐</span> الموجات وخطوات التنفيذ</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>الموجة</th><th>المعنى</th><th>العدد</th></tr></thead><tbody><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>W1 — النواة القابلة للتشغيل</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>أصغر مجموعة تُنتج دورة عمل كاملة تعمل وتُدقَّق وتُحاسَب</strong></td><td><strong>54</strong></td></tr><tr><td><strong>W2 — بقية MVP</strong></td><td>الأجور والموردون والمستخلصات والمحتجزات والاتفاقات والتقرير الشهري</td><td><strong>58</strong></td></tr><tr><td><strong>WM — الترحيل</strong></td><td>الاستيراد التاريخي والمطابقة</td><td><strong>6</strong></td></tr><tr><td><strong>W3 — بعد MVP</strong></td><td>ما يمكن تأجيله بلا كسر دورة العمل</td><td><strong>31</strong></td></tr></tbody></table></div></div>
+<p class="section-title" id="2.1-خطوات-W1-الخمس--تقسيم-تنفيذي-لا-تغيير-نطاق">2.1 <span class="badge b-confirmed" title="مؤكدة">🟢</span> <span class="mark m-critical" title="حرج">⭐</span> خطوات W1 الخمس — تقسيم تنفيذي لا تغيير نطاق</p>
+<div class="info-box danger"><p><span class="mark m-critical" title="حرج">⭐</span> <strong>التقسيم توثيقي</strong> — <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا يغيّر نطاق MVP ولا يحذف كيانًا</strong> · <span class="mark m-critical" title="حرج">⭐</span> <strong>ويسمح ببناء Migrations تدريجيًا بدل دفعة واحدة.</strong></p></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>الخطوة</th><th>المحتوى</th><th>العدد</th><th><span class="mark m-critical" title="حرج">⭐</span> ملاحظة</th></tr></thead><tbody><tr><td><strong>W1-A</strong></td><td><strong>الهوية والبيانات المرجعية</strong></td><td><strong>18</strong></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا شيء قبلها</strong></td></tr><tr><td><strong>W1-B</strong></td><td><strong>العمليات وأوامر الإسناد والمواقع والتكليفات</strong></td><td><strong>7</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong><span class="mono">1 : 1</span> للعملية وأمر الإسناد</strong></td></tr><tr><td><strong>W1-C</strong></td><td><strong>المستندات والتدقيق</strong></td><td><strong>6</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>قبل أي حركة مالية</strong></td></tr><tr><td><strong>W1-D</strong></td><td><strong>المحاسبة والخزينة والأحداث المالية</strong></td><td><strong>13</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>وتشمل <span class="mono">accounting_adjustments</span></strong></td></tr><tr><td><strong>W1-E</strong></td><td><strong>العهدة والمصروفات ودورة المراجعة</strong></td><td><strong>10</strong></td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>أكثر شاشة استخدامًا</strong></td></tr></tbody></table></div></div>
+<div class="info-box danger"><p class="box-title"><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ممنوع تشغيل أي حركة مالية حقيقية قبل اكتمال W1-C وW1-D.</strong></p>
+<p><span class="mark m-critical" title="حرج">⭐</span> <strong>لأن الحركات التي تقع بلا تدقيق أو بلا قيد لا يمكن إثباتها ولا ترحيلها بأثر رجعي بأمان.</strong> <span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>ولا يُفترض أن كل كيانات W1 تُنفَّذ في Migration واحدة.</strong></p></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="3.-الملخص-العددي">3. <span class="mark m-critical" title="حرج">⭐</span> الملخص العددي</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>التصنيف</th><th>العدد</th><th>النسبة</th></tr></thead><tbody><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>MVP Required</strong></td><td><strong>112</strong></td><td><strong>75%</strong></td></tr><tr><td><strong>Post-MVP</strong></td><td><strong>30</strong></td><td><strong>20%</strong></td></tr><tr><td><strong>Migration Only</strong></td><td><strong>6</strong></td><td><strong>4%</strong></td></tr><tr><td><strong>Reporting Only</strong></td><td><strong>1</strong></td><td><strong>1%</strong></td></tr><tr><td><strong>الإجمالي</strong></td><td><strong>149</strong></td><td><strong>100%</strong></td></tr></tbody></table></div></div>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>البند</th><th>العدد</th></tr></thead><tbody><tr><td><strong>المجالات</strong></td><td><strong>20</strong></td></tr><tr><td><span class="mark m-critical" title="حرج">⭐</span> <strong>كيانات الموجة الأولى W1</strong></td><td><strong>54</strong></td></tr><tr><td><strong>كيانات تمنع الإطلاق إن غابت</strong></td><td><strong>118</strong></td></tr><tr><td><strong>كيانات لا تمنع الإطلاق</strong></td><td><strong>31</strong></td></tr><tr><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>المضاف في v2.0.1</strong></td><td><strong>1</strong> — <span class="mono">accounting_adjustments</span> (<strong>W1-D</strong>)</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div></div><div id="t2" class="panel"><h2 class="panel-title" id="4.-المصفوفة-الكاملة--149-كيانًا">4. <span class="mark m-critical" title="حرج">⭐</span> المصفوفة الكاملة — 149 كيانًا</h2>
+<div class="card"><div class="card-header"><div class="dot dot-purple"></div><h3 class="card-title" id="4.1-المجال-1--Identity-Users-Roles-Permissions">4.1 المجال 1 — Identity, Users, Roles, Permissions</h3><span>7 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">users</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا دخول ولا صلاحية بلا هذه</td><td><strong>1</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">roles</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا دخول ولا صلاحية بلا هذه</td><td><strong>1</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">permissions</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا دخول ولا صلاحية بلا هذه</td><td><strong>1</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">role_permissions</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا دخول ولا صلاحية بلا هذه</td><td><strong>1</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">user_roles</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا دخول ولا صلاحية بلا هذه</td><td><strong>1</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">user_permissions</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا دخول ولا صلاحية بلا هذه</td><td><strong>1</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">user_party_links</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-critical" title="حرج">⭐</span> المهندس مستخدم وطرف معًا</td><td><strong>1</strong></td><td><span class="mono">users</span> · <span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-teal"></div><h3 class="card-title" id="4.2-المجال-2--Parties-and-Companies">4.2 المجال 2 — Parties and Companies</h3><span>11 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">parties</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-critical" title="حرج">⭐</span> الهوية المركزية — ولا مصروف ولا أجر بلا طرف أو مورد تكلفة</td><td><strong>2</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">party_roles</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-critical" title="حرج">⭐</span> الهوية المركزية — ولا مصروف ولا أجر بلا طرف أو مورد تكلفة</td><td><strong>2</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">party_aliases</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-critical" title="حرج">⭐</span> ضوابط منع دمج طرفين حقيقيين</td><td><strong>2</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">party_identifiers</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-critical" title="حرج">⭐</span> ضوابط منع دمج طرفين حقيقيين</td><td><strong>2</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">party_similarity_candidates</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-critical" title="حرج">⭐</span> ضوابط منع دمج طرفين حقيقيين</td><td><strong>2</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">party_accounts</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>تفصيل حسابات الطرف — والدفع في MVP بمرجع</td><td><strong>2</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">party_bank_accounts</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>تفصيل حسابات الطرف — والدفع في MVP بمرجع</td><td><strong>2</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">managed_company_links</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-critical" title="حرج">⭐</span> الهوية المركزية — ولا مصروف ولا أجر بلا طرف أو مورد تكلفة</td><td><strong>2</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">cost_resources</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-critical" title="حرج">⭐</span> الهوية المركزية — ولا مصروف ولا أجر بلا طرف أو مورد تكلفة</td><td><strong>2</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">aggregate_cost_accounts</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-critical" title="حرج">⭐</span> الهوية المركزية — ولا مصروف ولا أجر بلا طرف أو مورد تكلفة</td><td><strong>2</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">operation_party_roles</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td><span class="mark m-critical" title="حرج">⭐</span> الهوية المركزية — ولا مصروف ولا أجر بلا طرف أو مورد تكلفة</td><td><strong>2</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-coral"></div><h3 class="card-title" id="4.3-المجال-3--Operations-and-Assignment-Orders">4.3 المجال 3 — Operations and Assignment Orders</h3><span>9 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">operations</span></td><td><strong>MVP Required</strong></td><td><strong>W1-B</strong> العمليات والمواقع والتكليفات</td><td><span class="mark m-critical" title="حرج">⭐</span> العملية مركز التكلفة — ولا مصروف بلا عملية وأمر إسناد</td><td><strong>3</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">assignment_orders</span></td><td><strong>MVP Required</strong></td><td><strong>W1-B</strong> العمليات والمواقع والتكليفات</td><td><span class="mark m-critical" title="حرج">⭐</span> العملية مركز التكلفة — ولا مصروف بلا عملية وأمر إسناد</td><td><strong>3</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">awarding_authorities</span></td><td><strong>MVP Required</strong></td><td><strong>W1-B</strong> العمليات والمواقع والتكليفات</td><td>بيانات مرجعية لازمة للتشغيل</td><td><strong>3</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">boq_items</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>تفاصيل تعاقدية لا تمنع دورة الإنفاق والتحصيل</td><td><strong>3</strong></td><td><span class="mono">contracts</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">operation_dates</span></td><td><strong>MVP Required</strong></td><td><strong>W1-B</strong> العمليات والمواقع والتكليفات</td><td><span class="mark m-critical" title="حرج">⭐</span> العملية مركز التكلفة — ولا مصروف بلا عملية وأمر إسناد</td><td><strong>3</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">operation_extensions</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>تفاصيل تعاقدية لا تمنع دورة الإنفاق والتحصيل</td><td><strong>3</strong></td><td><span class="mono">contracts</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">contracts</span></td><td><strong>MVP Required</strong></td><td><strong>W1-B</strong> العمليات والمواقع والتكليفات</td><td><span class="mark m-critical" title="حرج">⭐</span> العملية مركز التكلفة — ولا مصروف بلا عملية وأمر إسناد</td><td><strong>3</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">contract_warnings</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>تفاصيل تعاقدية لا تمنع دورة الإنفاق والتحصيل</td><td><strong>3</strong></td><td><span class="mono">contracts</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">penalty_rate_schedule</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>تفاصيل تعاقدية لا تمنع دورة الإنفاق والتحصيل</td><td><strong>3</strong></td><td><span class="mono">contracts</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-amber"></div><h3 class="card-title" id="4.4-المجال-4--Sites-and-Engineer-Assignments">4.4 المجال 4 — Sites and Engineer Assignments</h3><span>2 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">sites</span></td><td><strong>MVP Required</strong></td><td><strong>W1-B</strong> العمليات والمواقع والتكليفات</td><td><span class="mark m-critical" title="حرج">⭐</span> التكليف المؤرَّخ سند كل حركة ميدانية</td><td><strong>4</strong></td><td><span class="mono">operations</span> · <span class="mono">users</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">engineer_site_assignments</span></td><td><strong>MVP Required</strong></td><td><strong>W1-B</strong> العمليات والمواقع والتكليفات</td><td><span class="mark m-critical" title="حرج">⭐</span> التكليف المؤرَّخ سند كل حركة ميدانية</td><td><strong>4</strong></td><td><span class="mono">operations</span> · <span class="mono">users</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-blue"></div><h3 class="card-title" id="4.5-المجال-5--Custody-and-Custody-Ledger">4.5 المجال 5 — Custody and Custody Ledger</h3><span>3 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">custody_accounts</span></td><td><strong>MVP Required</strong></td><td><strong>W1-E</strong> العهدة والمصروفات والمراجعة</td><td><span class="mark m-critical" title="حرج">⭐</span> دفتر العهدة — ومنه يُشتق رصيد المهندس</td><td><strong>6</strong></td><td>المحاسبة والخزينة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">custody_ledger_entries</span></td><td><strong>MVP Required</strong></td><td><strong>W1-E</strong> العهدة والمصروفات والمراجعة</td><td><span class="mark m-critical" title="حرج">⭐</span> دفتر العهدة — ومنه يُشتق رصيد المهندس</td><td><strong>6</strong></td><td>المحاسبة والخزينة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">custody_transfer_acceptances</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>التحويل بين المهندسين لاحق</td><td><strong>6</strong></td><td><span class="mono">custody_ledger_entries</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-purple"></div><h3 class="card-title" id="4.6-المجال-6--Expenses-and-Expense-Review">4.6 المجال 6 — Expenses and Expense Review</h3><span>8 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">expenses</span></td><td><strong>MVP Required</strong></td><td><strong>W1-E</strong> العهدة والمصروفات والمراجعة</td><td><span class="mark m-critical" title="حرج">⭐</span> أكثر شاشة استخدامًا — وهي جوهر MVP</td><td><strong>7</strong></td><td><span class="mono">sites</span> · <span class="mono">custody_accounts</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">expense_status_history</span></td><td><strong>MVP Required</strong></td><td><strong>W1-E</strong> العهدة والمصروفات والمراجعة</td><td><span class="mark m-critical" title="حرج">⭐</span> أكثر شاشة استخدامًا — وهي جوهر MVP</td><td><strong>7</strong></td><td><span class="mono">sites</span> · <span class="mono">custody_accounts</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">expense_reviews</span></td><td><strong>MVP Required</strong></td><td><strong>W1-E</strong> العهدة والمصروفات والمراجعة</td><td><span class="mark m-critical" title="حرج">⭐</span> أكثر شاشة استخدامًا — وهي جوهر MVP</td><td><strong>7</strong></td><td><span class="mono">sites</span> · <span class="mono">custody_accounts</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">expense_attachments</span></td><td><strong>MVP Required</strong></td><td><strong>W1-E</strong> العهدة والمصروفات والمراجعة</td><td><span class="mark m-critical" title="حرج">⭐</span> أكثر شاشة استخدامًا — وهي جوهر MVP</td><td><strong>7</strong></td><td><span class="mono">sites</span> · <span class="mono">custody_accounts</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">expense_corrections</span></td><td><strong>MVP Required</strong></td><td><strong>W1-E</strong> العهدة والمصروفات والمراجعة</td><td><span class="mark m-critical" title="حرج">⭐</span> أكثر شاشة استخدامًا — وهي جوهر MVP</td><td><strong>7</strong></td><td><span class="mono">sites</span> · <span class="mono">custody_accounts</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">expense_types</span></td><td><strong>MVP Required</strong></td><td><strong>W1-E</strong> العهدة والمصروفات والمراجعة</td><td>بيانات مرجعية لازمة للتشغيل</td><td><strong>7</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">sync_submissions</span></td><td><strong>MVP Required</strong></td><td><strong>W1-E</strong> العهدة والمصروفات والمراجعة</td><td><span class="mark m-critical" title="حرج">⭐</span> العمل بلا إنترنت شرط ميداني</td><td><strong>7</strong></td><td><span class="mono">expenses</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">sync_exceptions</span></td><td><strong>MVP Required</strong></td><td><strong>W1-E</strong> العهدة والمصروفات والمراجعة</td><td><span class="mark m-critical" title="حرج">⭐</span> العمل بلا إنترنت شرط ميداني</td><td><strong>7</strong></td><td><span class="mono">expenses</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-teal"></div><h3 class="card-title" id="4.7-المجال-7--Workers-Attendance-Advances-Payments-and-Settlements">4.7 المجال 7 — Workers, Attendance, Advances, Payments and Settlements</h3><span>15 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">site_cost_resource_assignments</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> يوميات العمالة وكشوفها — أكبر بند تكلفة</td><td><strong>8</strong></td><td><span class="mono">cost_resources</span> · <span class="mono">sites</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">pay_rate_versions</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> يوميات العمالة وكشوفها — أكبر بند تكلفة</td><td><strong>8</strong></td><td><span class="mono">cost_resources</span> · <span class="mono">sites</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">attendance_entries</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> يوميات العمالة وكشوفها — أكبر بند تكلفة</td><td><strong>8</strong></td><td><span class="mono">cost_resources</span> · <span class="mono">sites</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">payroll_periods</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> يوميات العمالة وكشوفها — أكبر بند تكلفة</td><td><strong>8</strong></td><td><span class="mono">cost_resources</span> · <span class="mono">sites</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">payroll_lines</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> يوميات العمالة وكشوفها — أكبر بند تكلفة</td><td><strong>8</strong></td><td><span class="mono">cost_resources</span> · <span class="mono">sites</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">payroll_deduction_lines</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> يوميات العمالة وكشوفها — أكبر بند تكلفة</td><td><strong>8</strong></td><td><span class="mono">cost_resources</span> · <span class="mono">sites</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">worker_advances</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> بدونها يتكرر الخصم المزدوج المرصود</td><td><strong>8</strong></td><td><span class="mono">payroll_lines</span> · الخزينة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">long_term_advances</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> بدونها يتكرر الخصم المزدوج المرصود</td><td><strong>8</strong></td><td><span class="mono">payroll_lines</span> · الخزينة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">long_term_advance_installments</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> بدونها يتكرر الخصم المزدوج المرصود</td><td><strong>8</strong></td><td><span class="mono">payroll_lines</span> · الخزينة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">worker_payments</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> بدونها يتكرر الخصم المزدوج المرصود</td><td><strong>8</strong></td><td><span class="mono">payroll_lines</span> · الخزينة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">subcontract_agreements</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> تسويات المقاولين — ومنها الدليل المثبَت على الازدواج</td><td><strong>8</strong></td><td><span class="mono">parties</span> · <span class="mono">sites</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">subcontractor_settlements</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> تسويات المقاولين — ومنها الدليل المثبَت على الازدواج</td><td><strong>8</strong></td><td><span class="mono">parties</span> · <span class="mono">sites</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">subcontractor_settlement_lines</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> تسويات المقاولين — ومنها الدليل المثبَت على الازدواج</td><td><strong>8</strong></td><td><span class="mono">parties</span> · <span class="mono">sites</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">subcontractor_deductions</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> تسويات المقاولين — ومنها الدليل المثبَت على الازدواج</td><td><strong>8</strong></td><td><span class="mono">parties</span> · <span class="mono">sites</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">subcontractor_retention_ledger</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> تسويات المقاولين — ومنها الدليل المثبَت على الازدواج</td><td><strong>8</strong></td><td><span class="mono">parties</span> · <span class="mono">sites</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-coral"></div><h3 class="card-title" id="4.8-المجال-8--Engineer-Payroll">4.8 المجال 8 — Engineer Payroll</h3><span>4 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">engineer_salary_entries</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> التقرير الشهري يلزمه صراحةً (AC-035)</td><td><strong>8</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">engineer_salary_allocation_rules</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td><span class="badge b-assumption" title="افتراض">⚪</span> الافتراضي <span class="mono">NO_ALLOCATION</span></td><td><strong>8</strong></td><td><span class="mono">engineer_salary_entries</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">engineer_salary_allocation_rule_lines</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td><span class="badge b-assumption" title="افتراض">⚪</span> الافتراضي <span class="mono">NO_ALLOCATION</span></td><td><strong>8</strong></td><td><span class="mono">engineer_salary_entries</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">engineer_salary_allocations</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td><span class="badge b-assumption" title="افتراض">⚪</span> الافتراضي <span class="mono">NO_ALLOCATION</span></td><td><strong>8</strong></td><td><span class="mono">engineer_salary_entries</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-amber"></div><h3 class="card-title" id="4.9-المجال-9--Suppliers-and-Contractors">4.9 المجال 9 — Suppliers and Contractors</h3><span>14 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">supply_receipts</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>التوريدات تفصيل تكلفة — وفاتورة المورد تكفي في MVP</td><td><strong>9</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">supply_receipt_lines</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>التوريدات تفصيل تكلفة — وفاتورة المورد تكفي في MVP</td><td><strong>9</strong></td><td><span class="mono">parties</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">supply_categories</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td>بيانات مرجعية لازمة للتشغيل</td><td><strong>9</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">items</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td>بيانات مرجعية لازمة للتشغيل</td><td><strong>9</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">supplier_invoices</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> موقف المورد من توريد إلى سداد</td><td><strong>9</strong></td><td><span class="mono">parties</span> · الخزينة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">supplier_payments</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> موقف المورد من توريد إلى سداد</td><td><strong>9</strong></td><td><span class="mono">parties</span> · الخزينة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">supplier_payment_allocations</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> موقف المورد من توريد إلى سداد</td><td><strong>9</strong></td><td><span class="mono">parties</span> · الخزينة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">cheques</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> موقف المورد من توريد إلى سداد</td><td><strong>9</strong></td><td><span class="mono">parties</span> · الخزينة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">price_adjustments</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>فروق الأسعار تُدار لاحقًا</td><td><strong>9</strong></td><td><span class="mono">supply_receipts</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">recoverable_expense_claims</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> تغلق العيب البنيوي الثاني: ازدواج تكلفة بلا قيد استرداد</td><td><strong>9</strong></td><td><span class="mono">expenses</span> · <span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">recoverable_expense_allocations</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> تغلق العيب البنيوي الثاني: ازدواج تكلفة بلا قيد استرداد</td><td><strong>9</strong></td><td><span class="mono">expenses</span> · <span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">recoverable_expense_recoveries</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> تغلق العيب البنيوي الثاني: ازدواج تكلفة بلا قيد استرداد</td><td><strong>9</strong></td><td><span class="mono">expenses</span> · <span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">recoverable_expense_writeoffs</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>الشطب والنزاع حالتان لاحقتان</td><td><strong>9</strong></td><td><span class="mono">recoverable_expense_claims</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">recoverable_expense_disputes</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>الشطب والنزاع حالتان لاحقتان</td><td><strong>9</strong></td><td><span class="mono">recoverable_expense_claims</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-blue"></div><h3 class="card-title" id="4.10-المجال-10--Claims-Deductions-and-Payment-Orders">4.10 المجال 10 — Claims, Deductions and Payment Orders</h3><span>15 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">claim_series</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> سلسلة الإيراد — ومنع تضخيمه</td><td><strong>10</strong></td><td><span class="mono">contracts</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">claims</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> سلسلة الإيراد — ومنع تضخيمه</td><td><strong>10</strong></td><td><span class="mono">contracts</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">claim_progress</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> سلسلة الإيراد — ومنع تضخيمه</td><td><strong>10</strong></td><td><span class="mono">contracts</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">claim_line_progress</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>كميات البنود تفصيل تحليلي</td><td><strong>10</strong></td><td><span class="mono">boq_items</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">deduction_types</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td>بيانات مرجعية لازمة للتشغيل</td><td><strong>10</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">deduction_rule_versions</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> سلسلة الإيراد — ومنع تضخيمه</td><td><strong>10</strong></td><td><span class="mono">contracts</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">claim_deduction_lines</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> سلسلة الإيراد — ومنع تضخيمه</td><td><strong>10</strong></td><td><span class="mono">contracts</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">e_invoices</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>الفوترة الإلكترونية وشروط الدفع لاحقة</td><td><strong>10</strong></td><td><span class="mono">claims</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">e_invoice_allocations</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>الفوترة الإلكترونية وشروط الدفع لاحقة</td><td><strong>10</strong></td><td><span class="mono">claims</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">payment_orders</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> من المستخلص إلى البنك</td><td><strong>10</strong></td><td><span class="mono">claims</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">payment_order_allocations</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> من المستخلص إلى البنك</td><td><strong>10</strong></td><td><span class="mono">claims</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">payment_beneficiaries</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> من المستخلص إلى البنك</td><td><strong>10</strong></td><td><span class="mono">claims</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">payment_terms</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>الفوترة الإلكترونية وشروط الدفع لاحقة</td><td><strong>10</strong></td><td><span class="mono">claims</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">collections</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> من المستخلص إلى البنك</td><td><strong>10</strong></td><td><span class="mono">claims</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">collection_allocations</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> من المستخلص إلى البنك</td><td><strong>10</strong></td><td><span class="mono">claims</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-purple"></div><h3 class="card-title" id="4.11-المجال-11--External-Company-Agreements-and-Shares">4.11 المجال 11 — External Company Agreements and Shares</h3><span>4 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">party_operation_agreements</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> 42,248,762.4 تعرّضًا خارجيًا معلَّقًا عليها</td><td><strong>11</strong></td><td><span class="mono">operations</span> · <span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">party_operation_agreement_versions</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> 42,248,762.4 تعرّضًا خارجيًا معلَّقًا عليها</td><td><strong>11</strong></td><td><span class="mono">operations</span> · <span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">agreement_documents</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> 42,248,762.4 تعرّضًا خارجيًا معلَّقًا عليها</td><td><strong>11</strong></td><td><span class="mono">operations</span> · <span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">payment_order_party_shares</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> 42,248,762.4 تعرّضًا خارجيًا معلَّقًا عليها</td><td><strong>11</strong></td><td><span class="mono">operations</span> · <span class="mono">parties</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-teal"></div><h3 class="card-title" id="4.12-المجال-12--Retentions-and-Recoverable-Amounts">4.12 المجال 12 — Retentions and Recoverable Amounts</h3><span>7 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">retention_register</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> 27,474,600 محتجزة كانت تُعامل خسارة</td><td><strong>10</strong></td><td><span class="mono">claim_deduction_lines</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">retention_movements</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> 27,474,600 محتجزة كانت تُعامل خسارة</td><td><strong>10</strong></td><td><span class="mono">claim_deduction_lines</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">release_conditions</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> 27,474,600 محتجزة كانت تُعامل خسارة</td><td><strong>10</strong></td><td><span class="mono">claim_deduction_lines</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">release_condition_versions</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> 27,474,600 محتجزة كانت تُعامل خسارة</td><td><strong>10</strong></td><td><span class="mono">claim_deduction_lines</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">guarantees</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> الضمانات التزام قائم وتاريخ انتهاء</td><td><strong>10</strong></td><td><span class="mono">operations</span> · <span class="mono">banks</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">guarantee_events</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> الضمانات التزام قائم وتاريخ انتهاء</td><td><strong>10</strong></td><td><span class="mono">operations</span> · <span class="mono">banks</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">guarantee_fees</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>رسوم الضمان بند تكلفة لاحق</td><td><strong>10</strong></td><td><span class="mono">guarantees</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-coral"></div><h3 class="card-title" id="4.13-المجال-13--Reports-Snapshots-and-Deliveries">4.13 المجال 13 — Reports, Snapshots and Deliveries</h3><span>11 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">monthly_reports</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> متطلب صريح من صاحب المشروع</td><td><strong>12</strong></td><td>المصروفات والأجور والمحاسبة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">monthly_report_versions</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> متطلب صريح من صاحب المشروع</td><td><strong>12</strong></td><td>المصروفات والأجور والمحاسبة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">monthly_report_snapshots</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> متطلب صريح من صاحب المشروع</td><td><strong>12</strong></td><td>المصروفات والأجور والمحاسبة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">monthly_report_category_lines</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> متطلب صريح من صاحب المشروع</td><td><strong>12</strong></td><td>المصروفات والأجور والمحاسبة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">monthly_report_engineer_lines</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> متطلب صريح من صاحب المشروع</td><td><strong>12</strong></td><td>المصروفات والأجور والمحاسبة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">monthly_report_site_lines</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> متطلب صريح من صاحب المشروع</td><td><strong>12</strong></td><td>المصروفات والأجور والمحاسبة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">monthly_report_operation_lines</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> متطلب صريح من صاحب المشروع</td><td><strong>12</strong></td><td>المصروفات والأجور والمحاسبة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">monthly_report_recipients</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> متطلب صريح من صاحب المشروع</td><td><strong>12</strong></td><td>المصروفات والأجور والمحاسبة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">monthly_report_deliveries</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> متطلب صريح من صاحب المشروع</td><td><strong>12</strong></td><td>المصروفات والأجور والمحاسبة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">monthly_report_delivery_attempts</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> متطلب صريح من صاحب المشروع</td><td><strong>12</strong></td><td>المصروفات والأجور والمحاسبة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">monthly_report_schedules</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td><span class="mark m-critical" title="حرج">⭐</span> متطلب صريح من صاحب المشروع</td><td><strong>12</strong></td><td>المصروفات والأجور والمحاسبة</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-amber"></div><h3 class="card-title" id="4.14-المجال-14--Files-and-Attachments">4.14 المجال 14 — Files and Attachments</h3><span>3 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">stored_documents</span></td><td><strong>MVP Required</strong></td><td><strong>W1-C</strong> المستندات والتدقيق</td><td><span class="mark m-critical" title="حرج">⭐</span> المرفقات والمستندات المؤيِّدة — ووصولها حدث تدقيق</td><td><strong>13</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">document_links</span></td><td><strong>MVP Required</strong></td><td><strong>W1-C</strong> المستندات والتدقيق</td><td><span class="mark m-critical" title="حرج">⭐</span> المرفقات والمستندات المؤيِّدة — ووصولها حدث تدقيق</td><td><strong>13</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">document_access_log</span></td><td><strong>MVP Required</strong></td><td><strong>W1-C</strong> المستندات والتدقيق</td><td><span class="mark m-critical" title="حرج">⭐</span> المرفقات والمستندات المؤيِّدة — ووصولها حدث تدقيق</td><td><strong>13</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-blue"></div><h3 class="card-title" id="4.15-المجال-15--Audit-Trail">4.15 المجال 15 — Audit Trail</h3><span>4 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">audit_events</span></td><td><strong>MVP Required</strong></td><td><strong>W1-C</strong> المستندات والتدقيق</td><td><span class="mark m-critical" title="حرج">⭐</span> لا أثر مالي بلا إثبات</td><td><strong>13</strong></td><td>كل المجالات المالية</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">audit_event_changes</span></td><td><strong>MVP Required</strong></td><td><strong>W1-C</strong> المستندات والتدقيق</td><td><span class="mark m-critical" title="حرج">⭐</span> لا أثر مالي بلا إثبات</td><td><strong>13</strong></td><td>كل المجالات المالية</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">audit_event_links</span></td><td><strong>MVP Required</strong></td><td><strong>W1-C</strong> المستندات والتدقيق</td><td><span class="mark m-critical" title="حرج">⭐</span> لا أثر مالي بلا إثبات</td><td><strong>13</strong></td><td>كل المجالات المالية</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">audit_retention_policies</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>سياسة الاحتفاظ تُعتمد لاحقًا (OQ-001)</td><td><strong>13</strong></td><td><span class="mono">audit_events</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-purple"></div><h3 class="card-title" id="4.16-المجال-16--Notifications">4.16 المجال 16 — Notifications</h3><span>4 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">notification_rules</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>التنبيهات تحسّن المتابعة ولا تمنع دورة العمل</td><td><strong>12</strong></td><td>—</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">notifications</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>التنبيهات تحسّن المتابعة ولا تمنع دورة العمل</td><td><strong>12</strong></td><td>—</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">notification_deliveries</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>التنبيهات تحسّن المتابعة ولا تمنع دورة العمل</td><td><strong>12</strong></td><td>—</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">notification_channels</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>التنبيهات تحسّن المتابعة ولا تمنع دورة العمل</td><td><strong>12</strong></td><td>—</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-teal"></div><h3 class="card-title" id="4.17-المجال-17--Imports-and-Reconciliation">4.17 المجال 17 — Imports and Reconciliation</h3><span>6 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">import_batches</span></td><td>Migration Only</td><td>WM — الترحيل</td><td><span class="mark m-critical" title="حرج">⭐</span> للترحيل التاريخي مرة واحدة — ثم تبقى للقراءة والنسب</td><td><strong>14</strong></td><td>كل المجالات</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">import_rows</span></td><td>Migration Only</td><td>WM — الترحيل</td><td><span class="mark m-critical" title="حرج">⭐</span> للترحيل التاريخي مرة واحدة — ثم تبقى للقراءة والنسب</td><td><strong>14</strong></td><td>كل المجالات</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">record_lineage</span></td><td>Migration Only</td><td>WM — الترحيل</td><td><span class="mark m-critical" title="حرج">⭐</span> للترحيل التاريخي مرة واحدة — ثم تبقى للقراءة والنسب</td><td><strong>14</strong></td><td>كل المجالات</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">import_resolutions</span></td><td>Migration Only</td><td>WM — الترحيل</td><td><span class="mark m-critical" title="حرج">⭐</span> للترحيل التاريخي مرة واحدة — ثم تبقى للقراءة والنسب</td><td><strong>14</strong></td><td>كل المجالات</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">column_mappings</span></td><td>Migration Only</td><td>WM — الترحيل</td><td><span class="mark m-critical" title="حرج">⭐</span> للترحيل التاريخي مرة واحدة — ثم تبقى للقراءة والنسب</td><td><strong>14</strong></td><td>كل المجالات</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">reconciliation_checks</span></td><td>Migration Only</td><td>WM — الترحيل</td><td><span class="mark m-critical" title="حرج">⭐</span> للترحيل التاريخي مرة واحدة — ثم تبقى للقراءة والنسب</td><td><strong>14</strong></td><td>كل المجالات</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-coral"></div><h3 class="card-title" id="4.18-المجال-18--Reference-Data">4.18 المجال 18 — Reference Data</h3><span>8 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">treasury_accounts</span></td><td><strong>MVP Required</strong></td><td><strong>W1-D</strong> المحاسبة والخزينة والأحداث المالية</td><td><span class="mark m-critical" title="حرج">⭐</span> أساس الخزينة — ومنه يُشتق رصيد النقد</td><td><strong>2</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">unit_types</span></td><td><strong>MVP Required</strong></td><td>W2 — بقية MVP</td><td>بيانات مرجعية لازمة للتشغيل</td><td><strong>2</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">accounting_treatments</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td>بيانات مرجعية لازمة للتشغيل</td><td><strong>2</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">cost_centers</span></td><td><strong>MVP Required</strong></td><td><strong>W1-A</strong> الهوية والبيانات المرجعية</td><td>بيانات مرجعية لازمة للتشغيل</td><td><strong>2</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">chart_of_accounts</span></td><td><strong>MVP Required</strong></td><td><strong>W1-D</strong> المحاسبة والخزينة والأحداث المالية</td><td><span class="mark m-critical" title="حرج">⭐</span> أساس المحاسبة — ولا رقم مالي موثوق بلا قيد مرحَّل</td><td><strong>2</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">fiscal_periods</span></td><td><strong>MVP Required</strong></td><td><strong>W1-D</strong> المحاسبة والخزينة والأحداث المالية</td><td><span class="mark m-critical" title="حرج">⭐</span> أساس المحاسبة — ولا رقم مالي موثوق بلا قيد مرحَّل</td><td><strong>2</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">overhead_allocation_rules</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>تحميل المصاريف العامة قرار محاسبي لاحق</td><td><strong>2</strong></td><td><span class="mono">chart_of_accounts</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">overhead_allocation_rule_versions</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>تحميل المصاريف العامة قرار محاسبي لاحق</td><td><strong>2</strong></td><td><span class="mono">chart_of_accounts</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-amber"></div><h3 class="card-title" id="4.19-المجال-19--Accounting-Ledger">4.19 المجال 19 — Accounting Ledger</h3><span>8 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">currencies</span></td><td><strong>MVP Required</strong></td><td><strong>W1-D</strong> المحاسبة والخزينة والأحداث المالية</td><td><span class="mark m-critical" title="حرج">⭐</span> أساس المحاسبة — ولا رقم مالي موثوق بلا قيد مرحَّل</td><td><strong>5</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">financial_events</span></td><td><strong>MVP Required</strong></td><td><strong>W1-D</strong> المحاسبة والخزينة والأحداث المالية</td><td><span class="mark m-critical" title="حرج">⭐</span> أساس المحاسبة — ولا رقم مالي موثوق بلا قيد مرحَّل</td><td><strong>5</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">posting_rules</span></td><td><strong>MVP Required</strong></td><td><strong>W1-D</strong> المحاسبة والخزينة والأحداث المالية</td><td><span class="mark m-critical" title="حرج">⭐</span> أساس المحاسبة — ولا رقم مالي موثوق بلا قيد مرحَّل</td><td><strong>5</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">posting_rule_versions</span></td><td><strong>MVP Required</strong></td><td><strong>W1-D</strong> المحاسبة والخزينة والأحداث المالية</td><td><span class="mark m-critical" title="حرج">⭐</span> أساس المحاسبة — ولا رقم مالي موثوق بلا قيد مرحَّل</td><td><strong>5</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">journal_entries</span></td><td><strong>MVP Required</strong></td><td><strong>W1-D</strong> المحاسبة والخزينة والأحداث المالية</td><td><span class="mark m-critical" title="حرج">⭐</span> أساس المحاسبة — ولا رقم مالي موثوق بلا قيد مرحَّل</td><td><strong>5</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">journal_entry_lines</span></td><td><strong>MVP Required</strong></td><td><strong>W1-D</strong> المحاسبة والخزينة والأحداث المالية</td><td><span class="mark m-critical" title="حرج">⭐</span> أساس المحاسبة — ولا رقم مالي موثوق بلا قيد مرحَّل</td><td><strong>5</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">ledger_period_balances</span></td><td>Reporting Only</td><td>W3 — بعد MVP</td><td>قراءة تُعاد بناؤها من السطور المرحَّلة</td><td><strong>5</strong></td><td><span class="mono">journal_entry_lines</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">accounting_adjustments</span></td><td><strong>MVP Required</strong></td><td><strong>W1-D</strong> المحاسبة والخزينة والأحداث المالية</td><td><span class="mark m-critical" title="حرج">⭐</span> المستند الرسمي لكل تصحيح أو عكس أو رصيد افتتاحي — <span class="mark m-forbidden" title="ممنوع">⛔</span> وبدونه يصبح العكس تعديلًا صامتًا</td><td><strong>5</strong></td><td><span class="mono">financial_events</span> · <span class="mono">stored_documents</span></td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr></tbody></table></div></div>
+<div class="card"><div class="card-header"><div class="dot dot-blue"></div><h3 class="card-title" id="4.20-المجال-20--Treasury-and-Cash-Management">4.20 المجال 20 — Treasury and Cash Management</h3><span>6 صفًّا</span></div><div class="tbl-wrap"><table><thead><tr><th>الكيان</th><th>التصنيف</th><th>الموجة / الخطوة</th><th><span class="mark m-critical" title="حرج">⭐</span> سبب وجوده</th><th>الحزمة</th><th>الاعتماديات</th><th>يمنع الإطلاق؟</th></tr></thead><tbody><tr><td><span class="mono">banks</span></td><td><strong>MVP Required</strong></td><td><strong>W1-D</strong> المحاسبة والخزينة والأحداث المالية</td><td><span class="mark m-critical" title="حرج">⭐</span> أساس الخزينة — ومنه يُشتق رصيد النقد</td><td><strong>5</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">treasury_movements</span></td><td><strong>MVP Required</strong></td><td><strong>W1-D</strong> المحاسبة والخزينة والأحداث المالية</td><td><span class="mark m-critical" title="حرج">⭐</span> أساس الخزينة — ومنه يُشتق رصيد النقد</td><td><strong>5</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">treasury_movement_allocations</span></td><td><strong>MVP Required</strong></td><td><strong>W1-D</strong> المحاسبة والخزينة والأحداث المالية</td><td><span class="mark m-critical" title="حرج">⭐</span> أساس الخزينة — ومنه يُشتق رصيد النقد</td><td><strong>5</strong></td><td>—</td><td><span class="mark m-ok" title="مستوفى">✅</span> نعم</td></tr><tr><td><span class="mono">treasury_transfers</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>التحويل بين الحسابات عملية لاحقة</td><td><strong>5</strong></td><td><span class="mono">treasury_movements</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">treasury_reconciliations</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>المطابقة البنكية دورة لاحقة</td><td><strong>5</strong></td><td><span class="mono">treasury_movements</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr><tr><td><span class="mono">treasury_reconciliation_lines</span></td><td>Post-MVP</td><td>W3 — بعد MVP</td><td>المطابقة البنكية دورة لاحقة</td><td><strong>5</strong></td><td><span class="mono">treasury_movements</span></td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> لا</td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="5.-ما-لا-تفعله-هذه-المصفوفة">5. <span class="mark m-critical" title="حرج">⭐</span> ما لا تفعله هذه المصفوفة</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>البند</th></tr></thead><tbody><tr><td>1</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا تحذف كيانًا صحيحًا</strong> — <strong>التأجيل ليس إلغاءً</strong></td></tr><tr><td>2</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا تغيّر قاعدة عمل واحدة</strong></td></tr><tr><td>3</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا تقرر جدولًا زمنيًا بالأيام</strong></td></tr><tr><td>4</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا تسمح بتأجيل التدقيق أو المحاسبة إلى ما بعد أول حركة مالية</strong></td></tr><tr><td>5</td><td><span class="mark m-forbidden" title="ممنوع">⛔</span> <strong>لا تُبنى عليها Migrations</strong></td></tr></tbody></table></div></div>
+<div class="rule-sep"></div>
+<h2 class="panel-title" id="6.-سجل-التغيير">6. سجل التغيير</h2>
+<div class="card"><div class="tbl-wrap"><table><thead><tr><th>الإصدار</th><th>التاريخ</th><th>التغيير</th></tr></thead><tbody><tr><td><span class="badge b-confirmed" title="مؤكدة">🟢</span> <strong>2.0.1</strong></td><td>2026-09-20</td><td><span class="mark m-critical" title="حرج">⭐</span> <strong>إضافة <span class="mono">accounting_adjustments</span> إلى W1-D</strong> · <span class="mark m-critical" title="حرج">⭐</span> <strong>تقسيم W1 إلى خمس خطوات</strong> · <strong>وإعادة حساب كل الأعداد آليًا</strong></td></tr><tr><td><strong>1.0.0</strong></td><td>2026-09-20</td><td><strong>الإصدار الأول</strong> — 148 كيانًا</td></tr></tbody></table></div></div></div>
+</div>
+
+<div class="mini-toc" id="toc"></div>
+<div class="fab"><button id="tocBtn" type="button">الفهرس</button></div>
+<div class="fab up"><button id="upBtn" type="button">أعلى</button></div>
+
+<script>
+(function(){
+  var q=document.getElementById('q'), hits=document.getElementById('hits');
+  var toc=document.getElementById('toc'), links;
+
+  /* ارتفاع الترويسة والتبويبات متغيّر (سطر أو سطران) — نقيسه بدل تثبيته */
+  var hdrEl=document.querySelector('.site-header'), navEl=document.querySelector('.nav');
+  function syncSticky(){
+    var h=hdrEl.offsetHeight;
+    navEl.style.top=h+'px';
+    document.documentElement.style.setProperty('--stick',(h+navEl.offsetHeight+14)+'px');
+  }
+  syncSticky();
+  window.addEventListener('resize',syncSticky);
+  if(window.ResizeObserver){ new ResizeObserver(syncSticky).observe(hdrEl); }
+
+  function show(id,btn){
+    document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
+    document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active')});
+    var el=document.getElementById(id); if(el) el.classList.add('active');
+    if(btn) btn.classList.add('active');
+    buildToc(id);
+    window.scrollTo({top:0,behavior:'instant'});
+    history.replaceState(null,'','#'+id);
+  }
+  window.__show=show;
+  document.querySelectorAll('.nav-btn').forEach(function(b){
+    b.addEventListener('click',function(){show(b.dataset.tab,b)});
+  });
+
+  function buildToc(id){
+    var p=document.getElementById(id); if(!p) return;
+    var hs=p.querySelectorAll('.panel-title,.section-title,.card-title');
+    var h='';
+    hs.forEach(function(x){
+      var cls=x.classList.contains('panel-title')?'l2':'l3';
+      h+='<a class="'+cls+'" href="#'+x.id+'">'+x.textContent.replace(/#$/,'')+'</a>';
+    });
+    toc.innerHTML=h;
+    links=Array.prototype.slice.call(toc.querySelectorAll('a'));
+  }
+
+  document.getElementById('tocBtn').addEventListener('click',function(){
+    toc.classList.toggle('open');
+  });
+  document.getElementById('upBtn').addEventListener('click',function(){
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  // ── تكبير وتحريك المخططات المرسومة ──────────────────
+  document.querySelectorAll('.erd').forEach(function(box){
+    var view=box.querySelector('.erd-view'), stage=box.querySelector('.erd-stage');
+    var svg=stage.querySelector('svg'); if(!svg) return;
+    var w=parseFloat(svg.getAttribute('width'))||svg.getBoundingClientRect().width;
+    var h=parseFloat(svg.getAttribute('height'))||svg.getBoundingClientRect().height;
+    svg.removeAttribute('width'); svg.removeAttribute('height');
+    svg.style.width=w+'px'; svg.style.height=h+'px';
+    var s=1,x=0,y=0;
+    function apply(){stage.style.transform='translate('+x+'px,'+y+'px) scale('+s+')'}
+    function fit(){            // ملء العرض: العرض كاملًا والتمرير رأسيًا بالسحب
+      s=Math.max(0.05,Math.min(view.clientWidth/w,1));
+      x=(view.clientWidth-w*s)/2; y=10; apply();
+    }
+    function fitAll(){         // ملء الإطار: المخطط كله داخل الإطار
+      var k=Math.min(view.clientWidth/w, view.clientHeight/h);
+      s=Math.max(0.03,Math.min(k,1)); x=(view.clientWidth-w*s)/2; y=6; apply();
+    }
+    function zoom(f,cx,cy){
+      var ns=Math.min(4,Math.max(0.05,s*f));
+      x=cx-(cx-x)*(ns/s); y=cy-(cy-y)*(ns/s); s=ns; apply();
+    }
+    box.querySelectorAll('.erd-bar button').forEach(function(b){
+      b.addEventListener('click',function(){
+        var k=b.dataset.z;
+        if(k==='in')  zoom(1.25,view.clientWidth/2,view.clientHeight/2);
+        if(k==='out') zoom(0.8, view.clientWidth/2,view.clientHeight/2);
+        if(k==='fit') fit();
+        if(k==='all') fitAll();
+        if(k==='reset'){s=1;x=0;y=0;apply()}
+      });
+    });
+    view.addEventListener('wheel',function(e){
+      e.preventDefault();
+      var r=view.getBoundingClientRect();
+      zoom(e.deltaY<0?1.12:0.89, e.clientX-r.left, e.clientY-r.top);
+    },{passive:false});
+    var dx=0,dy=0,down=false;
+    view.addEventListener('pointerdown',function(e){
+      down=true; dx=e.clientX-x; dy=e.clientY-y;
+      view.classList.add('drag'); view.setPointerCapture(e.pointerId);
+    });
+    view.addEventListener('pointermove',function(e){
+      if(!down) return; x=e.clientX-dx; y=e.clientY-dy; apply();
+    });
+    ['pointerup','pointercancel'].forEach(function(ev){
+      view.addEventListener(ev,function(){down=false; view.classList.remove('drag')});
+    });
+    // اللوحة قد تكون مخفية عند التحميل — فالضبط يتم أول ما تظهر بمقاس حقيقي
+    var fitted=false;
+    function tryFit(){
+      if(fitted || view.clientWidth<40 || view.clientHeight<40) return;
+      fitted=true; fit();
+    }
+    tryFit();
+    if(window.ResizeObserver){ new ResizeObserver(tryFit).observe(view); }
+    window.addEventListener('resize',function(){ if(fitted && s<=0.25) fit(); });
+  });
+
+  // بحث عبر كل التبويبات
+  function clearMarks(){
+    Array.prototype.slice.call(document.querySelectorAll('mark')).forEach(function(m){
+      m.parentNode.replaceChild(document.createTextNode(m.textContent),m);
+    });
+    document.querySelectorAll('.panel').forEach(function(p){p.normalize()});
+  }
+  var timer;
+  q.addEventListener('input',function(){
+    clearTimeout(timer); timer=setTimeout(runSearch,260);
+  });
+  function runSearch(){
+    clearMarks();
+    var v=q.value.trim();
+    document.querySelectorAll('.nav-btn .cnt').forEach(function(c){c.textContent=c.dataset.n});
+    if(v.length<2){ hits.textContent=''; return; }
+    var total=0;
+    document.querySelectorAll('.panel').forEach(function(p){
+      var c=0;
+      var w=document.createTreeWalker(p,NodeFilter.SHOW_TEXT,null), nodes=[], nd;
+      while((nd=w.nextNode())){ if(nd.nodeValue.indexOf(v)!==-1) nodes.push(nd); }
+      nodes.forEach(function(node){
+        var parts=node.nodeValue.split(v), frag=document.createDocumentFragment();
+        for(var i=0;i<parts.length;i++){
+          frag.appendChild(document.createTextNode(parts[i]));
+          if(i<parts.length-1){ var m=document.createElement('mark'); m.textContent=v; frag.appendChild(m); c++; }
+        }
+        node.parentNode.replaceChild(frag,node);
+      });
+      total+=c;
+      var btn=document.querySelector('.nav-btn[data-tab="'+p.id+'"] .cnt');
+      if(btn) btn.textContent=c?c:'0';
+    });
+    hits.textContent = total ? ('مطابقات: '+total) : 'لا مطابقات';
+    var first=document.querySelector('.panel.active mark');
+    if(first) first.scrollIntoView({block:'center'});
+  }
+
+  // فتح التبويب من الرابط
+  var h=location.hash.slice(1);
+  var start=document.querySelector('.nav-btn[data-tab="'+h+'"]');
+  if(start) show(h,start); else buildToc(document.querySelector('.panel.active').id);
+
+  // روابط الفهرس تغلقه بعد القفز
+  document.addEventListener('click',function(e){
+    if(e.target.closest('#toc a')) toc.classList.remove('open');
+  });
+})();
+</script>
+</body>
+</html>

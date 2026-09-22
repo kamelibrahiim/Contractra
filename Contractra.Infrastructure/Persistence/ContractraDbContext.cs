@@ -1,4 +1,5 @@
-﻿using Contractra.Domain.Parties;
+﻿using Contractra.Domain.Identity;
+using Contractra.Domain.Parties;
 using Microsoft.EntityFrameworkCore;
 
 namespace Contractra.Infrastructure.Persistence;
@@ -18,6 +19,12 @@ public sealed class ContractraDbContext : DbContext
     public DbSet<PartyAlias> PartyAliases => Set<PartyAlias>();
 
     public DbSet<PartyIdentifier> PartyIdentifiers => Set<PartyIdentifier>();
+
+    public DbSet<Role> Roles => Set<Role>();
+
+    public DbSet<Permission> Permissions => Set<Permission>();
+
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

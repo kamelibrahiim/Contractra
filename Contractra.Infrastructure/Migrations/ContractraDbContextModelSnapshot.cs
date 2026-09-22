@@ -22,6 +22,83 @@ namespace Contractra.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Contractra.Domain.Identity.Permission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_permissions");
+
+                    b.ToTable("permissions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_permissions_status_valid_values", "status IN ('Active', 'Deprecated')");
+                        });
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.Role", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_roles");
+
+                    b.ToTable("roles", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_roles_status_valid_values", "status IN ('Active', 'Deprecated')");
+                        });
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.RolePermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("PermissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("permission_id");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_role_permissions");
+
+                    b.HasIndex("PermissionId")
+                        .HasDatabaseName("ix_role_permissions_permission_id");
+
+                    b.HasIndex("RoleId", "PermissionId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_role_permissions_role_id_permission_id");
+
+                    b.ToTable("role_permissions", (string)null);
+                });
+
             modelBuilder.Entity("Contractra.Domain.Parties.Party", b =>
                 {
                     b.Property<Guid>("Id")
@@ -157,6 +234,23 @@ namespace Contractra.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Contractra.Domain.Identity.RolePermission", b =>
+                {
+                    b.HasOne("Contractra.Domain.Identity.Permission", null)
+                        .WithMany()
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_role_permissions_permissions_permission_id");
+
+                    b.HasOne("Contractra.Domain.Identity.Role", null)
+                        .WithMany("Permissions")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_role_permissions_roles_role_id");
+                });
+
             modelBuilder.Entity("Contractra.Domain.Parties.PartyAlias", b =>
                 {
                     b.HasOne("Contractra.Domain.Parties.Party", null)
@@ -185,6 +279,11 @@ namespace Contractra.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_party_roles_parties_party_id");
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.Role", b =>
+                {
+                    b.Navigation("Permissions");
                 });
 
             modelBuilder.Entity("Contractra.Domain.Parties.Party", b =>

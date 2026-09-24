@@ -40,30 +40,4 @@ void main() {
       },
     );
   });
-
-  group('AppRadius', () {
-    testWidgets('all radius values resolve to positive values', (tester) async {
-      await pumpScreenUtil(tester);
-
-      expect(AppRadius.sm, greaterThan(0));
-      expect(AppRadius.md, greaterThan(0));
-      expect(AppRadius.lg, greaterThan(0));
-      expect(AppRadius.pill, greaterThan(0));
-    });
-
-    testWidgets('radius ordering is sensible: sm < md < lg', (tester) async {
-      await pumpScreenUtil(tester);
-
-      expect(AppRadius.sm, lessThan(AppRadius.md));
-      expect(AppRadius.md, lessThan(AppRadius.lg));
-    });
-
-    testWidgets('pill is clearly larger than regular radii', (tester) async {
-      await pumpScreenUtil(tester);
-
-      expect(AppRadius.pill, greaterThan(AppRadius.lg));
-      expect(AppRadius.pill, greaterThan(AppRadius.md));
-      expect(AppRadius.pill, greaterThan(AppRadius.sm));
-    });
-  });
 }

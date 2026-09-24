@@ -1,7 +1,8 @@
 namespace Contractra.Domain.Identity;
 
 /// <summary>
-/// Shared validation for RoleCode and PermissionCode.
+/// Shared validation for Identity value objects backed by a plain string
+/// business identifier (e.g. RoleCode, PermissionCode, LoginIdentifier).
 /// </summary>
 internal static class CatalogCode
 {

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../core/theme/app_theme.dart';
-import '../../utilities/app_radius.dart';
-import '../../utilities/app_spacing.dart';
-import '../../utilities/text_style_helper.dart';
+import '../core/theme/app_radius.dart';
+import '../core/theme/app_spacing.dart';
+import '../core/theme/app_theme.dart';
+import '../utilities/text_style_helper.dart';
 
 /// The Employee app's single reusable text input.
 ///

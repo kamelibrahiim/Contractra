@@ -99,6 +99,35 @@ namespace Contractra.Infrastructure.Migrations
                     b.ToTable("role_permissions", (string)null);
                 });
 
+            modelBuilder.Entity("Contractra.Domain.Identity.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("LoginIdentifier")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("login_identifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_users");
+
+                    b.HasIndex("LoginIdentifier")
+                        .IsUnique()
+                        .HasDatabaseName("ux_users_login_identifier");
+
+                    b.ToTable("users", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_users_status_valid_values", "status IN ('Active', 'Disabled')");
+                        });
+                });
+
             modelBuilder.Entity("Contractra.Domain.Parties.Party", b =>
                 {
                     b.Property<Guid>("Id")

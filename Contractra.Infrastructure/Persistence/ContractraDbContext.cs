@@ -26,6 +26,8 @@ public sealed class ContractraDbContext : DbContext
 
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
+    public DbSet<User> Users => Set<User>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ContractraDbContext).Assembly);

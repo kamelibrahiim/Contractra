@@ -29,6 +29,8 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("pk_role_permissions")]
     [InlineData("fk_role_permissions_roles_role_id")]
     [InlineData("fk_role_permissions_permissions_permission_id")]
+    [InlineData("pk_users")]
+    [InlineData("ck_users_status_valid_values")]
     public async Task ExpectedConstraint_ExistsInPgConstraint(string constraintName)
     {
         await using var connection = await OpenConnectionAsync();
@@ -49,6 +51,7 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("ux_permissions_code_lower")]
     [InlineData("ux_role_permissions_role_id_permission_id")]
     [InlineData("ix_role_permissions_permission_id")]
+    [InlineData("ux_users_login_identifier")]
     public async Task ExpectedIndex_ExistsInPgIndexes(string indexName)
     {
         await using var connection = await OpenConnectionAsync();

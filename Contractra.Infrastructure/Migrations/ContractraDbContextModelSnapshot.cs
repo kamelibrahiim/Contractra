@@ -118,10 +118,6 @@ namespace Contractra.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_users");
 
-                    b.HasIndex("LoginIdentifier")
-                        .IsUnique()
-                        .HasDatabaseName("ux_users_login_identifier");
-
                     b.ToTable("users", null, t =>
                         {
                             t.HasCheckConstraint("ck_users_status_valid_values", "status IN ('Active', 'Disabled')");

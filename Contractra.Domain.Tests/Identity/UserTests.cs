@@ -63,12 +63,11 @@ public class UserTests
     }
 
     [Fact]
-    public void Disable_IsIdempotent_WhenAlreadyDisabled()
+    public void Disable_Throws_WhenAlreadyDisabled()
     {
         var user = new User(NewLoginIdentifier(), UserStatus.Disabled);
 
-        user.Disable();
-
+        Assert.Throws<InvalidOperationException>(() => user.Disable());
         Assert.Equal(UserStatus.Disabled, user.Status);
     }
 
@@ -83,12 +82,11 @@ public class UserTests
     }
 
     [Fact]
-    public void Reactivate_IsIdempotent_WhenAlreadyActive()
+    public void Reactivate_Throws_WhenAlreadyActive()
     {
         var user = new User(NewLoginIdentifier(), UserStatus.Active);
 
-        user.Reactivate();
-
+        Assert.Throws<InvalidOperationException>(() => user.Reactivate());
         Assert.Equal(UserStatus.Active, user.Status);
     }
 }

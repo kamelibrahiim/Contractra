@@ -12,30 +12,47 @@ public class UserUniquenessAndLifecycleTests : IClassFixture<PostgresTestDatabas
         _fixture = fixture;
     }
 
-    [Fact]
-    public async Task LoginIdentifier_IsUnique()
+    [Theory]
+    [InlineData("Exact.User01", "Exact.User01")]
+    [InlineData("Kamel", "kamel")]
+    [InlineData("Mona", "MONA")]
+    [InlineData("Omar.Field01", "omar.FIELD01")]
+    public async Task LoginIdentifier_IsUnique_CaseInsensitively(string existing, string duplicate)
     {
         await using var dbContext = _fixture.CreateDbContext();
-        dbContext.Users.Add(new User(new LoginIdentifier("Unique.User01"), UserStatus.Active));
+        dbContext.Users.Add(new User(new LoginIdentifier(existing), UserStatus.Active));
         await dbContext.SaveChangesAsync();
 
         await using var dbContext2 = _fixture.CreateDbContext();
-        dbContext2.Users.Add(new User(new LoginIdentifier("Unique.User01"), UserStatus.Active));
+        dbContext2.Users.Add(new User(new LoginIdentifier(duplicate), UserStatus.Active));
 
-        await PostgresAssert.FailsWithAsync(() => dbContext2.SaveChangesAsync(), "23505", "ux_users_login_identifier");
+        await PostgresAssert.FailsWithAsync(() => dbContext2.SaveChangesAsync(), "23505", "ux_users_login_identifier_lower");
     }
 
     [Fact]
-    public async Task LoginIdentifier_UniquenessIsCaseSensitive()
+    public async Task DistinctLoginIdentifiers_AreAllowed()
     {
         await using var dbContext = _fixture.CreateDbContext();
-        dbContext.Users.Add(new User(new LoginIdentifier("CaseSensitive.User"), UserStatus.Active));
-        await dbContext.SaveChangesAsync();
+        dbContext.Users.Add(new User(new LoginIdentifier("Distinct.UserA"), UserStatus.Active));
+        dbContext.Users.Add(new User(new LoginIdentifier("Distinct.UserB"), UserStatus.Active));
 
-        await using var dbContext2 = _fixture.CreateDbContext();
-        dbContext2.Users.Add(new User(new LoginIdentifier("casesensitive.user"), UserStatus.Active));
+        await dbContext.SaveChangesAsync(); // must not throw
+    }
 
-        await dbContext2.SaveChangesAsync(); // must not throw: uniqueness is case-sensitive, no lower() rule is documented for login_identifier
+    [Fact]
+    public async Task CaseOnlyDuplicate_IsRejected_EvenThroughRawSql()
+    {
+        await using var connection = await OpenConnectionAsync();
+        const string insert = "INSERT INTO users (id, login_identifier, status) VALUES (@id, @login_identifier, 'Active');";
+
+        await PostgresAssert.ExecuteAsync(connection, null, insert,
+            ("id", Guid.CreateVersion7()), ("login_identifier", "RawSql.Kamel"));
+
+        await PostgresAssert.FailsWithAsync(
+            () => PostgresAssert.ExecuteAsync(connection, null, insert,
+                ("id", Guid.CreateVersion7()), ("login_identifier", "rawsql.KAMEL")),
+            "23505",
+            "ux_users_login_identifier_lower");
     }
 
     [Fact]

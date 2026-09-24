@@ -26,11 +26,21 @@ public sealed class User
 
     public void Disable()
     {
+        if (Status != UserStatus.Active)
+        {
+            throw new InvalidOperationException($"Only an Active user can be disabled; current status is {Status}.");
+        }
+
         Status = UserStatus.Disabled;
     }
 
     public void Reactivate()
     {
+        if (Status != UserStatus.Disabled)
+        {
+            throw new InvalidOperationException($"Only a Disabled user can be reactivated; current status is {Status}.");
+        }
+
         Status = UserStatus.Active;
     }
 }

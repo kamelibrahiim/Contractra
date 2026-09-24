@@ -51,7 +51,7 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("ux_permissions_code_lower")]
     [InlineData("ux_role_permissions_role_id_permission_id")]
     [InlineData("ix_role_permissions_permission_id")]
-    [InlineData("ux_users_login_identifier")]
+    [InlineData("ux_users_login_identifier_lower")]
     public async Task ExpectedIndex_ExistsInPgIndexes(string indexName)
     {
         await using var connection = await OpenConnectionAsync();
@@ -78,6 +78,28 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
         Assert.NotNull(definition);
         Assert.Contains("CREATE UNIQUE INDEX", definition);
         Assert.Contains("lower(code)", definition);
+    }
+
+    [Fact]
+    public async Task LoginIdentifierUniqueIndex_IsUniqueOnLowerLoginIdentifier_AndReplacesTheCaseSensitiveOne()
+    {
+        await using var connection = await OpenConnectionAsync();
+        await using var command = new NpgsqlCommand(
+            "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = current_schema() AND tablename = 'users' AND indexdef LIKE 'CREATE UNIQUE INDEX%' AND indexdef LIKE '%login_identifier%';",
+            connection);
+
+        var uniqueIndexes = new List<(string Name, string Definition)>();
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+            {
+                uniqueIndexes.Add((reader.GetString(0), reader.GetString(1)));
+            }
+        }
+
+        var index = Assert.Single(uniqueIndexes);
+        Assert.Equal("ux_users_login_identifier_lower", index.Name);
+        Assert.Contains("lower(login_identifier)", index.Definition);
     }
 
     [Theory]

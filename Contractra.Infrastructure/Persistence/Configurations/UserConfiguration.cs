@@ -21,16 +21,13 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             v => v.Value,
             v => new LoginIdentifier(v));
 
-        // Login identifiers are stored exactly as supplied.
-        // Uniqueness is intentionally case-sensitive; no normalization is applied.
+        // Stored with its supplied casing. Case-insensitive uniqueness is the
+        // expression index ux_users_login_identifier_lower (lower(login_identifier)),
+        // added via raw SQL in the migration - EF Core's fluent API cannot express it.
         builder.Property(u => u.LoginIdentifier)
             .HasColumnName("login_identifier")
             .HasConversion(loginIdentifierConverter)
             .IsRequired();
-
-        builder.HasIndex(u => u.LoginIdentifier)
-            .IsUnique()
-            .HasDatabaseName("ux_users_login_identifier");
 
         builder.Property(u => u.Status)
             .HasColumnName("status")

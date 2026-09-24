@@ -11,10 +11,8 @@ class SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = appTheme(context);
     return Scaffold(
-      backgroundColor: theme.backGroundColor,
-      body: const Center(
-        child: Text('Contractra Admin'),
-      ),
+      backgroundColor: theme.backgroundColor,
+      body: const Center(child: Text('Contractra Admin')),
     );
   }
 }

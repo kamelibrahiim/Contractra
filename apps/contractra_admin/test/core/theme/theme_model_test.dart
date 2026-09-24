@@ -11,7 +11,7 @@ void main() {
       expect(theme.isDark, isFalse);
       expect(theme.primaryColor, const Color(0xFF1E5631));
       expect(theme.accentColor, const Color(0xFF8A6D3B));
-      expect(theme.backGroundColor, const Color(0xFFF7F5F0));
+      expect(theme.backgroundColor, const Color(0xFFF7F5F0));
       expect(theme.surfaceColor, const Color(0xFFFFFFFF));
       expect(theme.borderColor, const Color(0xFFDDD9D0));
       expect(theme.successColor, const Color(0xFF2F7D4F));
@@ -28,7 +28,7 @@ void main() {
       expect(theme.isDark, isTrue);
       expect(theme.primaryColor, const Color(0xFF3E8E5B));
       expect(theme.accentColor, const Color(0xFFC7A366));
-      expect(theme.backGroundColor, const Color(0xFF171B1A));
+      expect(theme.backgroundColor, const Color(0xFF171B1A));
       expect(theme.surfaceColor, const Color(0xFF212624));
       expect(theme.borderColor, const Color(0xFF373F3C));
       expect(theme.successColor, const Color(0xFF4CAF72));
@@ -59,7 +59,7 @@ void main() {
       expect(restored.isDark, original.isDark);
       expect(restored.primaryColor, original.primaryColor);
       expect(restored.accentColor, original.accentColor);
-      expect(restored.backGroundColor, original.backGroundColor);
+      expect(restored.backgroundColor, original.backgroundColor);
       expect(restored.surfaceColor, original.surfaceColor);
       expect(restored.borderColor, original.borderColor);
       expect(restored.successColor, original.successColor);
@@ -92,7 +92,7 @@ void main() {
       expect(restored.isDark, isFalse);
       expect(restored.primaryColor, const Color(0xFF204060));
       expect(restored.accentColor, const Color(0xFF102030));
-      expect(restored.backGroundColor, const Color(0xFFEEEEEE));
+      expect(restored.backgroundColor, const Color(0xFFEEEEEE));
       expect(restored.warningColor, const Color(0xFFFF0000));
 
       // New roles are missing from the old JSON, so they fall back to
@@ -156,6 +156,47 @@ void main() {
       };
 
       expect(() => ThemeModel.fromJson(nullValueJson), throwsA(anything));
+    });
+
+    test('toJson serializes only the canonical "backgroundColor" key', () {
+      final json = ThemeModel.defaultTheme.toJson();
+
+      expect(
+        json['backgroundColor'],
+        ThemeModel.defaultTheme.backgroundColor.toARGB32(),
+      );
+      expect(json.containsKey('backGroundColor'), isFalse);
+    });
+
+    test('fromJson reads legacy "backGroundColor" data when the canonical '
+        'key is absent', () {
+      final legacyJson = <String, dynamic>{
+        'isDark': false,
+        'primaryColor': const Color(0xFF204060).toARGB32(),
+        'accentColor': const Color(0xFF102030).toARGB32(),
+        'backGroundColor': const Color(0xFF00FF00).toARGB32(),
+        'warningColor': const Color(0xFFFF0000).toARGB32(),
+      };
+
+      final restored = ThemeModel.fromJson(legacyJson);
+
+      expect(restored.backgroundColor, const Color(0xFF00FF00));
+    });
+
+    test('fromJson prefers canonical "backgroundColor" over legacy '
+        '"backGroundColor" when both are present', () {
+      final bothKeysJson = <String, dynamic>{
+        'isDark': false,
+        'primaryColor': const Color(0xFF204060).toARGB32(),
+        'accentColor': const Color(0xFF102030).toARGB32(),
+        'backgroundColor': const Color(0xFF00FF00).toARGB32(),
+        'backGroundColor': const Color(0xFFFF00FF).toARGB32(),
+        'warningColor': const Color(0xFFFF0000).toARGB32(),
+      };
+
+      final restored = ThemeModel.fromJson(bothKeysJson);
+
+      expect(restored.backgroundColor, const Color(0xFF00FF00));
     });
 
     test('lerp at t=0 returns this and at t=1 returns other for new roles', () {

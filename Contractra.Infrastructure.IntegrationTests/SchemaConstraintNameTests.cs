@@ -31,6 +31,11 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("fk_role_permissions_permissions_permission_id")]
     [InlineData("pk_users")]
     [InlineData("ck_users_status_valid_values")]
+    [InlineData("pk_user_roles")]
+    [InlineData("fk_user_roles_users_user_id")]
+    [InlineData("fk_user_roles_roles_role_id")]
+    [InlineData("ck_user_roles_ended_at_after_assigned_at")]
+    [InlineData("ex_user_roles_no_overlapping_period")]
     public async Task ExpectedConstraint_ExistsInPgConstraint(string constraintName)
     {
         await using var connection = await OpenConnectionAsync();
@@ -52,6 +57,8 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("ux_role_permissions_role_id_permission_id")]
     [InlineData("ix_role_permissions_permission_id")]
     [InlineData("ux_users_login_identifier_lower")]
+    [InlineData("ux_user_roles_user_id_role_id_active")]
+    [InlineData("ix_user_roles_role_id")]
     public async Task ExpectedIndex_ExistsInPgIndexes(string indexName)
     {
         await using var connection = await OpenConnectionAsync();
@@ -100,6 +107,34 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
         var index = Assert.Single(uniqueIndexes);
         Assert.Equal("ux_users_login_identifier_lower", index.Name);
         Assert.Contains("lower(login_identifier)", index.Definition);
+    }
+
+    [Fact]
+    public async Task UserRoleActiveIndex_IsUniqueAndPartialOnOpenAssignments()
+    {
+        await using var connection = await OpenConnectionAsync();
+        await using var command = new NpgsqlCommand(
+            "SELECT indexdef FROM pg_indexes WHERE indexname = 'ux_user_roles_user_id_role_id_active' AND tablename = 'user_roles';",
+            connection);
+
+        var definition = (string?)await command.ExecuteScalarAsync();
+        Assert.NotNull(definition);
+        Assert.Contains("CREATE UNIQUE INDEX", definition);
+        Assert.Contains("(user_id, role_id)", definition);
+        Assert.Contains("WHERE (ended_at IS NULL)", definition);
+    }
+
+    [Theory]
+    [InlineData("fk_user_roles_users_user_id")]
+    [InlineData("fk_user_roles_roles_role_id")]
+    public async Task UserRoleForeignKeys_AreOnDeleteRestrict(string constraintName)
+    {
+        await using var connection = await OpenConnectionAsync();
+        await using var command = new NpgsqlCommand(
+            "SELECT confdeltype::text FROM pg_constraint WHERE conname = @name AND contype = 'f';", connection);
+        command.Parameters.AddWithValue("name", constraintName);
+
+        Assert.Equal("r", (string?)await command.ExecuteScalarAsync()); // r = RESTRICT
     }
 
     [Theory]

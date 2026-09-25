@@ -38,8 +38,13 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             "ck_users_status_valid_values",
             "status IN ('Active', 'Disabled')"));
 
-        // UserRole persistence is not configured yet; ignored so EF Core does not
-        // map it by convention and the schema stays as migrated.
-        builder.Ignore(u => u.Roles);
+        builder.HasMany(u => u.Roles)
+            .WithOne()
+            .HasForeignKey(ur => ur.UserId)
+            .HasConstraintName("fk_user_roles_users_user_id")
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired();
+
+        builder.Metadata.FindNavigation(nameof(User.Roles))!.SetPropertyAccessMode(PropertyAccessMode.Field);
     }
 }

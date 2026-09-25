@@ -1,8 +1,8 @@
 # ADR 0003: Physical persistence design for the User identity slice
 
-**Status:** Partially implemented. `User` is done (Domain + EF Core configuration + PostgreSQL constraints + tests). `UserRole`, `UserPermission` and `UserPartyLink` are not implemented yet; their sections below are reserved and will be filled when those entities are built. There is no Application layer, API, authentication, or audit infrastructure.
+**Status:** Partially implemented. `User` and `UserRole` are done (Domain + EF Core configuration + PostgreSQL constraints + tests). `UserPermission` and `UserPartyLink` are not implemented yet; their sections below are reserved and will be filled when those entities are built. There is no Application layer, API, authentication, or audit infrastructure.
 
-**Scope:** `users`, the first entity of the remaining W1-A identity work (`docs/mvp-entity-scope-matrix-ar.md` §4.1). The backend Sprint 1 plan is in `docs/implementation/backend/sprints/sprint-01.md`.
+**Scope:** `users` and `user_roles`, part of the remaining W1-A identity work (`docs/mvp-entity-scope-matrix-ar.md` §4.1). The backend Sprint 1 plan is in `docs/implementation/backend/sprints/sprint-01.md`.
 
 Like ADR 0001 and ADR 0002, this is an engineering ADR. It records physical-design decisions made to *implement* confirmed rules and is not authoritative over any document in `docs/` outside `docs/decisions/`. Every section below separates **confirmed rules** (with their source) from **owner decisions** and **engineering choices**.
 
@@ -17,6 +17,9 @@ Like ADR 0001 and ADR 0002, this is an engineering ADR. It records physical-desi
 | A user is disabled, never deleted, so their history stays linked | spec FR-AUTH-004 | No delete operation in the domain (§5) |
 | `password_hash` is never written to audit or Serilog | `logical-data-model-ar.md` §1.7 | Not applicable yet: no credential is stored (§6) |
 | Creating, disabling and reactivating users are audited in the same transaction | `logical-data-model-ar.md` §1.8 · BR-186 | **Not implemented** — see §8 |
+| `users → user_roles` is `1 : N` and dated | `logical-data-model-ar.md` §1.3, §1.4 | `UserRole` owned by `User` (§9.1) |
+| `user_roles` lifecycle `Active → Ended` by setting `ended_at`; no deletion | `logical-data-model-ar.md` §1.5 | `UserRole.End()` (§9.1) · FKs `ON DELETE RESTRICT` |
+| No uniqueness on `(user, role)`, because a role may be assigned, ended and assigned again; a partial index `WHERE ended_at IS NULL` | `logical-data-model-ar.md` §1.6 | `ux_user_roles_user_id_role_id_active` (§9.1) |
 
 ## 2. Entity ID and fields
 
@@ -84,7 +87,7 @@ A rejected call leaves the status unchanged. Neither method records a timestamp 
 
 ## 5. No hard delete
 
-`User` has no delete method, and none is planned. `FR-AUTH-004` and `logical-data-model-ar.md` §1.5 both rule out deleting users. Foreign keys that later reference `users` (UserRole, UserPermission, UserPartyLink) are planned as `ON DELETE RESTRICT`; they will be recorded in §9 when built.
+`User` has no delete method, and none is planned. `FR-AUTH-004` and `logical-data-model-ar.md` §1.5 both rule out deleting users. Every foreign key that references `users` is `ON DELETE RESTRICT`: today `fk_user_roles_users_user_id` (§9.1); UserPermission and UserPartyLink will follow the same rule.
 
 ## 6. Out of scope: authentication
 
@@ -97,22 +100,59 @@ The logical model lists `password_hash` as a sensitive field (§1.7), and adding
 
 ## 7. Sprint boundaries
 
-This ADR does not change the Backend Sprint 1 scope. UserRole, UserPermission and UserPartyLink are still to be built in their planned tasks, with no Application use cases, API endpoints or authentication.
+This ADR does not change the Backend Sprint 1 scope. UserPermission and UserPartyLink are still to be built in their planned tasks, with no Application use cases, API endpoints or authentication.
 
-The Sprint plan (US-BE-005) foresaw one combined migration for the whole slice. `AddUsers` was already published, so the slice now spans several additive migrations instead. Each one is additive and reversible on its own.
+The Sprint plan (US-BE-005) foresaw one combined migration for the whole slice. `AddUsers` was already published, so the slice now spans several additive migrations instead: `AddUsers`, `MakeUserLoginIdentifierCaseInsensitive` and `AddUserRoles` so far. Each one is additive and reversible on its own, and each has a test that migrates down past it and back up.
 
 ## 8. Audit boundary
 
 **Confirmed requirement:** `UserCreated`, `UserDisabled` and `UserReactivated` are named audit events (`logical-data-model-ar.md` §1.8), written in the same transaction as the change (BR-186). `audit_events` belongs to W1-C and does not exist yet.
 
-**Decision:** as in ADR 0001 §13 and ADR 0002 §10, no Application use case or API endpoint exposes user creation or status changes until the audit trail exists.
+**Decision:** as in ADR 0001 §13 and ADR 0002 §10, no Application use case or API endpoint exposes user creation or status changes until the audit trail exists. The same applies to assigning and ending roles: `RoleAssigned` and `RoleEnded` are named audit events in the same section.
 
-## 9. Reserved: `UserRole`, `UserPermission`, `UserPartyLink`
+## 9. Related entities
 
-Not implemented. Each will get its own subsection here when built:
-- **9.1 `UserRole`** — dated user-to-role assignment.
-- **9.2 `UserPermission`** — direct per-user grants and revocations, including the only sanctioned path for `Payroll.View`. The cross-reference to ADR 0002 §6 (role path forbidden) belongs here.
-- **9.3 `UserPartyLink`** — the user-to-party link, `UNIQUE(user_id)` (`logical-data-model-ar.md` §1.6).
+### 9.1 `UserRole` — implemented
+
+**Timestamps, not dates (owner decision, 2026-09-25).** `AssignedAt: DateTimeOffset` and `EndedAt: DateTimeOffset?`, stored as `timestamp with time zone` in `assigned_at` and `ended_at`.
+- The Sprint plan proposed `DateOnly`, like `PartyRole`. The owner chose instants instead: an ended role stops at that exact moment, whereas with whole days it would stay active until the end of its end date.
+- This also matches the data dictionary's naming convention, where every `_at` column is `TIMESTAMP_UTC`.
+- Only UTC values (offset `00:00`) are accepted. Other offsets are rejected, not converted, so a caller's value is never silently shifted.
+- PostgreSQL stores microseconds, so sub-microsecond precision is not preserved on save.
+- The start column `assigned_at` is not named in the logical model, which names only `ended_at`. It pairs with `ended_at` and with the `RoleAssigned` audit event.
+
+**Domain (engineering choices):**
+- `UserRole` has an internal constructor. It is created only through `User.AssignRole(role, assignedAt, asOf)` and exposed through the read-only `User.Roles`, the same ownership pattern as `Role.GrantPermission` and `Party.Roles`.
+- `IsActiveAt(asOf)`: active from `AssignedAt` (inclusive) until `EndedAt` (exclusive).
+- The entity never reads the system clock. The caller supplies "now" as `asOf`, and `assignedAt`/`endedAt` must not be after it: they record facts, not scheduled changes. A future start would otherwise block that role until it began, with no way to end it.
+- `End(endedAt, asOf)` records `Active → Ended`. It rejects an end before `AssignedAt`, and a second `End()`, so a recorded end is never rewritten. `EndedAt == AssignedAt` is allowed (a zero-length assignment, for example an immediate correction).
+- `AssignRole` rejects a new assignment that overlaps a loaded assignment of the same role, whether that one is still open or ends after the new start. Only loaded assignments are checked; the database is the final guard. This is stricter than the plan, which put no uniqueness check in the domain; review found that a backdated reassignment could otherwise overlap an ended one.
+- There is no delete or unassign method.
+
+**Database:**
+
+| Object | Purpose | Basis |
+|---|---|---|
+| `pk_user_roles` | primary key | convention |
+| `ux_user_roles_user_id_role_id_active` | unique `(user_id, role_id) WHERE ended_at IS NULL`: at most one open assignment per user and role | **confirmed**, `logical-data-model-ar.md` §1.6 |
+| `ex_user_roles_no_overlapping_period` | `EXCLUDE USING gist (user_id WITH =, role_id WITH =, tstzrange(assigned_at, ended_at, '[)') WITH &&)`, `DEFERRABLE INITIALLY IMMEDIATE` | **engineering**, same approach as `ex_party_roles_no_overlapping_period` (ADR 0001 §7) |
+| `ck_user_roles_ended_at_after_assigned_at` | `ended_at IS NULL OR ended_at >= assigned_at` | engineering, mirrors `party_roles` |
+| `fk_user_roles_users_user_id`, `fk_user_roles_roles_role_id` | both `ON DELETE RESTRICT` | no deletion (§5) |
+| `ix_user_roles_role_id` | supports the role foreign key | engineering |
+
+- **Why both the index and the `EXCLUDE` constraint:** the documented partial index only sees open rows. It cannot stop a backdated reassignment from overlapping an assignment that has already ended. The `EXCLUDE` constraint is the real non-overlap guarantee; its `'[)'` range matches `IsActiveAt`, so a reassignment starting at the exact instant the previous one ended is allowed. This pairing of a documented cheap constraint with an `EXCLUDE` constraint is the ADR 0001 §7 precedent.
+- **Two error codes for one rule:** a second open assignment fails with 23505 on the partial index, and an overlap with an ended assignment fails with 23P01 on the `EXCLUDE` constraint. A future Application layer must map both.
+- The `btree_gist` extension is owned by `InitialPartySlice`; `AddUserRoles` neither creates nor drops it.
+- The migration is the additive `AddUserRoles`. `Down()` drops the constraint and the table, and nothing else.
+- **Not enforced (open, see §10):** whether a user must hold at least one role, and whether a deprecated role may be assigned or a disabled user may receive one.
+
+### 9.2 `UserPermission` — reserved
+
+Direct per-user grants and revocations, including the only sanctioned path for `Payroll.View`. The cross-reference to ADR 0002 §6 (role path forbidden) belongs here. It is expected to follow the §9.1 timestamp decision.
+
+### 9.3 `UserPartyLink` — reserved
+
+The user-to-party link, `UNIQUE(user_id)` (`logical-data-model-ar.md` §1.6).
 
 ## 10. Unresolved (not decided here)
 
@@ -120,4 +160,5 @@ Not implemented. Each will get its own subsection here when built:
 2. **Authentication credential format**: password storage, hashing algorithm, tokens, lockout (§6).
 3. **Audit behavior** for user lifecycle events (§8).
 4. **Login identifier character set and length**, including whether non-ASCII identifiers are allowed (§3.2 limitation).
-5. **Whether "at least one role per user" (FR-AUTH-003) is a domain invariant** or an Application-layer rule. To be decided with UserRole.
+5. **"At least one role per user" (FR-AUTH-003).** Not enforced in the domain or the database: a `User` may have zero roles, following the `Party` precedent (ADR 0001 §4), and the Sprint plan (§H.3) defers the rule to the Application layer. Whether it should ever become a domain invariant is still open.
+6. **Role and user status on assignment.** `AssignRole` does not check whether the role is `Deprecated` or the user is `Disabled`. What those states mean for authorization is undecided (ADR 0002 §8).

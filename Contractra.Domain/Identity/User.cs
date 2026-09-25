@@ -3,6 +3,7 @@ namespace Contractra.Domain.Identity;
 public sealed class User
 {
     private readonly List<UserRole> _roles = new();
+    private readonly List<UserPermission> _permissions = new();
 
     public Guid Id { get; private set; }
 
@@ -11,6 +12,8 @@ public sealed class User
     public UserStatus Status { get; private set; }
 
     public IReadOnlyCollection<UserRole> Roles => _roles.AsReadOnly();
+
+    public IReadOnlyCollection<UserPermission> Permissions => _permissions.AsReadOnly();
 
     private User()
     {
@@ -75,5 +78,35 @@ public sealed class User
         var userRole = new UserRole(Id, role.Id, assignedAt);
         _roles.Add(userRole);
         return userRole;
+    }
+
+    /// <summary>
+    /// Grants a permission directly to this user from grantedAt onwards. Unlike
+    /// Role.GrantPermission, Payroll.View is allowed: per BR-235 / FR-AUTH-006 it
+    /// is granted explicitly per user, never through a role. The caller supplies
+    /// "now" as asOf. A permission may be granted again after an earlier grant was
+    /// revoked, but two grants of the same permission never overlap. Only the
+    /// grants loaded on this instance are checked; the database is the final guard.
+    /// </summary>
+    public UserPermission GrantPermission(Permission permission, DateTimeOffset grantedAt, DateTimeOffset asOf)
+    {
+        ArgumentNullException.ThrowIfNull(permission);
+
+        if (grantedAt > asOf)
+        {
+            throw new ArgumentException("grantedAt must not be after asOf.", nameof(grantedAt));
+        }
+
+        // The new grant is open-ended, so it overlaps any earlier grant of the same
+        // permission that is still active or was revoked after the new start.
+        if (_permissions.Any(p => p.PermissionId == permission.Id && (p.RevokedAt is null || p.RevokedAt > grantedAt)))
+        {
+            throw new InvalidOperationException(
+                $"Permission '{permission.Code}' is already granted to this user for a period that overlaps {grantedAt:O}.");
+        }
+
+        var userPermission = new UserPermission(Id, permission.Id, grantedAt);
+        _permissions.Add(userPermission);
+        return userPermission;
     }
 }

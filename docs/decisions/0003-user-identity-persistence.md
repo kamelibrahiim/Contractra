@@ -1,8 +1,8 @@
 # ADR 0003: Physical persistence design for the User identity slice
 
-**Status:** Partially implemented. `User` and `UserRole` are done (Domain + EF Core configuration + PostgreSQL constraints + tests). `UserPermission` and `UserPartyLink` are not implemented yet; their sections below are reserved and will be filled when those entities are built. There is no Application layer, API, authentication, or audit infrastructure.
+**Status:** Partially implemented. `User`, `UserRole` and `UserPermission` are done (Domain + EF Core configuration + PostgreSQL constraints + tests). `UserPartyLink` is not implemented yet; its section below is reserved and will be filled when it is built. There is no Application layer, API, authentication, or audit infrastructure.
 
-**Scope:** `users` and `user_roles`, part of the remaining W1-A identity work (`docs/mvp-entity-scope-matrix-ar.md` §4.1). The backend Sprint 1 plan is in `docs/implementation/backend/sprints/sprint-01.md`.
+**Scope:** `users`, `user_roles` and `user_permissions`, part of the remaining W1-A identity work (`docs/mvp-entity-scope-matrix-ar.md` §4.1). The backend Sprint 1 plan is in `docs/implementation/backend/sprints/sprint-01.md`.
 
 Like ADR 0001 and ADR 0002, this is an engineering ADR. It records physical-design decisions made to *implement* confirmed rules and is not authoritative over any document in `docs/` outside `docs/decisions/`. Every section below separates **confirmed rules** (with their source) from **owner decisions** and **engineering choices**.
 
@@ -20,6 +20,9 @@ Like ADR 0001 and ADR 0002, this is an engineering ADR. It records physical-desi
 | `users → user_roles` is `1 : N` and dated | `logical-data-model-ar.md` §1.3, §1.4 | `UserRole` owned by `User` (§9.1) |
 | `user_roles` lifecycle `Active → Ended` by setting `ended_at`; no deletion | `logical-data-model-ar.md` §1.5 | `UserRole.End()` (§9.1) · FKs `ON DELETE RESTRICT` |
 | No uniqueness on `(user, role)`, because a role may be assigned, ended and assigned again; a partial index `WHERE ended_at IS NULL` | `logical-data-model-ar.md` §1.6 | `ux_user_roles_user_id_role_id_active` (§9.1) |
+| `user_permissions` grants a specific permission on top of the role; lifecycle `Granted · Revoked`, both audit events | `logical-data-model-ar.md` §1.3, §1.5 · `database-design-ar.md` §6.1.3 | `UserPermission` owned by `User` (§9.2) |
+| A permission is granted, revoked and granted again; a partial index on `(user, permission) WHERE ended_at IS NULL` | `logical-data-model-ar.md` §1.6 · `database-design-ar.md` §6.1.3 | `ux_user_permissions_user_id_permission_id_active` (§9.2) |
+| **`Payroll.View` is granted explicitly per user, never through a role — Admin included** | `confirmed-business-rules-ar.md` ح-235 · spec BR-235, FR-AUTH-006 · `logical-data-model-ar.md` §1.9 | Allowed by `User.GrantPermission` and by `user_permissions`; forbidden on the role path by ADR 0002 §6 (§9.2) |
 
 ## 2. Entity ID and fields
 
@@ -87,7 +90,7 @@ A rejected call leaves the status unchanged. Neither method records a timestamp 
 
 ## 5. No hard delete
 
-`User` has no delete method, and none is planned. `FR-AUTH-004` and `logical-data-model-ar.md` §1.5 both rule out deleting users. Every foreign key that references `users` is `ON DELETE RESTRICT`: today `fk_user_roles_users_user_id` (§9.1); UserPermission and UserPartyLink will follow the same rule.
+`User` has no delete method, and none is planned. `FR-AUTH-004` and `logical-data-model-ar.md` §1.5 both rule out deleting users. Every foreign key that references `users` is `ON DELETE RESTRICT`: today `fk_user_roles_users_user_id` (§9.1) and `fk_user_permissions_users_user_id` (§9.2); UserPartyLink will follow the same rule.
 
 ## 6. Out of scope: authentication
 
@@ -100,15 +103,15 @@ The logical model lists `password_hash` as a sensitive field (§1.7), and adding
 
 ## 7. Sprint boundaries
 
-This ADR does not change the Backend Sprint 1 scope. UserPermission and UserPartyLink are still to be built in their planned tasks, with no Application use cases, API endpoints or authentication.
+This ADR does not change the Backend Sprint 1 scope. UserPartyLink is still to be built in its planned tasks, with no Application use cases, API endpoints or authentication.
 
-The Sprint plan (US-BE-005) foresaw one combined migration for the whole slice. `AddUsers` was already published, so the slice now spans several additive migrations instead: `AddUsers`, `MakeUserLoginIdentifierCaseInsensitive` and `AddUserRoles` so far. Each one is additive and reversible on its own, and each has a test that migrates down past it and back up.
+The Sprint plan (US-BE-005) foresaw one combined migration for the whole slice. `AddUsers` was already published, so the slice now spans several additive migrations instead: `AddUsers`, `MakeUserLoginIdentifierCaseInsensitive`, `AddUserRoles` and `AddUserPermissions` so far. Each one is additive and reversible on its own, and each has a test that migrates down past it and back up.
 
 ## 8. Audit boundary
 
 **Confirmed requirement:** `UserCreated`, `UserDisabled` and `UserReactivated` are named audit events (`logical-data-model-ar.md` §1.8), written in the same transaction as the change (BR-186). `audit_events` belongs to W1-C and does not exist yet.
 
-**Decision:** as in ADR 0001 §13 and ADR 0002 §10, no Application use case or API endpoint exposes user creation or status changes until the audit trail exists. The same applies to assigning and ending roles: `RoleAssigned` and `RoleEnded` are named audit events in the same section.
+**Decision:** as in ADR 0001 §13 and ADR 0002 §10, no Application use case or API endpoint exposes user creation or status changes until the audit trail exists. The same applies to assigning and ending roles and to granting and revoking permissions: `RoleAssigned`, `RoleEnded`, `PermissionGranted`, `PermissionRevoked`, `PayrollViewGranted` and `PayrollViewRevoked` are named audit events in the same section.
 
 ## 9. Related entities
 
@@ -146,9 +149,34 @@ The Sprint plan (US-BE-005) foresaw one combined migration for the whole slice. 
 - The migration is the additive `AddUserRoles`. `Down()` drops the constraint and the table, and nothing else.
 - **Not enforced (open, see §10):** whether a user must hold at least one role, and whether a deprecated role may be assigned or a disabled user may receive one.
 
-### 9.2 `UserPermission` — reserved
+### 9.2 `UserPermission` — implemented
 
-Direct per-user grants and revocations, including the only sanctioned path for `Payroll.View`. The cross-reference to ADR 0002 §6 (role path forbidden) belongs here. It is expected to follow the §9.1 timestamp decision.
+**Meaning of "revoke".** `database-design-ar.md` §6.1.3 describes the table as granting or revoking a specific permission on top of the role, and explains its partial index as "a permission is granted, then revoked, then granted again". So a row is a direct grant, and revoking **ends that grant**. It is not a deny rule that removes a permission a role would otherwise give; no document defines such a rule, and none is implemented.
+
+**Same design as `UserRole` (§9.1)**, including the owner's timestamp decision:
+- `GrantedAt: DateTimeOffset` and `RevokedAt: DateTimeOffset?`, UTC only, stored as `timestamp with time zone`.
+- Columns `granted_at` and `ended_at`. The end column keeps the **documented** name `ended_at` (`logical-data-model-ar.md` §1.6, `database-design-ar.md` §6.1.3), not the `revoked_at` the Sprint plan suggested. The domain calls the same moment `RevokedAt`, after the `Revoked` lifecycle state.
+- Created only through `User.GrantPermission(permission, grantedAt, asOf)` (internal constructor, read-only `User.Permissions`). Grants in the future are rejected, and so is a grant that overlaps a loaded grant of the same permission.
+- `UserPermission.Revoke(revokedAt, asOf)` records `Granted → Revoked`; it rejects a revocation before `GrantedAt` or after `asOf`, and a second revocation. The Sprint plan placed revoke on `User`; it sits on the grant itself, matching `UserRole.End`.
+- `IsActiveAt(asOf)`: active from `GrantedAt` (inclusive) until `RevokedAt` (exclusive).
+
+**Database:** `pk_user_permissions`; the documented partial unique index `ux_user_permissions_user_id_permission_id_active` on `(user_id, permission_id) WHERE ended_at IS NULL`; the engineering `EXCLUDE` constraint `ex_user_permissions_no_overlapping_period` (same approach and reasons as §9.1); `ck_user_permissions_ended_at_after_granted_at`; `fk_user_permissions_users_user_id` and `fk_user_permissions_permissions_permission_id`, both `ON DELETE RESTRICT`; `ix_user_permissions_permission_id`. The additive migration is `AddUserPermissions`.
+
+#### 9.2.1 `Payroll.View`: forbidden on the role path, allowed on the user path
+
+**Confirmed rule:** ح-235 / BR-235 / FR-AUTH-006 — `Payroll.View` is never granted through a role, Admin included, and is granted explicitly per user.
+
+The rule has two halves, enforced in two places:
+
+| Path | Behaviour | Where |
+|---|---|---|
+| Role → `role_permissions` | **Forbidden.** `Role.GrantPermission` rejects it, and two triggers reject it in the database, including the direct-SQL rename bypass | ADR 0002 §6 |
+| User → `user_permissions` | **Allowed — the only sanctioned path.** `User.GrantPermission` accepts it in any casing, and the table has **no** Payroll.View trigger | this section |
+
+- The missing trigger on `user_permissions` is deliberate, not an oversight. A schema test asserts that the table has no user-defined trigger, and integration tests prove a `Payroll.View` grant is accepted through both EF Core and raw SQL.
+- The ADR 0002 rename guard checks only `role_permissions`. A permission granted to users only may still be renamed to `Payroll.View`, which is consistent: that path is allowed.
+- `PayrollViewGuardTests` from ADR 0002 run unchanged alongside the new tests.
+- Computing a user's **effective** permissions (role-derived plus direct grants) is not implemented; it belongs to the Application layer (Sprint plan §H.7).
 
 ### 9.3 `UserPartyLink` — reserved
 

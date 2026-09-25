@@ -36,6 +36,11 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("fk_user_roles_roles_role_id")]
     [InlineData("ck_user_roles_ended_at_after_assigned_at")]
     [InlineData("ex_user_roles_no_overlapping_period")]
+    [InlineData("pk_user_permissions")]
+    [InlineData("fk_user_permissions_users_user_id")]
+    [InlineData("fk_user_permissions_permissions_permission_id")]
+    [InlineData("ck_user_permissions_ended_at_after_granted_at")]
+    [InlineData("ex_user_permissions_no_overlapping_period")]
     public async Task ExpectedConstraint_ExistsInPgConstraint(string constraintName)
     {
         await using var connection = await OpenConnectionAsync();
@@ -59,6 +64,8 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("ux_users_login_identifier_lower")]
     [InlineData("ux_user_roles_user_id_role_id_active")]
     [InlineData("ix_user_roles_role_id")]
+    [InlineData("ux_user_permissions_user_id_permission_id_active")]
+    [InlineData("ix_user_permissions_permission_id")]
     public async Task ExpectedIndex_ExistsInPgIndexes(string indexName)
     {
         await using var connection = await OpenConnectionAsync();
@@ -124,10 +131,36 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
         Assert.Contains("WHERE (ended_at IS NULL)", definition);
     }
 
+    [Fact]
+    public async Task UserPermissionActiveIndex_IsUniqueAndPartialOnActiveGrants()
+    {
+        await using var connection = await OpenConnectionAsync();
+        await using var command = new NpgsqlCommand(
+            "SELECT indexdef FROM pg_indexes WHERE indexname = 'ux_user_permissions_user_id_permission_id_active' AND tablename = 'user_permissions';",
+            connection);
+
+        var definition = (string?)await command.ExecuteScalarAsync();
+        Assert.NotNull(definition);
+        Assert.Contains("CREATE UNIQUE INDEX", definition);
+        Assert.Contains("(user_id, permission_id)", definition);
+        Assert.Contains("WHERE (ended_at IS NULL)", definition);
+    }
+
+    [Fact]
+    public async Task UserPermissions_HaveNoPayrollViewTrigger_BecauseTheyAreTheSanctionedPath()
+    {
+        await using var connection = await OpenConnectionAsync();
+
+        Assert.Equal(0, await PostgresAssert.CountAsync(connection, null,
+            "SELECT COUNT(*) FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid WHERE c.relname = 'user_permissions' AND NOT t.tgisinternal;"));
+    }
+
     [Theory]
     [InlineData("fk_user_roles_users_user_id")]
     [InlineData("fk_user_roles_roles_role_id")]
-    public async Task UserRoleForeignKeys_AreOnDeleteRestrict(string constraintName)
+    [InlineData("fk_user_permissions_users_user_id")]
+    [InlineData("fk_user_permissions_permissions_permission_id")]
+    public async Task UserLinkForeignKeys_AreOnDeleteRestrict(string constraintName)
     {
         await using var connection = await OpenConnectionAsync();
         await using var command = new NpgsqlCommand(

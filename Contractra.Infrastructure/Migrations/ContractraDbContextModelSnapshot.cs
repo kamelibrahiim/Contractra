@@ -124,6 +124,45 @@ namespace Contractra.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Contractra.Domain.Identity.UserPermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("GrantedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("granted_at");
+
+                    b.Property<Guid>("PermissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("permission_id");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_permissions");
+
+                    b.HasIndex("PermissionId")
+                        .HasDatabaseName("ix_user_permissions_permission_id");
+
+                    b.HasIndex("UserId", "PermissionId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_user_permissions_user_id_permission_id_active")
+                        .HasFilter("ended_at IS NULL");
+
+                    b.ToTable("user_permissions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_user_permissions_ended_at_after_granted_at", "ended_at IS NULL OR ended_at >= granted_at");
+                        });
+                });
+
             modelBuilder.Entity("Contractra.Domain.Identity.UserRole", b =>
                 {
                     b.Property<Guid>("Id")
@@ -315,6 +354,23 @@ namespace Contractra.Infrastructure.Migrations
                         .HasConstraintName("fk_role_permissions_roles_role_id");
                 });
 
+            modelBuilder.Entity("Contractra.Domain.Identity.UserPermission", b =>
+                {
+                    b.HasOne("Contractra.Domain.Identity.Permission", null)
+                        .WithMany()
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_permissions_permissions_permission_id");
+
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany("Permissions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_permissions_users_user_id");
+                });
+
             modelBuilder.Entity("Contractra.Domain.Identity.UserRole", b =>
                 {
                     b.HasOne("Contractra.Domain.Identity.Role", null)
@@ -369,6 +425,8 @@ namespace Contractra.Infrastructure.Migrations
 
             modelBuilder.Entity("Contractra.Domain.Identity.User", b =>
                 {
+                    b.Navigation("Permissions");
+
                     b.Navigation("Roles");
                 });
 

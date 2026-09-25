@@ -47,8 +47,13 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Metadata.FindNavigation(nameof(User.Roles))!.SetPropertyAccessMode(PropertyAccessMode.Field);
 
-        // UserPermission persistence is not configured yet; ignored so EF Core does
-        // not map it by convention and the schema stays as migrated.
-        builder.Ignore(u => u.Permissions);
+        builder.HasMany(u => u.Permissions)
+            .WithOne()
+            .HasForeignKey(up => up.UserId)
+            .HasConstraintName("fk_user_permissions_users_user_id")
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired();
+
+        builder.Metadata.FindNavigation(nameof(User.Permissions))!.SetPropertyAccessMode(PropertyAccessMode.Field);
     }
 }

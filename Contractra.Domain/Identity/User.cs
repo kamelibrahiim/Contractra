@@ -1,3 +1,5 @@
+using Contractra.Domain.Parties;
+
 namespace Contractra.Domain.Identity;
 
 public sealed class User
@@ -14,6 +16,8 @@ public sealed class User
     public IReadOnlyCollection<UserRole> Roles => _roles.AsReadOnly();
 
     public IReadOnlyCollection<UserPermission> Permissions => _permissions.AsReadOnly();
+
+    public UserPartyLink? PartyLink { get; private set; }
 
     private User()
     {
@@ -108,5 +112,23 @@ public sealed class User
         var userPermission = new UserPermission(Id, permission.Id, grantedAt);
         _permissions.Add(userPermission);
         return userPermission;
+    }
+
+    /// <summary>
+    /// Links this account to its commercial party. A user links to at most one
+    /// party; only a loaded link is checked here, and the database's
+    /// UNIQUE(user_id) is the final guard.
+    /// </summary>
+    public UserPartyLink LinkToParty(Party party)
+    {
+        ArgumentNullException.ThrowIfNull(party);
+
+        if (PartyLink is not null)
+        {
+            throw new InvalidOperationException($"This user is already linked to party {PartyLink.PartyId}.");
+        }
+
+        PartyLink = new UserPartyLink(Id, party.Id);
+        return PartyLink;
     }
 }

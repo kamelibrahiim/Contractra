@@ -209,14 +209,34 @@ void main() {
         Directionality(
           textDirection: TextDirection.rtl,
           child: wrap(AppTextField(
-            label: 'Ø§Ù„Ø§Ø³Ù… Ø§Ù„ÙƒØ§Ù…Ù„',
-            hint: 'Ø£Ø¯Ø®Ù„ Ø§Ø³Ù…Ùƒ Ù‡Ù†Ø§',
+            label: 'الاسم الكامل',
+            hint: 'أدخل اسمك هنا',
           )),
         ),
       );
 
       expect(tester.takeException(), isNull);
-      expect(find.text('Ø§Ù„Ø§Ø³Ù… Ø§Ù„ÙƒØ§Ù…Ù„'), findsOneWidget);
+      expect(find.text('الاسم الكامل'), findsOneWidget);
+    });
+    testWidgets('suffix icon becomes tappable when onSuffixIconPressed is set', (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(wrap(AppTextField(
+        label: 'Password',
+        suffixIcon: Icons.visibility_outlined,
+        onSuffixIconPressed: () => taps++,
+      )));
+
+      await tester.tap(find.byIcon(Icons.visibility_outlined));
+      expect(taps, 1);
+    });
+
+    testWidgets('errorText is shown', (tester) async {
+      await tester.pumpWidget(wrap(const AppTextField(
+        label: 'Name',
+        errorText: 'Required',
+      )));
+
+      expect(find.text('Required'), findsOneWidget);
     });
   });
 }

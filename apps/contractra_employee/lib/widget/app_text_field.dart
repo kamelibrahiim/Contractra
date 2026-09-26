@@ -29,6 +29,8 @@ class AppTextField extends StatelessWidget {
     this.textInputAction,
     this.prefixIcon,
     this.suffixIcon,
+    this.onSuffixIconPressed,
+    this.errorText,
     this.obscureText = false,
     this.enabled = true,
     this.readOnly = false,
@@ -57,6 +59,12 @@ class AppTextField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final IconData? prefixIcon;
   final IconData? suffixIcon;
+
+  /// Makes [suffixIcon] tappable; what the tap does is the caller's concern.
+  final VoidCallback? onSuffixIconPressed;
+
+  /// Caller-driven error shown independently of [validator].
+  final String? errorText;
   final bool obscureText;
   final bool enabled;
   final bool readOnly;
@@ -101,6 +109,7 @@ class AppTextField extends StatelessWidget {
           cursorColor: theme.primaryColor,
           decoration: InputDecoration(
             hintText: hint,
+            errorText: errorText,
             hintStyle: TextStyleHelper.bodyMd.copyWith(
               color: theme.textSecondaryColor,
             ),
@@ -111,7 +120,12 @@ class AppTextField extends StatelessWidget {
                 : Icon(prefixIcon, color: theme.textSecondaryColor),
             suffixIcon: suffixIcon == null
                 ? null
-                : Icon(suffixIcon, color: theme.textSecondaryColor),
+                : onSuffixIconPressed == null
+                    ? Icon(suffixIcon, color: theme.textSecondaryColor)
+                    : IconButton(
+                        icon: Icon(suffixIcon, color: theme.textSecondaryColor),
+                        onPressed: enabled ? onSuffixIconPressed : null,
+                      ),
             filled: true,
             fillColor: readOnly ? theme.backgroundColor : theme.surfaceColor,
             contentPadding: AppSpacing.allMd,

@@ -32,6 +32,8 @@ public sealed class ContractraDbContext : DbContext
 
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
 
+    public DbSet<UserPartyLink> UserPartyLinks => Set<UserPartyLink>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ContractraDbContext).Assembly);

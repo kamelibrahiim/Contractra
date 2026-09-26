@@ -41,6 +41,9 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("fk_user_permissions_permissions_permission_id")]
     [InlineData("ck_user_permissions_ended_at_after_granted_at")]
     [InlineData("ex_user_permissions_no_overlapping_period")]
+    [InlineData("pk_user_party_links")]
+    [InlineData("fk_user_party_links_users_user_id")]
+    [InlineData("fk_user_party_links_parties_party_id")]
     public async Task ExpectedConstraint_ExistsInPgConstraint(string constraintName)
     {
         await using var connection = await OpenConnectionAsync();
@@ -66,6 +69,8 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("ix_user_roles_role_id")]
     [InlineData("ux_user_permissions_user_id_permission_id_active")]
     [InlineData("ix_user_permissions_permission_id")]
+    [InlineData("ux_user_party_links_user_id")]
+    [InlineData("ix_user_party_links_party_id")]
     public async Task ExpectedIndex_ExistsInPgIndexes(string indexName)
     {
         await using var connection = await OpenConnectionAsync();
@@ -147,6 +152,29 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     }
 
     [Fact]
+    public async Task UserPartyLinks_AreUniqueOnUserOnly_NotOnParty()
+    {
+        await using var connection = await OpenConnectionAsync();
+        await using var command = new NpgsqlCommand(
+            "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'user_party_links' AND indexname <> 'pk_user_party_links' ORDER BY indexname;",
+            connection);
+
+        var indexes = new Dictionary<string, string>();
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+            {
+                indexes[reader.GetString(0)] = reader.GetString(1);
+            }
+        }
+
+        Assert.StartsWith("CREATE UNIQUE INDEX", indexes["ux_user_party_links_user_id"]);
+        Assert.Contains("(user_id)", indexes["ux_user_party_links_user_id"]);
+        Assert.StartsWith("CREATE INDEX", indexes["ix_user_party_links_party_id"]);
+        Assert.DoesNotContain(indexes.Values, def => def.StartsWith("CREATE UNIQUE INDEX") && def.Contains("(party_id)"));
+    }
+
+    [Fact]
     public async Task UserPermissions_HaveNoPayrollViewTrigger_BecauseTheyAreTheSanctionedPath()
     {
         await using var connection = await OpenConnectionAsync();
@@ -160,6 +188,8 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("fk_user_roles_roles_role_id")]
     [InlineData("fk_user_permissions_users_user_id")]
     [InlineData("fk_user_permissions_permissions_permission_id")]
+    [InlineData("fk_user_party_links_users_user_id")]
+    [InlineData("fk_user_party_links_parties_party_id")]
     public async Task UserLinkForeignKeys_AreOnDeleteRestrict(string constraintName)
     {
         await using var connection = await OpenConnectionAsync();

@@ -1,8 +1,8 @@
 # ADR 0003: Physical persistence design for the User identity slice
 
-**Status:** Partially implemented. `User`, `UserRole` and `UserPermission` are done (Domain + EF Core configuration + PostgreSQL constraints + tests). `UserPartyLink` is not implemented yet; its section below is reserved and will be filled when it is built. There is no Application layer, API, authentication, or audit infrastructure.
+**Status:** Implemented for all four entities: `User`, `UserRole`, `UserPermission` and `UserPartyLink` (Domain + EF Core configuration + PostgreSQL constraints + tests). There is no Application layer, API, authentication, or audit infrastructure.
 
-**Scope:** `users`, `user_roles` and `user_permissions`, part of the remaining W1-A identity work (`docs/mvp-entity-scope-matrix-ar.md` §4.1). The backend Sprint 1 plan is in `docs/implementation/backend/sprints/sprint-01.md`.
+**Scope:** `users`, `user_roles`, `user_permissions` and `user_party_links`, the remaining W1-A identity work (`docs/mvp-entity-scope-matrix-ar.md` §4.1). The backend Sprint 1 plan is in `docs/implementation/backend/sprints/sprint-01.md`.
 
 Like ADR 0001 and ADR 0002, this is an engineering ADR. It records physical-design decisions made to *implement* confirmed rules and is not authoritative over any document in `docs/` outside `docs/decisions/`. Every section below separates **confirmed rules** (with their source) from **owner decisions** and **engineering choices**.
 
@@ -22,6 +22,7 @@ Like ADR 0001 and ADR 0002, this is an engineering ADR. It records physical-desi
 | No uniqueness on `(user, role)`, because a role may be assigned, ended and assigned again; a partial index `WHERE ended_at IS NULL` | `logical-data-model-ar.md` §1.6 | `ux_user_roles_user_id_role_id_active` (§9.1) |
 | `user_permissions` grants a specific permission on top of the role; lifecycle `Granted · Revoked`, both audit events | `logical-data-model-ar.md` §1.3, §1.5 · `database-design-ar.md` §6.1.3 | `UserPermission` owned by `User` (§9.2) |
 | A permission is granted, revoked and granted again; a partial index on `(user, permission) WHERE ended_at IS NULL` | `logical-data-model-ar.md` §1.6 · `database-design-ar.md` §6.1.3 | `ux_user_permissions_user_id_permission_id_active` (§9.2) |
+| `users → user_party_links` is `1 : 0..1`; an engineer is both a user and a party; `UNIQUE(user_id)` | `logical-data-model-ar.md` §1.3, §1.4, §1.6 | `ux_user_party_links_user_id` (§9.3) |
 | **`Payroll.View` is granted explicitly per user, never through a role — Admin included** | `confirmed-business-rules-ar.md` ح-235 · spec BR-235, FR-AUTH-006 · `logical-data-model-ar.md` §1.9 | Allowed by `User.GrantPermission` and by `user_permissions`; forbidden on the role path by ADR 0002 §6 (§9.2) |
 
 ## 2. Entity ID and fields
@@ -90,7 +91,7 @@ A rejected call leaves the status unchanged. Neither method records a timestamp 
 
 ## 5. No hard delete
 
-`User` has no delete method, and none is planned. `FR-AUTH-004` and `logical-data-model-ar.md` §1.5 both rule out deleting users. Every foreign key that references `users` is `ON DELETE RESTRICT`: today `fk_user_roles_users_user_id` (§9.1) and `fk_user_permissions_users_user_id` (§9.2); UserPartyLink will follow the same rule.
+`User` has no delete method, and none is planned. `FR-AUTH-004` and `logical-data-model-ar.md` §1.5 both rule out deleting users. Every foreign key that references `users` is `ON DELETE RESTRICT`: `fk_user_roles_users_user_id` (§9.1), `fk_user_permissions_users_user_id` (§9.2) and `fk_user_party_links_users_user_id` (§9.3).
 
 ## 6. Out of scope: authentication
 
@@ -103,9 +104,9 @@ The logical model lists `password_hash` as a sensitive field (§1.7), and adding
 
 ## 7. Sprint boundaries
 
-This ADR does not change the Backend Sprint 1 scope. UserPartyLink is still to be built in its planned tasks, with no Application use cases, API endpoints or authentication.
+This ADR does not change the Backend Sprint 1 scope: persistence only, with no Application use cases, API endpoints or authentication.
 
-The Sprint plan (US-BE-005) foresaw one combined migration for the whole slice. `AddUsers` was already published, so the slice now spans several additive migrations instead: `AddUsers`, `MakeUserLoginIdentifierCaseInsensitive`, `AddUserRoles` and `AddUserPermissions` so far. Each one is additive and reversible on its own, and each has a test that migrates down past it and back up.
+The Sprint plan (US-BE-005) foresaw one combined migration for the whole slice. `AddUsers` was already published, so the slice spans five additive migrations instead: `AddUsers`, `MakeUserLoginIdentifierCaseInsensitive`, `AddUserRoles`, `AddUserPermissions` and `AddUserPartyLinks`. Each one is additive and reversible on its own, and each has a test that migrates down past it and back up.
 
 ## 8. Audit boundary
 
@@ -178,13 +179,28 @@ The rule has two halves, enforced in two places:
 - `PayrollViewGuardTests` from ADR 0002 run unchanged alongside the new tests.
 - Computing a user's **effective** permissions (role-derived plus direct grants) is not implemented; it belongs to the Application layer (Sprint plan §H.7).
 
-### 9.3 `UserPartyLink` — reserved
+### 9.3 `UserPartyLink` — implemented
 
-The user-to-party link, `UNIQUE(user_id)` (`logical-data-model-ar.md` §1.6).
+Links a login account to its commercial party: an engineer is both a user and a party (`logical-data-model-ar.md` §1.3, §1.4).
+
+**A party may be linked from more than one user (owner decision, 2026-09-26).**
+- **Confirmed:** `UNIQUE(user_id)`, so a user links to at most one party.
+- **Decided:** `party_id` is **not** unique.
+- **Why:** there is no way to change a login identifier and no unlink operation. The only way to give an engineer a new login is therefore to disable the old account and create a new one, and both must stay linked to the same party so earlier custody and expense history stays attached. A `UNIQUE(party_id)` would make that impossible.
+- **Consistent with the docs:** the logical model's duplication-risk table (§1.9) treats "two users for one person" as something detected through `user_party_links` and party similarity, not blocked.
+- **Consequence:** nothing stops two *active* accounts for the same person. Detecting that is a later concern.
+
+**Domain:**
+- `UserPartyLink` has an internal constructor. It is created only through `User.LinkToParty(party)`, which sets the nullable `User.PartyLink`.
+- Linking a user that already has a loaded link throws, whether the party is the same or different; the database is the final guard.
+- There is no unlink, delete or change operation, and the link has no dates, because no lifecycle is documented for this table.
+- No check that the party holds an `Engineer` role: that is not documented as a domain rule.
+
+**Database:** `pk_user_party_links`; `ux_user_party_links_user_id` (unique); `ix_user_party_links_party_id` (not unique); `fk_user_party_links_users_user_id` and `fk_user_party_links_parties_party_id`, both `ON DELETE RESTRICT`. The additive migration is `AddUserPartyLinks`, with no raw SQL.
 
 ## 10. Unresolved (not decided here)
 
-1. **`user_party_links.party_id` uniqueness.** The logical model confirms `UNIQUE(user_id)` only. Its duplication-risk table (§1.9) handles "two users for one person" with `user_party_links` plus similarity detection on the party, which does not settle whether `party_id` must be unique. Not decided.
+1. ~~**`user_party_links.party_id` uniqueness.**~~ **Resolved (owner decision, 2026-09-26): not unique.** See §9.3. Still open: whether to warn when a party has more than one *active* linked account.
 2. **Authentication credential format**: password storage, hashing algorithm, tokens, lockout (§6).
 3. **Audit behavior** for user lifecycle events (§8).
 4. **Login identifier character set and length**, including whether non-ASCII identifiers are allowed (§3.2 limitation).

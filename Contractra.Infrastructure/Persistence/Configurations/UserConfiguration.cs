@@ -56,8 +56,11 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Metadata.FindNavigation(nameof(User.Permissions))!.SetPropertyAccessMode(PropertyAccessMode.Field);
 
-        // UserPartyLink persistence is not configured yet; ignored so EF Core does
-        // not map it by convention and the schema stays as migrated.
-        builder.Ignore(u => u.PartyLink);
+        builder.HasOne(u => u.PartyLink)
+            .WithOne()
+            .HasForeignKey<UserPartyLink>(l => l.UserId)
+            .HasConstraintName("fk_user_party_links_users_user_id")
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired();
     }
 }

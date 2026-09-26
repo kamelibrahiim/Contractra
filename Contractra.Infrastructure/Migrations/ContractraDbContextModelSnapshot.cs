@@ -124,6 +124,33 @@ namespace Contractra.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Contractra.Domain.Identity.UserPartyLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("PartyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("party_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_party_links");
+
+                    b.HasIndex("PartyId")
+                        .HasDatabaseName("ix_user_party_links_party_id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_user_party_links_user_id");
+
+                    b.ToTable("user_party_links", (string)null);
+                });
+
             modelBuilder.Entity("Contractra.Domain.Identity.UserPermission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -354,6 +381,23 @@ namespace Contractra.Infrastructure.Migrations
                         .HasConstraintName("fk_role_permissions_roles_role_id");
                 });
 
+            modelBuilder.Entity("Contractra.Domain.Identity.UserPartyLink", b =>
+                {
+                    b.HasOne("Contractra.Domain.Parties.Party", null)
+                        .WithMany()
+                        .HasForeignKey("PartyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_party_links_parties_party_id");
+
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithOne("PartyLink")
+                        .HasForeignKey("Contractra.Domain.Identity.UserPartyLink", "UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_party_links_users_user_id");
+                });
+
             modelBuilder.Entity("Contractra.Domain.Identity.UserPermission", b =>
                 {
                     b.HasOne("Contractra.Domain.Identity.Permission", null)
@@ -425,6 +469,8 @@ namespace Contractra.Infrastructure.Migrations
 
             modelBuilder.Entity("Contractra.Domain.Identity.User", b =>
                 {
+                    b.Navigation("PartyLink");
+
                     b.Navigation("Permissions");
 
                     b.Navigation("Roles");

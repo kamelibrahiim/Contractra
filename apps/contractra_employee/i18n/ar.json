@@ -1,3 +1,14 @@
 {
-  "appTitle": "Contractra Employee"
+  "appTitle": "Contractra Employee",
+  "navMySites": "مواقعي",
+  "navExpenses": "المصروفات",
+  "navProfile": "الملف الشخصي",
+  "moduleComingSoon": "قريباً",
+  "loginTitle": "تسجيل الدخول",
+  "loginSubtitle": "أدخل المعرّف وكلمة المرور للمتابعة.",
+  "loginIdentifierLabel": "المعرّف",
+  "loginPasswordLabel": "كلمة المرور",
+  "loginSubmit": "دخول",
+  "loginForgotPassword": "نسيت كلمة المرور؟",
+  "loginFieldsRequired": "أدخل المعرّف وكلمة المرور."
 }

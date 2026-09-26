@@ -1,3 +1,14 @@
 {
-  "appTitle": "Contractra Employee"
+  "appTitle": "Contractra Employee",
+  "navMySites": "My Sites",
+  "navExpenses": "Expenses",
+  "navProfile": "Profile",
+  "moduleComingSoon": "Coming soon",
+  "loginTitle": "Sign in",
+  "loginSubtitle": "Enter your identifier and password to continue.",
+  "loginIdentifierLabel": "Identifier",
+  "loginPasswordLabel": "Password",
+  "loginSubmit": "Sign in",
+  "loginForgotPassword": "Forgot password?",
+  "loginFieldsRequired": "Enter both your identifier and password."
 }

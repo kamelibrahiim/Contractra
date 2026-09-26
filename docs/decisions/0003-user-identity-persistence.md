@@ -106,7 +106,7 @@ The logical model lists `password_hash` as a sensitive field (§1.7), and adding
 
 This ADR does not change the Backend Sprint 1 scope: persistence only, with no Application use cases, API endpoints or authentication.
 
-The Sprint plan (US-BE-005) foresaw one combined migration for the whole slice. `AddUsers` was already published, so the slice spans five additive migrations instead: `AddUsers`, `MakeUserLoginIdentifierCaseInsensitive`, `AddUserRoles`, `AddUserPermissions` and `AddUserPartyLinks`. Each one is additive and reversible on its own, and each has a test that migrates down past it and back up.
+The Sprint plan (US-BE-005) foresaw one combined migration for the whole slice. `AddUsers` was already published, so the slice spans five additive migrations instead: `AddUsers`, `MakeUserLoginIdentifierCaseInsensitive`, `AddUserRoles`, `AddUserPermissions` and `AddUserPartyLinks`. Each one is additive and reversible on its own, and each has a test that migrates down past it and back up. The planned combined `AddUserIdentitySlice` migration (Sprint plan TASK-BE-021) is therefore not created: it would duplicate tables that already exist. Its reversibility test (TASK-BE-022) is kept as `UserIdentitySliceMigrationTests`, which rolls the whole slice back to `AddAuthorizationCatalog` in one step, checks that every slice object is gone while party and catalog objects and data survive, then re-applies the slice and writes a user with a role and a party link.
 
 ## 8. Audit boundary
 

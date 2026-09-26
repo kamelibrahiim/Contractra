@@ -446,3 +446,182 @@ flowchart TD
 - **Offline-first sync UX** (Employee, §23 of the team reference) — blocked on Expenses backend + defined sync protocol.
 - **Localization content buildout** (`i18n/en.json`, `i18n/ar.json`) — currently only structural placeholder keys exist; real UI copy gets added per-screen as screens are built.
 - **Design divergence review** between Admin and Employee visual identity, if the product decides they should differ beyond information density.
+
+---
+
+## Sprint 1 Extension — Authentication & User Management
+
+**Added:** 2026-09-26, at the product owner's request (`claude-code-prompt-02-frontend.md`).
+
+**Supersedes, for these stories only:** the sprint-wide constraint "no task calls a real API", and the stub-only scope of US-005 (TASK-015) and US-006 (TASK-018). The stub `LoginCubit`s are replaced, not kept alongside.
+
+**Backend state at time of writing:** the API contract file (`docs/implementation/backend/features/auth-and-users-api-contract.md`) does not exist, and there are no auth or users endpoints. Every story below is built **mock-first** behind a repository interface. The Dio implementations follow the endpoint list in the prompt and stay unverified until the contract exists.
+
+**Detailed plan, gaps and risks:** `frontend-auth-and-users-plan.md` in this folder. These gaps come from the prompt and are **not** in the authoritative docs, so they need confirmation before the real integration:
+- G2: default password and forced password change.
+- G3: token model.
+- G4: reactivate and reset endpoints.
+- G7: who may use the Employee app.
+- G9: web token storage.
+
+### User Story US-008
+
+**Title:** Networking Foundation (both apps)
+
+**As a** frontend developer
+**I want** one configured HTTP client with token handling and typed errors
+**So that** every feature calls the backend the same way and never handles tokens or raw error payloads itself
+
+**Acceptance Criteria:**
+- The base URL and mock mode come from `--dart-define` (`API_BASE_URL`, `USE_MOCK_API`), per environment.
+- The access token is attached to every request. On a 401 the client refreshes **once** (concurrent 401s share one refresh) and then retries. If the refresh fails, the session is cleared.
+- ProblemDetails `code` values map to typed failures. Unknown codes map to a generic failure and are never shown raw.
+- Tokens are stored with `flutter_secure_storage`. The web trade-off is documented in code (plan G9).
+
+**Dependencies:** US-001, US-002. **Blocked by:** none (mock-first).
+
+#### TASK-023 — App Config per Environment
+Read `API_BASE_URL` and `USE_MOCK_API` from `--dart-define`, with safe defaults (mock on). Files: `lib/core/config/app_config.dart`, both apps.
+
+#### TASK-024 — Token Storage
+A `TokenStorage` interface with a secure-storage implementation and an in-memory implementation for tests. The access token is held in memory only; the refresh token is persisted. Files: `lib/core/network/token_storage.dart`, both apps.
+
+#### TASK-025 — ProblemDetails → Typed Failures
+A sealed `Failure` hierarchy and a mapper for the known codes: `auth.invalid_credentials`, `auth.password_change_required`, `users.login_identifier_taken`, `users.role_required` and `users.disabled`, plus network, unauthorized, forbidden and unknown failures. **Done When:** a unit test covers every code. Files: `lib/core/network/failures.dart`, `problem_details_mapper.dart`, both apps.
+
+#### TASK-026 — Dio Client + Auth Interceptor
+A Dio factory and an interceptor that attaches the token, handles a 401 with a single shared refresh, retries the request, and logs out if the refresh fails. **Done When:** unit tests with a mocked Dio cover:
+- the token being attached;
+- refresh followed by a retry;
+- concurrent 401s refreshing only once;
+- a failed refresh clearing the session.
+
+Files: `lib/core/network/api_client.dart`, `auth_interceptor.dart`, both apps.
+
+### User Story US-009
+
+**Title:** Session & Router Guards (both apps)
+
+**As a** user of either app
+**I want** the app to know whether I am signed in and whether I must change my password
+**So that** I only ever see the screens my session allows
+
+**Acceptance Criteria:**
+- `SessionCubit` states: unknown → unauthenticated → authenticating → authenticated / passwordChangeRequired.
+- Guards:
+  - Not signed in goes to `/login`.
+  - `mustChangePassword` goes to `/change-password`, and logout is the only way out.
+  - Signed in on `/login` goes to the landing route.
+- Splash restores an existing session (refresh token, then `/auth/me`) before redirecting.
+
+**Dependencies:** US-008.
+
+#### TASK-027 — AuthRepository (Interface, Dio, Mock)
+Covers login, refresh, logout, change-password and `me`. The mock seeds placeholder users, including one that must change its password and one disabled account. **Done When:** repository tests with a mocked Dio pass. Files: `lib/module/auth/data_layer/**`, both apps.
+
+#### TASK-028 — SessionCubit
+**Done When:** a bloc_test covers each transition. Files: `lib/core/session/*`, both apps.
+
+#### TASK-029 — Router Guards
+A `redirect` plus a `refreshListenable` bound to `SessionCubit`. **Done When:** a guard table test covers every session state against both public and protected routes. Files: `lib/utilities/router_config.dart`, both apps.
+
+#### TASK-030 — Splash Session Restore
+Replaces the Sprint 1 timer-based splash redirect. Files: `lib/module/auth/splash/**`, both apps.
+
+### User Story US-010
+
+**Title:** Real Login, Forced Password Change, Logout (both apps)
+
+**As a** user created by an Admin
+**I want** to sign in, set my own password on first sign-in, and sign out
+**So that** my account is protected from the first day
+
+**Acceptance Criteria:**
+- Login uses the Sprint 1 layouts (TASK-014, TASK-017), now wired to `AuthRepository`. Invalid credentials show one generic message that never says which field is wrong (UC-001 exception flow). A disabled account is rejected.
+- Change-password has current, new and confirm fields, with these client rules:
+  - at least 8 characters;
+  - not `12345678`;
+  - confirm must match.
+
+  Server errors are mapped. Success lands on the app's landing route: Admin `/dashboard`, Employee `/assignments` (plan G8).
+- Logout is available in both apps, including from the change-password screen.
+- Neither app has a sign-up screen (FR-AUTH-003, UC-002).
+- Credentials are never logged or persisted.
+
+**Dependencies:** US-009.
+
+#### TASK-031 — LoginCubit on AuthRepository
+Replaces the stubs from TASK-015 and TASK-018. **Done When:** a bloc_test covers success, `mustChangePassword`, invalid credentials, and a disabled account. Both apps.
+
+#### TASK-032 — Login Screen Error States
+Adds the generic error message and the disabled-account message. **Done When:** widget tests pass. Both apps.
+
+#### TASK-033 — Change-Password Screen + Cubit
+**Done When:** cubit and widget tests cover each client rule, a server error, and success. Files: `lib/module/auth/change_password/**`, both apps.
+
+#### TASK-034 — Logout Action
+The Admin app puts it in an account menu in the shell; the Employee app puts it on the Profile tab. **Done When:** a test shows logout clears the session and returns to `/login`. Both apps.
+
+### User Story US-011
+
+**Title:** Users List (Admin)
+
+**As an** Admin holding `Users.Manage`
+**I want** to browse, search and filter users
+**So that** I can manage accounts without leaving the app
+
+**Acceptance Criteria:**
+- The nav item "المستخدمين" is visible, and `/users` is reachable, **only** with `Users.Manage`. This resolves the Sprint 1 deferral of permission-aware navigation, for this one item.
+- A table shows the login identifier, roles, and status (Active / Disabled badge), with search, a status filter, pagination, and empty / loading / error states. Below 600 px it becomes a card list.
+- There is no delete action (FR-AUTH-004).
+
+**Dependencies:** US-009, US-010.
+
+#### TASK-035 — UsersRepository (Interface, Dio, Mock)
+Covers these calls:
+- `GET /api/users` (paged, with search and status filter);
+- `GET /api/users/{id}`;
+- `GET /api/roles`;
+- create, disable, reactivate and reset-password.
+
+**Done When:** repository tests with a mocked Dio pass. Files: `lib/module/users/data_layer/**`.
+
+#### TASK-036 — Users List Cubit + Screen
+**Done When:** cubit tests (search, filter, paging, error) and widget tests (each state) pass. Files: `lib/module/users/{cubit,presentation}/**`.
+
+#### TASK-037 — Permission-Gated Nav Item
+**Done When:** a test shows the item is hidden without `Users.Manage` and the route redirects. Files: `app_shell_screen.dart`, `router_config.dart`.
+
+### User Story US-012
+
+**Title:** Create User & Account Actions (Admin)
+
+**As an** Admin holding `Users.Manage`
+**I want** to create users and to disable, reactivate, or reset them
+**So that** onboarding and offboarding happen in the system, never by deleting history
+
+**Acceptance Criteria:**
+- The "مستخدم جديد" form has a login identifier field and a role multi-select loaded from `GET /api/roles`, with at least one role required (FR-AUTH-003). It has no password field. On success a dialog says: "تم إنشاء المستخدم — كلمة المرور الافتراضية 12345678 وسيُطلب منه تغييرها عند أول دخول".
+- Disable, reactivate and reset-password each require a confirmation dialog. Reset shows the same default-password message.
+- Server errors (`users.login_identifier_taken`, `users.role_required`, and so on) are shown in Arabic.
+
+**Dependencies:** US-011.
+
+#### TASK-038 — New-User Form Cubit + Screen
+**Done When:** widget tests cover the role-required rule, a taken identifier, and the success dialog.
+
+#### TASK-039 — User Details + Row Actions
+Disable, reactivate and reset-password, each with a confirmation dialog. **Done When:** cubit and widget tests cover both confirming and cancelling each action.
+
+#### TASK-040 — Default-Password Dialog
+One shared dialog, used after create and after reset. The default password appears only here (plan G2).
+
+### Extension Summary
+
+| Metric | Value |
+|---|---|
+| User Stories | 5 (US-008…US-012) |
+| Tasks | 18 (TASK-023…TASK-040) |
+| Applications | Both apps (US-008…US-010); Admin only (US-011, US-012) |
+| Backend dependency | Mock-first; the real integration waits on the API contract and backend auth |
+| Open decisions | Plan gaps G2, G3, G4, G7, G9 |

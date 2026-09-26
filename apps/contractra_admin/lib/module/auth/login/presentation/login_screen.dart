@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/language/locales.dart';
+import '../../../../core/session/session_cubit.dart';
 import '../../../../core/theme/app_breakpoints.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../cubit/login_cubit.dart';
@@ -14,11 +16,19 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => LoginCubit(),
+      create: (context) => LoginCubit(context.read<SessionCubit>()),
       child: const LoginView(),
     );
   }
 }
+
+String? _errorMessageFor(LoginState state) => switch (state) {
+      LoginValidationError() => 'loginFieldsRequired'.tr,
+      LoginInvalidCredentials() => 'loginInvalidCredentials'.tr,
+      LoginAccountDisabled() => 'loginAccountDisabled'.tr,
+      LoginNetworkError() => 'errorNetwork'.tr,
+      LoginIdle() || LoginSubmitting() || LoginSucceeded() => null,
+    };
 
 /// Expects a [LoginCubit] above it; split out so tests can inject one.
 class LoginView extends StatefulWidget {
@@ -52,8 +62,8 @@ class _LoginViewState extends State<LoginView> {
       identifierController: _identifierController,
       passwordController: _passwordController,
       onSubmit: _submit,
-      isSubmitting: state is LoginSubmitting,
-      showValidationError: state is LoginValidationError,
+      isSubmitting: state is LoginSubmitting || state is LoginSucceeded,
+      errorMessage: _errorMessageFor(state),
     );
 
     return Scaffold(

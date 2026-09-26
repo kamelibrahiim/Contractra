@@ -12,6 +12,7 @@ import '../module/dashboard/presentation/screens_layout/dashboard_placeholder_sc
 import '../module/operations/presentation/screens_layout/operations_placeholder_screen.dart';
 import '../module/parties/presentation/screens_layout/party_directory_screen.dart';
 import '../module/reports/presentation/screens_layout/reports_placeholder_screen.dart';
+import '../module/users/presentation/screens_layout/users_list_screen.dart';
 import 'app_shell_screen.dart';
 
 const landingRoute = '/dashboard';
@@ -57,6 +58,13 @@ class GoRouterConfig {
             pageBuilder: (_, GoRouterState state) => getCustomTransitionPage(
               state: state,
               child: const ChangePasswordScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/users',
+            pageBuilder: (_, GoRouterState state) => getCustomTransitionPage(
+              state: state,
+              child: const UsersListScreen(),
             ),
           ),
           StatefulShellRoute.indexedStack(
@@ -109,11 +117,14 @@ class GoRouterConfig {
 /// [SessionUnknown] never redirects — splash owns that window while it
 /// tries to restore a session. Everything else is decided from
 /// [SessionState] alone; a route not covered below (splash, /) always
-/// yields to a more specific check.
+/// yields to a more specific check. `/users` additionally requires
+/// `Users.Manage` (US-011) — enforced here independently of whether the
+/// nav item happens to be shown, never relying on the UI alone.
 String? redirectForSessionState(SessionState state, String location) {
   final isPublicAuthRoute = location == '/login';
   final isChangePasswordRoute = location == '/change-password';
   final isSplash = location == '/';
+  final isUsersRoute = location == '/users';
 
   switch (state) {
     case SessionUnknown():
@@ -124,8 +135,10 @@ String? redirectForSessionState(SessionState state, String location) {
       return null;
     case SessionPasswordChangeRequired():
       return isChangePasswordRoute ? null : '/change-password';
-    case SessionAuthenticated():
-      return (isPublicAuthRoute || isChangePasswordRoute || isSplash) ? landingRoute : null;
+    case SessionAuthenticated(user: final user):
+      if (isPublicAuthRoute || isChangePasswordRoute || isSplash) return landingRoute;
+      if (isUsersRoute && !user.hasPermission(usersManagePermission)) return landingRoute;
+      return null;
   }
 }
 

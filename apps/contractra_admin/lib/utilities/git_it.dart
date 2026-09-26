@@ -9,6 +9,10 @@ import '../module/auth/data_layer/repository/auth_repository.dart';
 import '../module/auth/data_layer/repository/dio_auth_repository.dart';
 import '../module/auth/data_layer/repository/mock_auth_repository.dart';
 import '../module/auth/data_layer/web_services/auth_api.dart';
+import '../module/users/data_layer/repository/dio_users_repository.dart';
+import '../module/users/data_layer/repository/mock_users_repository.dart';
+import '../module/users/data_layer/repository/users_repository.dart';
+import '../module/users/data_layer/web_services/users_api.dart';
 
 class GitIt {
   static final GetIt instance = GetIt.I..allowReassignment = true;
@@ -22,6 +26,7 @@ class GitIt {
 
     if (AppConfig.useMockApi) {
       instance.registerLazySingleton<AuthRepository>(() => MockAuthRepository(tokenStorage));
+      instance.registerLazySingleton<UsersRepository>(() => MockUsersRepository());
     } else {
       // Late-bound so the interceptor's refresh callback can call back into
       // the same repository instance once it exists (see below).
@@ -33,6 +38,7 @@ class GitIt {
       );
       authRepository = DioAuthRepository(AuthApi(dio), tokenStorage);
       instance.registerLazySingleton<AuthRepository>(() => authRepository);
+      instance.registerLazySingleton<UsersRepository>(() => DioUsersRepository(UsersApi(dio)));
     }
   }
 }

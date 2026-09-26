@@ -22,3 +22,24 @@ final class LoginSubmitting extends LoginState {
 final class LoginValidationError extends LoginState {
   const LoginValidationError();
 }
+
+/// UC-001's exception flow: never says which field is wrong.
+final class LoginInvalidCredentials extends LoginState {
+  const LoginInvalidCredentials();
+}
+
+final class LoginAccountDisabled extends LoginState {
+  const LoginAccountDisabled();
+}
+
+final class LoginNetworkError extends LoginState {
+  const LoginNetworkError();
+}
+
+/// On success the router's guard redirects away from /login once
+/// SessionCubit reaches authenticated/passwordChangeRequired; this state
+/// exists only so the UI can keep showing the loading button in that
+/// brief window rather than snapping back to idle first.
+final class LoginSucceeded extends LoginState {
+  const LoginSucceeded();
+}

@@ -3,11 +3,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/language/locales.dart';
+import '../core/session/session_cubit.dart';
 import '../core/theme/app_breakpoints.dart';
 import '../core/theme/app_spacing.dart';
 import '../core/theme/app_theme.dart';
 import '../widget/nav_rail_item.dart';
 import 'text_style_helper.dart';
+
+/// `Users.Manage` gate for the "المستخدمين" nav item (US-011). Not a shell
+/// branch — /users lives outside the indexed stack since it's only
+/// reachable for some sessions; the router's own guard also enforces this
+/// permission independently of whether the nav item is shown.
+const usersManagePermission = 'Users.Manage';
 
 class ShellDestination {
   const ShellDestination({
@@ -43,7 +50,12 @@ class AppShellScreen extends StatelessWidget {
         initialLocation: index == navigationShell.currentIndex,
       );
 
-  Widget _navList(ThemeModel theme, {VoidCallback? onSelected}) {
+  Widget _navList(BuildContext context, ThemeModel theme, {VoidCallback? onSelected}) {
+    final currentUser = context.watch<SessionCubit>().state;
+    final canManageUsers =
+        currentUser is SessionAuthenticated && currentUser.user.hasPermission(usersManagePermission);
+    final isOnUsersRoute = GoRouterState.of(context).matchedLocation == '/users';
+
     return ListView(
       padding: AppSpacing.allMd,
       children: [
@@ -60,16 +72,45 @@ class AppShellScreen extends StatelessWidget {
             child: NavRailItem(
               icon: adminShellDestinations[i].icon,
               label: adminShellDestinations[i].labelKey.tr,
-              isActive: i == navigationShell.currentIndex,
+              isActive: !isOnUsersRoute && i == navigationShell.currentIndex,
               onTap: () {
                 onSelected?.call();
                 _select(i);
               },
             ),
           ),
+        if (canManageUsers)
+          Padding(
+            padding: EdgeInsets.only(bottom: AppSpacing.xs),
+            child: NavRailItem(
+              key: const Key('nav_users'),
+              icon: Icons.manage_accounts_outlined,
+              label: 'navUsers'.tr,
+              isActive: isOnUsersRoute,
+              onTap: () {
+                onSelected?.call();
+                context.go('/users');
+              },
+            ),
+          ),
+        Padding(
+          padding: EdgeInsets.only(top: AppSpacing.md),
+          child: NavRailItem(
+            key: const Key('shell_logout'),
+            icon: Icons.logout,
+            label: 'logout'.tr,
+            isActive: false,
+            onTap: () {
+              onSelected?.call();
+              _logout(context);
+            },
+          ),
+        ),
       ],
     );
   }
+
+  Future<void> _logout(BuildContext context) => context.read<SessionCubit>().logout();
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +125,7 @@ class AppShellScreen extends StatelessWidget {
             Container(
               width: 260,
               color: theme.surfaceColor,
-              child: SafeArea(child: _navList(theme)),
+              child: SafeArea(child: _navList(context, theme)),
             ),
             VerticalDivider(width: 1, thickness: 1, color: theme.borderColor),
             Expanded(child: navigationShell),
@@ -105,12 +146,24 @@ class AppShellScreen extends StatelessWidget {
           adminShellDestinations[navigationShell.currentIndex].labelKey.tr,
           style: TextStyleHelper.h4.copyWith(color: theme.textPrimaryColor),
         ),
+        actions: [
+          IconButton(
+            key: const Key('shell_logout'),
+            icon: const Icon(Icons.logout),
+            tooltip: 'logout'.tr,
+            onPressed: () => _logout(context),
+          ),
+        ],
       ),
       drawer: Drawer(
         backgroundColor: theme.surfaceColor,
         child: Builder(
           builder: (drawerContext) => SafeArea(
-            child: _navList(theme, onSelected: () => Navigator.of(drawerContext).pop()),
+            child: _navList(
+              drawerContext,
+              theme,
+              onSelected: () => Navigator.of(drawerContext).pop(),
+            ),
           ),
         ),
       ),

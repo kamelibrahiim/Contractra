@@ -12,6 +12,14 @@ const _user = CurrentUser(
   mustChangePassword: false,
 );
 
+const _userWithoutUsersManage = CurrentUser(
+  id: 'u2',
+  loginIdentifier: 'accountant',
+  roles: ['Accountant'],
+  permissions: ['Parties.View'],
+  mustChangePassword: false,
+);
+
 void main() {
   group('redirectForSessionState', () {
     const publicRoutes = ['/login'];
@@ -64,5 +72,16 @@ void main() {
         expect(redirectForSessionState(const SessionAuthenticated(_user), route), isNull);
       });
     }
+
+    test('SessionAuthenticated with Users.Manage allows /users', () {
+      expect(redirectForSessionState(const SessionAuthenticated(_user), '/users'), isNull);
+    });
+
+    test('SessionAuthenticated without Users.Manage is redirected away from /users', () {
+      expect(
+        redirectForSessionState(const SessionAuthenticated(_userWithoutUsersManage), '/users'),
+        landingRoute,
+      );
+    });
   });
 }

@@ -11,6 +11,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:contractra_admin/core/language/locales.dart';
 import 'package:contractra_admin/core/session/session_cubit.dart';
 import 'package:contractra_admin/core/theme/cubit/theme_cubit.dart';
+import 'package:contractra_admin/module/auth/data_layer/models/current_user.dart';
 import 'package:contractra_admin/module/auth/data_layer/repository/auth_repository.dart';
 import 'package:contractra_admin/utilities/app_shell_screen.dart';
 import 'package:contractra_admin/utilities/git_it.dart';
@@ -34,6 +35,14 @@ void main() {
   GoRouter buildRouter(String initial) => GoRouter(
         initialLocation: initial,
         routes: [
+          GoRoute(
+            path: '/users',
+            builder: (_, _) => Scaffold(
+              appBar: AppBar(),
+              drawer: null,
+              body: const Center(child: Text('page:/users')),
+            ),
+          ),
           StatefulShellRoute.indexedStack(
             builder: (_, _, shell) => AppShellScreen(navigationShell: shell),
             branches: [
@@ -140,6 +149,37 @@ void main() {
       await tester.pump();
 
       expect(sessionCubit.state, const SessionUnauthenticated());
+    });
+
+    testWidgets('the Users nav item is hidden without Users.Manage', (tester) async {
+      sessionCubit.emit(const SessionAuthenticated(CurrentUser(
+        id: 'u1',
+        loginIdentifier: 'accountant',
+        roles: ['Accountant'],
+        permissions: ['Parties.View'],
+        mustChangePassword: false,
+      )));
+      await pumpShell(tester, const Size(1400, 900));
+
+      expect(find.byKey(const Key('nav_users')), findsNothing);
+    });
+
+    testWidgets('the Users nav item is shown and navigates with Users.Manage', (tester) async {
+      sessionCubit.emit(const SessionAuthenticated(CurrentUser(
+        id: 'u1',
+        loginIdentifier: 'admin',
+        roles: ['Admin'],
+        permissions: ['Users.Manage'],
+        mustChangePassword: false,
+      )));
+      await pumpShell(tester, const Size(1400, 900));
+
+      expect(find.byKey(const Key('nav_users')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('nav_users')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('page:/users'), findsOneWidget);
     });
   });
 }

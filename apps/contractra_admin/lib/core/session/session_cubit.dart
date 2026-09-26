@@ -2,6 +2,7 @@ import 'package:bloc/bloc.dart';
 
 import '../../module/auth/data_layer/models/current_user.dart';
 import '../../module/auth/data_layer/repository/auth_repository.dart';
+import '../network/failures.dart';
 
 part 'session_state.dart';
 
@@ -12,6 +13,12 @@ class SessionCubit extends Cubit<SessionState> {
   SessionCubit(this._authRepository) : super(const SessionUnknown());
 
   final AuthRepository _authRepository;
+
+  /// Set only by [login]; read by LoginCubit to show a specific message
+  /// (invalid credentials vs. disabled account vs. network) after a
+  /// SessionUnauthenticated result. Cleared at the start of every login
+  /// attempt so a stale failure is never shown for a different attempt.
+  Failure? lastLoginFailure;
 
   /// Called once at startup (from splash) to restore an existing session
   /// via the refresh token, then `/auth/me`. Never throws.
@@ -26,12 +33,14 @@ class SessionCubit extends Cubit<SessionState> {
   }
 
   Future<void> login(String identifier, String password) async {
+    lastLoginFailure = null;
     emit(const SessionAuthenticating());
     final result = await _authRepository.login(identifier, password);
     switch (result) {
       case AuthSuccess():
         await _loadCurrentUser();
-      case AuthError():
+      case AuthError(failure: final failure):
+        lastLoginFailure = failure;
         emit(const SessionUnauthenticated());
     }
   }

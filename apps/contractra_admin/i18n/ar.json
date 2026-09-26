@@ -42,5 +42,21 @@
   "changePasswordIsDefault": "اختر كلمة مرور مختلفة عن الافتراضية.",
   "changePasswordMismatch": "كلمتا المرور غير متطابقتين.",
   "changePasswordWrongCurrent": "كلمة المرور الحالية غير صحيحة.",
-  "logout": "تسجيل الخروج"
+  "logout": "تسجيل الخروج",
+  "navUsers": "المستخدمين",
+  "userStatusActive": "نشط",
+  "userStatusDisabled": "معطَّل",
+  "usersSearchLabel": "البحث بالمعرّف",
+  "usersStatusFilterAll": "كل الحالات",
+  "usersColumnIdentifier": "المعرّف",
+  "usersColumnRoles": "الأدوار",
+  "usersColumnStatus": "الحالة",
+  "usersLoading": "جارٍ تحميل المستخدمين...",
+  "usersLoadError": "تعذّر تحميل المستخدمين.",
+  "usersEmptyTitle": "لا يوجد مستخدمون بعد",
+  "usersEmptyMessage": "المستخدمون الذين تنشئهم سيظهرون هنا.",
+  "usersPageOf": "صفحة {page} من {total}",
+  "previous": "السابق",
+  "next": "التالي",
+  "retry": "إعادة المحاولة"
 }

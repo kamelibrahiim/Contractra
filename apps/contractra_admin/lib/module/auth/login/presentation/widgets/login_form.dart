@@ -17,14 +17,19 @@ class LoginForm extends StatefulWidget {
     required this.passwordController,
     required this.onSubmit,
     this.isSubmitting = false,
-    this.showValidationError = false,
+    this.errorMessage,
   });
 
   final TextEditingController identifierController;
   final TextEditingController passwordController;
   final VoidCallback onSubmit;
   final bool isSubmitting;
-  final bool showValidationError;
+
+  /// Any local or server-originated message to show under the fields.
+  /// UC-001's exception flow: this never distinguishes which field is
+  /// wrong for invalid-credentials cases — only the caller decides the
+  /// exact wording per failure type.
+  final String? errorMessage;
 
   @override
   State<LoginForm> createState() => _LoginFormState();
@@ -75,11 +80,11 @@ class _LoginFormState extends State<LoginForm> {
           onSuffixIconPressed: () =>
               setState(() => _obscurePassword = !_obscurePassword),
         ),
-        if (widget.showValidationError) ...[
+        if (widget.errorMessage != null) ...[
           SizedBox(height: AppSpacing.sm),
           Text(
-            'loginFieldsRequired'.tr,
-            key: const Key('login_validation_error'),
+            widget.errorMessage!,
+            key: const Key('login_error'),
             style: TextStyleHelper.bodySm.copyWith(color: theme.dangerColor),
           ),
         ],

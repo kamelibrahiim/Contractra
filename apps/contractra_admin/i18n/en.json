@@ -42,5 +42,21 @@
   "changePasswordIsDefault": "Choose a password other than the default one.",
   "changePasswordMismatch": "Passwords do not match.",
   "changePasswordWrongCurrent": "Current password is incorrect.",
-  "logout": "Log out"
+  "logout": "Log out",
+  "navUsers": "Users",
+  "userStatusActive": "Active",
+  "userStatusDisabled": "Disabled",
+  "usersSearchLabel": "Search by identifier",
+  "usersStatusFilterAll": "All statuses",
+  "usersColumnIdentifier": "Identifier",
+  "usersColumnRoles": "Roles",
+  "usersColumnStatus": "Status",
+  "usersLoading": "Loading users...",
+  "usersLoadError": "Could not load users.",
+  "usersEmptyTitle": "No users yet",
+  "usersEmptyMessage": "Users you create will appear here.",
+  "usersPageOf": "Page {page} of {total}",
+  "previous": "Previous",
+  "next": "Next",
+  "retry": "Retry"
 }

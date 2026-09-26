@@ -1,14 +1,14 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/language/locales.dart';
+import '../../../../core/session/session_cubit.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../utilities/text_style_helper.dart';
 
-/// Brief transient screen before the login route. No session restore yet —
-/// that arrives with the real Users/Auth integration.
+/// Restores an existing session (refresh token, then `/auth/me`) before the
+/// router's guard redirects away from here. The router's redirect handles
+/// every outcome; this screen only triggers the restore attempt.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -17,20 +17,10 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  Timer? _timer;
-
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(milliseconds: 600), () {
-      if (mounted) context.go('/login');
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+    context.read<SessionCubit>().restore();
   }
 
   @override

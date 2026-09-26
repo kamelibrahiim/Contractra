@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/language/locales.dart';
 import '../../../../core/theme/app_breakpoints.dart';
@@ -45,9 +46,24 @@ class _UsersListView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'navUsers'.tr,
-            style: TextStyleHelper.h3.copyWith(color: theme.textPrimaryColor),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'navUsers'.tr,
+                  style: TextStyleHelper.h3.copyWith(color: theme.textPrimaryColor),
+                ),
+              ),
+              AppButton(
+                key: const Key('users_new_user'),
+                label: 'usersNewUser'.tr,
+                leadingIcon: Icons.add,
+                onPressed: () async {
+                  await context.push('/users/new');
+                  if (context.mounted) cubit.refresh();
+                },
+              ),
+            ],
           ),
           SizedBox(height: AppSpacing.md),
           Row(
@@ -111,9 +127,15 @@ class _UsersListView extends StatelessWidget {
             ? ListView.separated(
                 itemCount: state.items.length,
                 separatorBuilder: (_, _) => SizedBox(height: AppSpacing.sm),
-                itemBuilder: (_, i) => UserRowCard(user: state.items[i]),
+                itemBuilder: (_, i) => UserRowCard(
+                  user: state.items[i],
+                  onTap: () => context.push('/users/${state.items[i].id}'),
+                ),
               )
-            : UsersTable(users: state.items);
+            : UsersTable(
+                users: state.items,
+                onRowTap: (user) => context.push('/users/${user.id}'),
+              );
     }
   }
 

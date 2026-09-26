@@ -12,6 +12,8 @@ import '../module/dashboard/presentation/screens_layout/dashboard_placeholder_sc
 import '../module/operations/presentation/screens_layout/operations_placeholder_screen.dart';
 import '../module/parties/presentation/screens_layout/party_directory_screen.dart';
 import '../module/reports/presentation/screens_layout/reports_placeholder_screen.dart';
+import '../module/users/presentation/screens_layout/new_user_screen.dart';
+import '../module/users/presentation/screens_layout/user_details_screen.dart';
 import '../module/users/presentation/screens_layout/users_list_screen.dart';
 import 'app_shell_screen.dart';
 
@@ -66,6 +68,22 @@ class GoRouterConfig {
               state: state,
               child: const UsersListScreen(),
             ),
+            routes: [
+              GoRoute(
+                path: 'new',
+                pageBuilder: (_, GoRouterState state) => getCustomTransitionPage(
+                  state: state,
+                  child: const NewUserScreen(),
+                ),
+              ),
+              GoRoute(
+                path: ':id',
+                pageBuilder: (_, GoRouterState state) => getCustomTransitionPage(
+                  state: state,
+                  child: UserDetailsScreen(userId: state.pathParameters['id']!),
+                ),
+              ),
+            ],
           ),
           StatefulShellRoute.indexedStack(
             builder: (_, _, navigationShell) =>
@@ -124,7 +142,7 @@ String? redirectForSessionState(SessionState state, String location) {
   final isPublicAuthRoute = location == '/login';
   final isChangePasswordRoute = location == '/change-password';
   final isSplash = location == '/';
-  final isUsersRoute = location == '/users';
+  final isUsersRoute = location == '/users' || location.startsWith('/users/');
 
   switch (state) {
     case SessionUnknown():

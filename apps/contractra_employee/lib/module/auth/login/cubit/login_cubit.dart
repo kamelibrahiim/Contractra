@@ -1,15 +1,18 @@
 import 'package:bloc/bloc.dart';
 
+import '../../../../core/network/failures.dart';
+import '../../../../core/session/session_cubit.dart';
+
 part 'login_state.dart';
 
-/// Local-only stub: validates that both fields are filled, simulates a
-/// request, then returns to idle. Credentials are never stored in state,
-/// logged, or persisted.
+/// Delegates the actual call to [SessionCubit] (shared with session
+/// restore) and translates its outcome into UI-facing states. Never
+/// imports Dio/fast_dio directly — network access goes through
+/// AuthRepository, behind SessionCubit.
 class LoginCubit extends Cubit<LoginState> {
-  LoginCubit({this.simulatedDelay = const Duration(seconds: 1)})
-      : super(const LoginIdle());
+  LoginCubit(this._sessionCubit) : super(const LoginIdle());
 
-  final Duration simulatedDelay;
+  final SessionCubit _sessionCubit;
 
   Future<void> submit(String identifier, String password) async {
     if (state is LoginSubmitting) return;
@@ -20,8 +23,27 @@ class LoginCubit extends Cubit<LoginState> {
     }
 
     emit(const LoginSubmitting());
-    // TODO(sprint-2): call POST /auth/login once Users/Auth backend exists.
-    await Future<void>.delayed(simulatedDelay);
-    if (!isClosed) emit(const LoginIdle());
+    await _sessionCubit.login(identifier, password);
+
+    final result = _sessionCubit.state;
+    if (isClosed) return;
+
+    switch (result) {
+      case SessionAuthenticated():
+      case SessionPasswordChangeRequired():
+        emit(const LoginSucceeded());
+      case SessionUnauthenticated():
+        emit(_failureStateFor(_sessionCubit.lastLoginFailure));
+      case SessionUnknown():
+      case SessionAuthenticating():
+        // Should not happen: login() always resolves to one of the above.
+        emit(const LoginIdle());
+    }
   }
+
+  LoginState _failureStateFor(Failure? failure) => switch (failure) {
+        UserDisabledFailure() => const LoginAccountDisabled(),
+        NetworkFailure() => const LoginNetworkError(),
+        _ => const LoginInvalidCredentials(),
+      };
 }

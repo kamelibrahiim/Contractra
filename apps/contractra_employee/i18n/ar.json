@@ -10,5 +10,20 @@
   "loginPasswordLabel": "كلمة المرور",
   "loginSubmit": "دخول",
   "loginForgotPassword": "نسيت كلمة المرور؟",
-  "loginFieldsRequired": "أدخل المعرّف وكلمة المرور."
+  "loginFieldsRequired": "أدخل المعرّف وكلمة المرور.",
+  "logout": "تسجيل الخروج",
+  "loginInvalidCredentials": "المعرّف أو كلمة المرور غير صحيحة.",
+  "loginAccountDisabled": "هذا الحساب معطَّل.",
+  "errorNetwork": "تعذّر الوصول إلى الخادم. تحقق من الاتصال وحاول مرة أخرى.",
+  "errorGeneric": "حدث خطأ ما. حاول مرة أخرى.",
+  "changePasswordTitle": "تعيين كلمة مرور جديدة",
+  "changePasswordSubtitle": "يجب تعيين كلمة مرور جديدة قبل الاستمرار.",
+  "changePasswordCurrentLabel": "كلمة المرور الحالية",
+  "changePasswordNewLabel": "كلمة المرور الجديدة",
+  "changePasswordConfirmLabel": "تأكيد كلمة المرور الجديدة",
+  "changePasswordSubmit": "تغيير كلمة المرور",
+  "changePasswordTooShort": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
+  "changePasswordIsDefault": "اختر كلمة مرور مختلفة عن الافتراضية.",
+  "changePasswordMismatch": "كلمتا المرور غير متطابقتين.",
+  "changePasswordWrongCurrent": "كلمة المرور الحالية غير صحيحة."
 }

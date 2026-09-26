@@ -27,5 +27,20 @@
   "partyRoleDebtor": "Debtor",
   "partyRoleCreditor": "Creditor",
   "partyRolePartner": "Partner",
-  "partyRoleCompany": "Company"
+  "partyRoleCompany": "Company",
+  "loginInvalidCredentials": "Incorrect identifier or password.",
+  "loginAccountDisabled": "This account has been disabled.",
+  "errorNetwork": "Could not reach the server. Check your connection and try again.",
+  "errorGeneric": "Something went wrong. Please try again.",
+  "changePasswordTitle": "Set a new password",
+  "changePasswordSubtitle": "You must set a new password before continuing.",
+  "changePasswordCurrentLabel": "Current password",
+  "changePasswordNewLabel": "New password",
+  "changePasswordConfirmLabel": "Confirm new password",
+  "changePasswordSubmit": "Change password",
+  "changePasswordTooShort": "Password must be at least 8 characters.",
+  "changePasswordIsDefault": "Choose a password other than the default one.",
+  "changePasswordMismatch": "Passwords do not match.",
+  "changePasswordWrongCurrent": "Current password is incorrect.",
+  "logout": "Log out"
 }

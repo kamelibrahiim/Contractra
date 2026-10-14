@@ -185,7 +185,7 @@ report the issue before changing system behavior.
 
 Everything under `docs/` **except** `docs/implementation/**` and `docs/decisions/**` is authoritative source material and is read-only: do not modify it.
 
-`docs/implementation/**` (plans, sprints, API contracts) and `docs/decisions/**` (ADRs) are working documents. Claude Code may edit them when a task asks for it.
+`docs/implementation/**` (plans, sprints, API contracts) and `docs/decisions/**` (ADRs) are working documents. Claude Code may edit them when a task asks for it. They are not ranked in `docs/documentation-index-ar.md`; their order of precedence, and which of the two `sprint-01.md` files is which, is in `docs/implementation/README.md`. For authentication and user management, the source of truth is `docs/implementation/backend/features/auth-and-users-api-contract.md`.
 
 ---
 
@@ -493,8 +493,9 @@ At the time this guidance was established:
 * EF Core is configured in Infrastructure.
 * `ContractraDbContext` exists.
 * The domain model covers Parties and Identity (users, roles, permissions, user role/permission grants, user–party links); there is no Application or API logic yet.
-* EF Core migrations exist under `Contractra.Infrastructure/Migrations`, including the Slice 1 authorization catalog seed (`SeedAuthorizationCatalog`).
-* Tests exist: `Contractra.Domain.Tests` (unit) and `Contractra.Infrastructure.IntegrationTests` (PostgreSQL, ephemeral databases via `CONTRACTRA_TEST_POSTGRES`).
+* EF Core migrations exist under `Contractra.Infrastructure/Migrations`, including the Slice 1 authorization catalog seed (`SeedAuthorizationCatalog`, commit `1e10742`).
+* Tests exist: `Contractra.Domain.Tests` (unit) and `Contractra.Infrastructure.IntegrationTests` (PostgreSQL, ephemeral databases via `CONTRACTRA_TEST_POSTGRES`). The test server is PostgreSQL 18 (ADR 0001 §14); on older PostgreSQL versions the `ON DELETE RESTRICT` tests report SQLSTATE 23503 instead of 23001.
+* Implementation status of Backend Sprint 2 is tracked in `docs/implementation/backend/sprints/sprint-02.md` §A.
 
 Always verify this section against the repository because the project will evolve.
 

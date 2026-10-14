@@ -2,15 +2,15 @@
 
 > This sprint restates the approved plan in
 > `docs/implementation/backend/features/admin-user-creation-plan.md` as
-> numbered user stories and tasks, following the exact structure of
-> `sprint-01.md`. Sprint 1 stays closed and historical and is not modified
-> by this sprint (Confirmed Decision C1). All backend-side scope decisions
-> below were made explicitly by the project owner on 2026-09-26 and are
-> recorded as Confirmed Decisions (C1–C6) in the plan document; this sprint
-> file does not re-derive or re-litigate them.
+> numbered user stories and tasks, following the structure of the backend
+> Sprint 1 file (`docs/implementation/backend/sprints/sprint-01.md`). Backend
+> Sprint 1 stays closed and historical and is not modified by this sprint
+> (Confirmed Decision C1). Scope decisions are the owner's (C1–C6, R1–R45)
+> and engineering's (E1–E16), recorded in the plan; this file does not
+> re-derive them.
 
-Status: 🟡 Slice 1 done (US-BE-006, committed) · Slice 2 planned (US-BE-007, not started) · baseline: contract v1.4 and owner decisions R1–R43
-Date: 2026-09-26 · updated 2026-09-27 · 2026-10-01
+Status: 🟡 Slice 1 done and committed · Slice 2 next (see §A for the exact state) · Slices 2B–7 planned · baseline: **contract v1.5**, owner decisions R1–R45, engineering decisions E1–E16
+Date: 2026-09-26 · updated 2026-09-27 · 2026-10-01 · 2026-10-15
 Scope: `Contractra_System` backend (.NET 10 / ASP.NET Core / EF Core / PostgreSQL, Clean Architecture)
 Source: `docs/implementation/backend/features/admin-user-creation-plan.md`
 
@@ -18,13 +18,15 @@ Source: `docs/implementation/backend/features/admin-user-creation-plan.md`
 
 ## 0. Documentation basis
 
-Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), plus:
+Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the working-document order in `docs/implementation/README.md`:
 
-1. `docs/decisions/0003-user-identity-persistence.md` — the completed User/UserRole/UserPermission/UserPartyLink persistence this sprint builds on.
-2. `docs/decisions/0002-authorization-catalog-persistence.md` §6 — the existing `Payroll.View` role-grant guard triggers this sprint's seed must not attempt to bypass.
-3. `docs/implementation/backend/features/admin-user-creation-plan.md` — the plan. **§1B (R1–R43, 2026-09-27 … 2026-10-01) is binding and overrides §1 where they differ**; §1 (C1–C6) is binding except C4 (superseded) and C2 (amended); §4 (Q5, Q6) is explicitly deferred; §5 Slices 2, 4, 6 and 7 are superseded.
-4. `docs/implementation/backend/features/auth-and-users-api-contract.md` (v1.4) — source of truth for the auth and user-management API.
+1. `docs/decisions/0003-user-identity-persistence.md` — the User/UserRole/UserPermission/UserPartyLink persistence this sprint builds on.
+2. `docs/decisions/0002-authorization-catalog-persistence.md` §6 — the `Payroll.View` role-grant guard triggers the seed must not bypass.
+3. `docs/implementation/backend/features/admin-user-creation-plan.md` — the plan. **§1D (R44–R45, E1–E16) and §1B (R1–R43) are binding and override §1 where they differ**; §1 (C1–C6) is binding except C4 (superseded) and C2 (amended); §4 Q6 is deferred and Q5 is a non-goal (R45); §5 Slices 2, 4, 6 and 7 are superseded.
+4. `docs/implementation/backend/features/auth-and-users-api-contract.md` (**v1.5**) — source of truth for the auth and user-management API. Its §19 lists the owner confirmations still open; none blocks Slice 2.
 5. `docs/decisions/0004-authorization-catalog-seed.md` — the Slice 1 seed.
+
+**Two files are called `sprint-01.md`.** `docs/implementation/sprints/sprint-01.md` is the **frontend** Sprint 1 (Admin and Employee apps). `docs/implementation/backend/sprints/sprint-01.md` is the **backend** Sprint 1. This file only ever refers to the backend one as "Sprint 1".
 
 **Cross-session reconciliation (resolved 2026-09-27).** The frontend (US-008…US-012, commits `384cf08`…`78de706`) was built against an auth contract that neither the documents nor this plan had settled. The owner answered each open question; the answers are recorded as R1–R14 in plan §1B. Notably, **R1 reinstates the forced password change, superseding C4**, and **R2 replaces the shared default password with a random temporary one**.
 
@@ -32,11 +34,12 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), plus:
 
 ---
 
-## A. CURRENT BACKEND STATE (verified 2026-10-01)
+## A. CURRENT BACKEND STATE (verified 2026-10-15 against Git and a clean clone)
 
-- **Done:** `User`, `UserRole`, `UserPermission`, `UserPartyLink` — Domain, EF configuration, PostgreSQL constraints, tests (Sprint 1, closed). Five migrations: `AddUsers`, `MakeUserLoginIdentifierCaseInsensitive`, `AddUserRoles`, `AddUserPermissions`, `AddUserPartyLinks`.
-- `Role`/`Permission`/`RolePermission` exist (ADR 0002) with the `Payroll.View` role-grant guard (two database triggers). **Seeded by Slice 1** (`SeedAuthorizationCatalog`): 4 roles, 6 permissions, 7 role grants (ADR 0004).
-- **Not done:** `Contractra.Application` has no files beyond the template. No authentication/JWT/password-hashing code. No `audit_events`. `Contractra.Api/Program.cs` still has the `/weatherforecast` template.
+- **Backend Sprint 1 — closed.** `User`, `UserRole`, `UserPermission`, `UserPartyLink` (Domain, EF configuration, PostgreSQL constraints, tests) and the authorization catalog (`Role`, `Permission`, `RolePermission`, ADR 0002) are implemented. The Sprint 1 file still reads "Draft for review / planning document only" because C1 forbids editing it; its stories are complete as described in ADRs 0002 and 0003. This line is the record of its closure.
+- **Slice 1 (US-BE-006) — done and committed.** `1e10742 feat(auth-slice-1): seed authorization catalog` (migration `SeedAuthorizationCatalog`, `AuthorizationCatalogSeedTests`, ADR 0004) and `bc63d5f test(auth-slice-1): keep catalog fixtures clear of the seeded codes` (the three existing test classes the seed required; without them a clean checkout of `1e10742` fails 12 integration tests). 4 roles, 6 permissions, 7 role grants, `Payroll.View` granted to no role.
+- **Not done:** `Contractra.Application` has no files beyond the template. No authentication, JWT, password hashing, sessions, throttling or `audit_events`. `Contractra.Api/Program.cs` still has the `/weatherforecast` template.
+- **Test baseline (clean clone of `bc63d5f`, PostgreSQL 16.15, 2026-10-15):** Domain 157/157 passed; Integration 168/177 passed. The 9 failures are environment-specific and pre-existing (identical at `78de706`, before the seed): they assert SQLSTATE `23001` for `ON DELETE RESTRICT`, which the project's PostgreSQL 18 (ADR 0001 §14) reports and PostgreSQL 16 reports as `23503`. The owner reported 177/177 on PostgreSQL 18 for the working tree that became `bc63d5f` (not re-run here, because no PostgreSQL 18 was available).
 
 ---
 
@@ -44,31 +47,42 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), plus:
 
 | # | Decision | Effect on this sprint |
 |---|---|---|
-| C1 | Sprint 1 stays closed; this work is Sprint 2 | This file; `sprint-01.md` is never edited by this sprint |
-| C2 | Seed only Identity-active permissions: `Users.Manage`, `Permissions.Grant`, `Roles.Manage`, `Payroll.View` — not the full §7.3 catalog. **Amended by R13:** plus `Apps.Admin.Access` and `Apps.Employee.Access` (6 permissions, 7 role grants) | TASK-BE-024 (done, amended) |
-| C3 | Bootstrap admin gets `Payroll.View` as a direct `UserPermission`, never via `RolePermission` | TASK-BE-024 (seed excludes it from roles), TASK-BE-0xx bootstrap seeder slice |
+| C1 | Sprint 1 stays closed; this work is Sprint 2 | This file; the backend `sprint-01.md` is never edited by this sprint |
+| C2 | Seed only Identity-active permissions: `Users.Manage`, `Permissions.Grant`, `Roles.Manage`, `Payroll.View` — not the full §7.3 catalog. **Amended by R13:** plus `Apps.Admin.Access` and `Apps.Employee.Access` (6 permissions, 7 role grants) | TASK-BE-024 (done) |
+| C3 | Bootstrap admin gets `Payroll.View` as a direct `UserPermission`, never via `RolePermission` | TASK-BE-024 (seed excludes it from roles), Slice 5 |
 | ~~C4~~ | ~~No `must_change_password`~~ — **superseded by R1–R3** | — |
-| R1–R14 | Reconciliation decisions (plan §1B): forced password change; random 12-character temporary password returned once; reset uses the same mechanism; reactivate needs `Users.Manage`; JWT 30 min + rotating 7-day refresh, hashed storage, session revocation on disable/reset/password change, claims + per-user security version; web refresh token in an HttpOnly Secure SameSite cookie; `/api/v1`; optional client correlation ID; `roleCodes`; `/me` with effective permissions and `mustChangePassword`; generic response for disabled logins; `AccessDenied` audited and logged; app-access permissions; current password required to change it | Slices 2–7 |
-| R15–R19 | Final owner decisions (plan §1B): reset needs `Users.Manage`; new password ≥ 8 characters and different from the current one, no default password anywhere; NFR-SEC-007 idle timeouts adopted (Engineer 8 h, others 60 min) on top of the 7-day maximum; mobile refresh token in the response body with secure device storage, web keeps the cookie; bootstrap admin exempt from the forced change | Slices 2–7 |
-| R20–R25 | Final clarifications (plan §1B): bootstrap admin cannot be reset via `Users.Manage` (identified by a seeder-only flag); idle timeout checked and updated at refresh, no per-request write; `SameSite=Strict` for same-site deployment only; `X-Client-Platform` (`web`/`mobile`) is a transport hint, never used for authorization; app-access 403 after credential check; reactivation restores no session | Slices 2, 4, 6, 7 |
-| R26–R27 | (2026-10-01) Bootstrap admin may change its own password via ChangePassword; it is protected server-side from reset, disable, reactivate, role changes and deletion by other users (409, Serilog only) | Slices 4, 5, 7 |
-| R28–R29 | (2026-10-01) Bootstrap admin also protected from direct-permission grants/revokes, including its `Payroll.View`; no API recovery for its password — out-of-band operational procedure required | Future permission endpoints; operations |
-| R30–R34 | (2026-10-01) One account per Party, `UNIQUE(party_id)` (reverses the 2026-09-26 decision); Engineer creation requires `partyId`; bootstrap break-glass (second Admin + operator-only CLI); `PasswordHasher<TUser>` with `users.password_hash text NOT NULL`; `UserRole.End()`/`UserPermission.Revoke()` internal, `User.EndRole`/`User.RevokePermission`, `security_version` bumped inside the aggregate | Slice 2 (R30 check + constraint, R33, R34), Slices 4–5 (R31, R32) |
-| R35–R43 | (2026-10-01) 30-second refresh reuse grace; change-password consumes and reissues the refresh token; "never refresh" only for login/refresh/logout; `client_platform` stored on the session; server check order; `actor_type` + nullable `actor_user_id`, CSRF rejection Serilog-only; bootstrap seeder audits `RoleAssigned(Admin)` and `PayrollViewGranted` replaces `PermissionGranted`; protection checks the target; dummy hash on login; duplicate/deprecated role and disabled-reset rules | Slices 3–7 |
-| Contract | `docs/implementation/backend/features/auth-and-users-api-contract.md` (v1.4) is the source of truth for the auth and user-management API (backend, Admin and Employee apps) | All auth/user slices |
-| C5 | Audit event names are `UserDisabled` / `RoleEnded` (Logical Data Model §1.8), not `UserDeactivated` / `RoleRevoked` | Slice 3+ (not built in this sprint's Slice 1) |
-| Q5 | Account lockout — deferred, not built | Out of scope, all slices |
+| R1–R14 | Reconciliation decisions (plan §1B): forced password change; random 12-character temporary password returned once; reset uses the same mechanism (**reset half superseded by R44**); reactivate needs `Users.Manage`; JWT 30 min + rotating 7-day refresh, hashed storage, session revocation on disable/reset/password change, claims + per-user security version; web refresh token in an HttpOnly Secure SameSite cookie; `/api/v1`; optional client correlation ID; `roleCodes`; `/me` with effective permissions and `mustChangePassword`; generic response for disabled logins; `AccessDenied` audited and logged; app-access permissions; current password required to change it | Slices 2–7 |
+| R15–R19 | Reset needs `Users.Manage`; new password ≥ 8 characters and different from the current one, no default password anywhere; NFR-SEC-007 idle timeouts (Engineer 8 h, others 60 min) on top of the 7-day maximum; mobile refresh token in the response body with secure device storage, web keeps the cookie; bootstrap admin exempt from the forced change | Slices 2–7 |
+| R20–R25 | Bootstrap admin cannot be reset via `Users.Manage` (seeder-only flag); idle timeout checked and updated at refresh, no per-request write; `SameSite=Strict` for same-site deployment only; `X-Client-Platform` (`web`/`mobile`) is a transport hint, never used for authorization; app-access 403 after credential check; reactivation restores no session | Slices 2, 4, 6, 7 |
+| R26–R29 | Bootstrap admin may change its own password; protected server-side from reset, disable, reactivate, role and direct-permission changes and deletion (409, Serilog only); no API recovery for its password — out-of-band procedure | Slices 4, 5, 7 |
+| R30–R34 | One account per Party, `UNIQUE(party_id)`; Engineer creation requires `partyId`; bootstrap break-glass (second Admin + operator-only CLI); `PasswordHasher<TUser>` with `users.password_hash text NOT NULL`; `UserRole.End()`/`UserPermission.Revoke()` internal, `User.EndRole`/`User.RevokePermission`, `security_version` bumped inside the aggregate | Slice 2 (R30, R33 column, R34), Slices 4–5 |
+| R35–R43 | 30-second refresh reuse grace; change-password consumes and reissues the refresh token; "never refresh" only for login/refresh/logout; `client_platform` stored on the session; server check order; `actor_type` + nullable `actor_user_id`, CSRF rejection Serilog-only; bootstrap seeder audits `RoleAssigned(Admin)` and `PayrollViewGranted`; protection checks the target; dummy hash on login; duplicate/deprecated role and disabled-reset rules | Slices 2B–7 |
+| **R44** | (2026-10-15) A password reset must never reveal a usable credential to the Admin | Slices 2, 2B, 4, 5, 6, 7 (contract §5.6, §9.6, §10A) |
+| **R45** | (2026-10-15) Brute-force protection required, without hard lockout | Slices 2B, 6 (contract §17) |
+| **E1–E16** | (2026-10-15) Engineering decisions, plan §1D: reset issue/complete flow; generic failure for unusable/expired passwords; initial-password re-issue and `credentialState`; temporary-password rules and expiry; five-layer throttling; app audience; security-version semantics and bootstrap defence in depth; Party validity; JWT validation and key ring; identifier matching; change-password token consumption; audit fields and fail-closed rules; input limits; operational security; idle-timeout bounds; migration and rollback policy | All slices from 2 |
+| Contract | `auth-and-users-api-contract.md` (v1.5) is the source of truth for the auth and user-management API (backend, Admin and Employee apps) | All auth/user slices |
+| C5 | Audit event names are `UserDisabled` / `RoleEnded` (Logical Data Model §1.8), not `UserDeactivated` / `RoleRevoked` — an owner decision (see plan §1D on its rationale) | Slice 3+ |
+| Q5 | Account lockout — **not adopted** (R45 uses throttling instead) | — |
 | Q6 | Full §7.3 role↔permission mapping — deferred until each future module exists | Out of scope, all slices |
 
 ---
 
 ## C. SLICES → STORIES
 
-This sprint currently defines **Slice 1** (US-BE-006, done) and **Slice 2** (US-BE-007, planned, not started). Slices 3–7 will each become their own user story (US-BE-008..US-BE-012) added to this file when that slice is re-planned against contract v1.4 — not created in advance.
+| Slice | Story | Delivers | Depends on | Status |
+|---|---|---|---|---|
+| 1 | US-BE-006 | Authorization catalog seed | Sprint 1 | ✅ Done (`1e10742`, `bc63d5f`) |
+| 2 | US-BE-007 | `users` credential and security state; aggregate-only security mutations; one account per Party; case-insensitive login lookup | Slice 1 | Next (see §A) |
+| 2B | US-BE-008 | Persistence for sessions, refresh tokens, reset tickets and the throttle store | Slice 2 | Planned |
+| 3 | US-BE-009 | Minimal `audit_events` (contract §14) | Slice 2 | Planned |
+| 4 | US-BE-010 | Application layer: hashing, temporary passwords, clock, use cases | 2, 2B, 3 | Planned |
+| 5 | US-BE-011 | Bootstrap seeder; operator commands | 4 | Planned |
+| 6 | US-BE-012 | Auth endpoints, JWT, app audience, throttling, HTTP pipeline | 4 (5 for end-to-end tests) | Planned |
+| 7 | US-BE-013 | Users endpoints | 6 | Planned |
 
-### US-BE-006 — Roles & permissions catalog seed (Slice 1)
+Why 2B exists (audit finding F5): disabling, resetting and changing a password must revoke sessions (contract §3.3), and the use cases that do it (Slice 4) come before the endpoints (Slice 6). The session store therefore has to exist before Slice 4, not be created by Slice 6.
 
-> ✅ **Amended for R13 (2026-09-27, owner-approved, uncommitted).** The seed now has **6 permissions and 7 role grants**: Admin ← `Apps.Admin.Access`, `Users.Manage`, `Permissions.Grant`, `Roles.Manage`; OfficeStaff ← `Apps.Admin.Access`; Accountant ← `Apps.Admin.Access`; Engineer ← `Apps.Employee.Access`. `Payroll.View` is still granted to no role. The acceptance criteria below that say "4 permissions" and "3 rows, all under Admin" are superseded by these numbers; the tests (`AuthorizationCatalogSeedTests`) assert the amended values.
+### US-BE-006 — Roles & permissions catalog seed (Slice 1) — ✅ done
 
 ```
 As a: backend developer building the authentication foundation
@@ -81,149 +95,34 @@ So that: CreateUser (Slice 4) and the bootstrap admin seeder (Slice 5) have
 real roles and permissions to assign, without inventing the full business
 permission catalog before the modules it describes exist
 
-Business Value:
-No user can be created with a role, and no permission can be granted,
-until the reference data exists. This is the first unblocking step for the
-whole sprint.
-
-Acceptance Criteria:
+Acceptance Criteria (final, as amended by R13 on 2026-09-27 and as tested by
+AuthorizationCatalogSeedTests):
 - Exactly 4 roles exist after migration: Engineer, OfficeStaff, Accountant,
   Admin (spec §7.1).
-- Exactly 4 permissions exist after migration: Users.Manage,
-  Permissions.Grant, Roles.Manage, Payroll.View — no other permission from
-  spec §7.3 is seeded (Confirmed Decision C2).
-- role_permissions contains exactly 3 rows: Admin → Users.Manage,
-  Permissions.Grant, Roles.Manage. No other role has any of these three.
-- Payroll.View has ZERO role_permissions rows for any role (BR-235,
-  Confirmed Decision C3) — proven by both an application-level assertion
-  and confirmation that the existing ADR 0002 trigger would reject an
-  attempted role grant.
-- Migration is additive only; re-running it (or the whole migration chain)
-  does not error or duplicate rows.
+- Exactly 6 permissions exist after migration: Users.Manage,
+  Permissions.Grant, Roles.Manage, Payroll.View (C2), Apps.Admin.Access,
+  Apps.Employee.Access (R13). No other permission from spec §7.3 is seeded.
+- role_permissions contains exactly 7 rows: Admin → Apps.Admin.Access,
+  Users.Manage, Permissions.Grant, Roles.Manage; OfficeStaff →
+  Apps.Admin.Access; Accountant → Apps.Admin.Access; Engineer →
+  Apps.Employee.Access.
+- Payroll.View has ZERO role_permissions rows for any role (BR-235, C3), and
+  a raw-SQL attempt to add one is still rejected by the ADR 0002 trigger.
+- The migration is data-only and additive; migrating down to
+  AddAuthorizationCatalog removes exactly the seeded rows and migrating up
+  restores them.
+- Existing tests that inserted the now-seeded codes use non-colliding codes
+  (commit bc63d5f), so a clean checkout passes.
 
-Business Rules:
-- spec §7.1 (four roles), §7.3 (permission catalog, still 🔵 Proposed —
-  only the four Identity-active permissions from Confirmed Decision C2 are
-  treated as settled for this story)
-- BR-235 / confirmed-business-rules-ar.md ح-235 (Payroll.View never via
-  role) — enforcement already exists (ADR 0002 §6); this story must not
-  attempt to bypass or duplicate it
-
-Dependencies:
-- Role, Permission, RolePermission (Sprint 1 / ADR 0002 — already built)
-
-Blocked By:
-- None.
-
-Out of Scope:
-- The other ~30 permissions in spec §7.3 (deferred per Q6, seeded when
-  their modules exist).
-- The bootstrap admin's Payroll.View grant itself (that is a per-user
-  UserPermission created by the Slice 5 seeder, not reference data — this
-  story only ensures Payroll.View exists as a permission and is excluded
-  from every role's grants).
-- Any Application-layer or API surface.
-
-Affected Layers:
-- Infrastructure / Database / Tests
+History: the original criteria (4 permissions, 3 role rows, all under Admin)
+were written before R13 and are superseded by the list above.
 ```
 
-#### TASK-BE-024 — Seed authorization catalog (roles, permissions, role_permissions)
-
-```
-Description:
-Add an EF Core data-only migration that inserts the 4 roles, 4 permissions,
-and 3 role_permissions rows described in US-BE-006's acceptance criteria,
-using Guid.CreateVersion7()-shaped deterministic IDs so the migration is
-reproducible.
-
-Scope:
-Migration only. No Domain or Application changes — Role, Permission, and
-RolePermission already exist and are unchanged.
-
-Expected Layer:
-Infrastructure / Database
-
-Likely Files / Areas:
-- Contractra.Infrastructure/Migrations/<timestamp>_SeedAuthorizationCatalog.cs
-- Contractra.Infrastructure/Migrations/<timestamp>_SeedAuthorizationCatalog.Designer.cs
-- Contractra.Infrastructure/Migrations/ContractraDbContextModelSnapshot.cs (if
-  EF regenerates it; a data-only migration should not change the snapshot's
-  model shape)
-
-Business Rules:
-- spec §7.1, §7.3 (scoped per Confirmed Decision C2)
-- BR-235 (Payroll.View excluded from role_permissions)
-
-Validation / Constraints:
-- Insert roles and permissions using the existing Role/Permission
-  constructors' invariants (RoleCode/PermissionCode validation already
-  enforced by those value objects — the migration must supply valid,
-  already-approved code strings, not invent new ones).
-- Do not attempt an INSERT into role_permissions for Payroll.View under any
-  role — this would be rejected by the existing
-  trg_role_permissions_forbid_payroll_view trigger (ADR 0002 §6.2); the
-  migration must not even attempt it, since a caught/ignored trigger
-  failure would be silent bypass-shaped code.
-- Migration must be reversible: Down() removes exactly the rows this
-  migration added and nothing else.
-
-Testing:
-- Covered by TASK-BE-025 (PostgreSQL integration tests).
-
-Done When:
-- Migration created (not applied to any shared/dev database without
-  separate approval, per CLAUDE.md's migration-application rule); builds
-  clean; reviewed against every constraint above.
-
-Dependencies:
-- None (Role/Permission/RolePermission already exist).
-```
-
-#### TASK-BE-025 — PostgreSQL integration tests for the authorization catalog seed
-
-```
-Description:
-Write integration tests proving US-BE-006's acceptance criteria against a
-real, ephemeral PostgreSQL database (existing PostgresTestDatabaseFixture /
-CONTRACTRA_TEST_POSTGRES pattern — never the development database).
-
-Scope:
-Integration tests only.
-
-Expected Layer:
-Tests (PostgreSQL Integration)
-
-Likely Files / Areas:
-- Contractra.Infrastructure.IntegrationTests/AuthorizationCatalogSeedTests.cs
-
-Business Rules:
-- Same as TASK-BE-024.
-
-Testing:
-Test cases to cover:
-- Exactly 4 roles exist after migration, with the expected codes.
-- Exactly 4 permissions exist after migration, with the expected codes.
-- Exactly 3 role_permissions rows exist, all under Admin, for
-  Users.Manage/Permissions.Grant/Roles.Manage.
-- Payroll.View has zero role_permissions rows.
-- Migrating down then back up reproduces the same seeded state (no
-  duplicate-key error, no leftover rows from a partial re-seed).
-- The existing ADR 0002 PayrollViewGuardTests-style assertion still holds:
-  attempting a raw-SQL role_permissions insert for Payroll.View still fails
-  with the existing trigger's error, unaffected by this seed.
-
-Done When:
-- All listed tests exist and pass against the ephemeral test database, and
-  the development database was never touched.
-
-Dependencies:
-- TASK-BE-024
-```
+TASK-BE-024 (seed migration) and TASK-BE-025 (PostgreSQL integration tests): done, as recorded in ADR 0004.
 
 ### US-BE-007 — User credential and security state (Slice 2)
 
-> **Not started.** Planned 2026-10-01 against contract v1.4 and owner decisions R30, R33, R34 (plan §1B). Replaces plan §5 Slice 2, which is superseded. Schema and Domain only: no Application use cases, no API, no audit table, no seeder (those are Slices 3–7).
+> Planned 2026-10-01 against contract v1.4 (R30, R33, R34); **re-specified 2026-10-15 for contract v1.5** (R44, E2, E3, E4, E7, E10, E16). Schema, Domain and one persistence query only: no Application use cases, no API, no audit table, no seeder, no session tables.
 
 ```
 As a: backend developer building the authentication foundation
@@ -232,59 +131,101 @@ I want: the users table and the User aggregate to hold the credential and
 security state the auth contract depends on, with every security-relevant
 change going through the User aggregate
 
-So that: the later slices (audit, use cases, bootstrap seeder, auth
-endpoints) can rely on password_hash, must_change_password,
-security_version and is_bootstrap_admin existing with the right
-invariants, and no role or permission can change without bumping the
-security version
+So that: the later slices can rely on password_hash, must_change_password,
+temporary_password_expires_at, security_version and is_bootstrap_admin
+existing with the right invariants, and no role, permission, status or
+password can change without bumping the security version
 
-Business Value:
-Without a stored credential no user can log in; without the security
-version, permission changes would not invalidate issued tokens (R5).
+Acceptance Criteria — schema:
+- users.password_hash text NOT NULL, CHECK (password_hash <> '') (R33). The
+  Domain stores only the hash string it is given and never hashes or
+  validates a password. The value "!" is the reserved "no usable password"
+  marker (E2): the Application checks HasUsablePassword and never passes it
+  to the hasher (it is not even valid base64, so no hasher format accepts it).
+- users.must_change_password boolean NOT NULL (R1).
+- users.temporary_password_expires_at timestamptz NULL, with
+  CHECK (temporary_password_expires_at IS NULL OR must_change_password) (E4).
+- users.security_version integer NOT NULL, CHECK (security_version >= 1) (E7).
+- users.is_bootstrap_admin boolean NOT NULL DEFAULT false; partial unique
+  index ux_users_is_bootstrap_admin ON users (is_bootstrap_admin) WHERE
+  is_bootstrap_admin — a second true row fails with SQLSTATE 23505;
+  CHECK (NOT (is_bootstrap_admin AND must_change_password)) (R19); a trigger
+  rejects any UPDATE that changes is_bootstrap_admin (E7).
+- Existing rows are backfilled, not rewritten (E16): password_hash = "!",
+  must_change_password = true, temporary_password_expires_at = NULL,
+  security_version = 1, is_bootstrap_admin = false. Status is unchanged, so
+  Disabled users stay Disabled. Such an account cannot log in; an Admin
+  re-arms it with the initial-password re-issue (contract §9.8, Slice 4/7).
+- user_party_links: ux_user_party_links_party_id UNIQUE (party_id) replaces
+  the non-unique ix_user_party_links_party_id (R30). The migration creates
+  the unique index first and drops the old one second, so the column is never
+  unindexed; if duplicate party links exist, Up fails (23505) and changes
+  nothing. A second link to the same party fails with SQLSTATE 23505.
+- The R30 pre-check query (party_id values linked from more than one user)
+  is documented in ADR 0003 §11 and must return zero rows on any shared
+  database before the migration is applied there.
+- Every new migration is additive; each has a down-and-up test on an
+  ephemeral database. The EF model has no pending changes after the slice
+  (checked by a test, since the dotnet-ef tool is not required).
 
-Acceptance Criteria:
-- users has password_hash text NOT NULL (R33). The Domain stores only the
-  hash string it is given and never hashes or validates a password.
-- users has must_change_password boolean NOT NULL (R1; contract §7).
-- users has security_version integer NOT NULL, starting at a fixed initial
-  value for new users (contract §3.5).
-- users has is_bootstrap_admin boolean NOT NULL DEFAULT false, and a
-  partial unique index allows at most one row where it is true (contract
-  §11). A second true row fails with SQLSTATE 23505.
-- The User constructor requires the password hash and the
-  must_change_password value; is_bootstrap_admin can be set to true only
-  through a dedicated creation path for the bootstrap account, and no
-  method changes it afterwards.
+Acceptance Criteria — Domain (User aggregate):
+- The User constructor requires the password hash and must_change_password;
+  temporary_password_expires_at is required exactly when
+  must_change_password is true, must be UTC, and is set only together with a
+  temporary password. A new user's security_version is 1.
+- is_bootstrap_admin is true only for a user made by User.CreateBootstrapAdmin
+  (Admin role + direct Payroll.View, must_change_password = false); no method
+  changes it afterwards.
 - UserRole.End() and UserPermission.Revoke() are internal; the only public
-  paths are User.EndRole(...) and User.RevokePermission(...) (R34).
-- Each User mutator that changes security state increments
-  security_version exactly once: AssignRole, EndRole, GrantPermission,
-  RevokePermission, Disable, Reactivate, and the password-change and
-  password-reset methods (contract §3.3, §3.5). A rejected call (for
-  example an illegal transition) leaves security_version unchanged.
-- A password-change method sets the new hash, sets must_change_password to
-  false and bumps security_version; a password-reset method sets the new
-  hash, sets must_change_password to true and bumps security_version.
-- user_party_links has UNIQUE(party_id) (R30), replacing the non-unique
-  ix_user_party_links_party_id. A second link to the same party fails with
-  SQLSTATE 23505.
-- Before the UNIQUE(party_id) migration is applied anywhere, a pre-check
-  query reports zero party_id values with more than one link (R30).
-- All new migrations are additive and reversible; each has a down-and-up
-  test. has-pending-model-changes reports no drift.
+  paths are User.EndRole(role, endedAt, asOf) and
+  User.RevokePermission(permission, revokedAt, asOf), which end the open
+  assignment/grant of that role/permission or throw if there is none (R34).
+- Each successful security-state mutator increments security_version by
+  exactly one: AssignRole, EndRole, GrantPermission, RevokePermission,
+  Disable, Reactivate, ChangePassword, BeginPasswordReset,
+  ReissueTemporaryPassword (E7). Assignments during creation count. A
+  rejected call leaves security_version and every other field unchanged.
+- ChangePassword(newHash): Active users only; sets the hash, clears
+  must_change_password and the temporary-password expiry. Used by the user's
+  own change, by reset completion and by the bootstrap break-glass command.
+- BeginPasswordReset(): Active, not bootstrap, must_change_password false
+  (otherwise the initial re-issue applies, E3); replaces the hash with "!"
+  (E1).
+- ReissueTemporaryPassword(hash, expiresAt, asOf): Active, not bootstrap,
+  must_change_password true; expiresAt must be UTC and after asOf (E3, E4).
+- The aggregate refuses, on the bootstrap admin, every mutation the contract
+  protects (§11): Disable, Reactivate, AssignRole, EndRole, GrantPermission,
+  RevokePermission, BeginPasswordReset, ReissueTemporaryPassword. Its own
+  ChangePassword is allowed (R26).
+- HasUsablePassword is false exactly when the hash is "!".
+
+Acceptance Criteria — persistence query:
+- A persistence-level lookup finds a user by login identifier with
+  lower(login_identifier) = lower(@input), using ux_users_login_identifier_lower
+  (E10): mixed-case input finds the stored user; padded input finds nobody;
+  the stored casing is returned unchanged.
+
+Acceptance Criteria — rollback behaviour (E16):
+- Rolling back SeedAuthorizationCatalog while a user holds a seeded role fails
+  on the RESTRICT foreign key and leaves every row in place (tested).
 
 Business Rules:
 - logical-data-model-ar.md §1.7 (password_hash never logged or audited)
-- Owner decisions R1, R5, R19, R20, R30, R33, R34; contract v1.4 §3.5, §7, §11
+- Owner decisions R1, R5, R19, R20, R26, R27, R30, R33, R34, R44; engineering
+  decisions E1–E4, E7, E10, E16; contract v1.5 §3.5, §5.1, §7, §9.8, §10, §11
 
 Dependencies:
 - US-BE-006 (catalog seed)
 
 Out of Scope:
-- IPasswordHasher and its PasswordHasher<TUser> implementation (Slice 4,
-  where it is first used), audit_events (Slice 3), use cases (Slice 4),
-  bootstrap seeder (Slice 5), sessions/refresh tokens and endpoints
-  (Slice 6).
+- IPasswordHasher and its implementation, temporary-password generation,
+  Party validity (E8) — Slice 4, where they are first used
+- Sessions, refresh tokens, reset tickets, throttle store — Slice 2B
+- audit_events — Slice 3; use cases — Slice 4; seeder — Slice 5; endpoints — 6/7
+
+Must not change in this slice:
+- The authorization catalog, its seed and its triggers; Party entities;
+  either Flutter app.
 
 Affected Layers:
 - Domain / Infrastructure / Database / Tests / ADR
@@ -293,97 +234,189 @@ Affected Layers:
 #### TASK-BE-026 — Domain: credential and security state on `User`
 
 ```
-Add PasswordHash, MustChangePassword, SecurityVersion and IsBootstrapAdmin
-to User; change the constructors to require the password hash and
-must_change_password; add the bootstrap creation path; add the
-password-change and password-reset methods. RED first: Domain tests for
-every acceptance criterion above that concerns User.
+Add PasswordHash, MustChangePassword, TemporaryPasswordExpiresAt,
+SecurityVersion and IsBootstrapAdmin; constructor changes; CreateBootstrapAdmin;
+ChangePassword, BeginPasswordReset, ReissueTemporaryPassword; HasUsablePassword;
+bootstrap guards. RED first.
 Layer: Domain · Files: Contractra.Domain/Identity/User.cs, Domain tests
 ```
 
 #### TASK-BE-027 — Domain: aggregate-only role/permission ending (R34)
 
 ```
-Make UserRole.End() and UserPermission.Revoke() internal; add
-User.EndRole(...) and User.RevokePermission(...); bump security_version in
-every security-state mutator (exactly once, never on a rejected call).
-RED first: tests that each mutator bumps the version once and that a
-rejected call does not.
+Make UserRole.End() and UserPermission.Revoke() internal; add User.EndRole and
+User.RevokePermission; bump security_version in every security-state mutator
+(exactly once, never on a rejected call). RED first.
 Layer: Domain · Files: User.cs, UserRole.cs, UserPermission.cs, Domain tests
 ```
 
-#### TASK-BE-028 — Persistence: users columns and bootstrap index
+#### TASK-BE-028 — Persistence: users columns, constraints, bootstrap index and trigger
 
 ```
-Map the four new columns in UserConfiguration; additive migration adding
-password_hash (text NOT NULL), must_change_password, security_version and
-is_bootstrap_admin (DEFAULT false), plus the partial unique index on
-is_bootstrap_admin WHERE is_bootstrap_admin. The NOT NULL add on
-password_hash needs an explicit strategy for existing rows, stated in the
-migration and the ADR (no real user rows exist outside development).
-PostgreSQL integration tests: columns and defaults, the partial unique
-index (23505 on a second bootstrap row), down-and-up.
+Map the new properties in UserConfiguration; additive migration with the
+backfill above, the CHECK constraints, the partial unique index and the
+is_bootstrap_admin immutability trigger. Integration tests: columns, defaults
+and backfill of an existing row, each CHECK, the 23505 on a second bootstrap
+row, the trigger, down-and-up, no pending model changes.
 Layer: Infrastructure / Database / Tests
 ```
 
 #### TASK-BE-029 — R30 pre-check and `UNIQUE(party_id)` migration
 
 ```
-Write the pre-check query (party_id values with more than one row in
-user_party_links) and record its result before the migration is applied to
-any non-test database. Additive migration replacing
-ix_user_party_links_party_id with ux_user_party_links_party_id (unique).
-Integration tests: second link to the same party fails with 23505;
-down-and-up restores the non-unique index.
+Document the pre-check query. Additive migration creating
+ux_user_party_links_party_id (unique) before dropping
+ix_user_party_links_party_id. Integration tests: a second link to the same
+party fails with 23505; Up fails without changing anything when duplicates
+exist; down-and-up restores the non-unique index.
 Layer: Infrastructure / Database / Tests
 ```
 
 #### TASK-BE-030 — Update existing tests affected by Slice 2
 
 ```
-Identify, at slice start, every existing Domain and integration test that
-(a) constructs User with the old constructor, (b) calls UserRole.End() or
-UserPermission.Revoke() directly, or (c) asserts that one party may be
-linked from several users (reversed by R30), and update each one so it
-tests the new rule rather than being deleted. Report the list of changed
-tests.
+Every existing Domain and integration test that (a) constructs User with the
+old constructor, (b) calls UserRole.End() or UserPermission.Revoke()
+directly, or (c) asserts that one party may be linked from several users
+(reversed by R30) is updated to test the new rule, not deleted. The list of
+changed tests is reported in the slice's commit message.
 Layer: Tests
 ```
 
 #### TASK-BE-031 — ADR 0003 extension
 
 ```
-Record the implemented changes in docs/decisions/0003-user-identity-persistence.md:
-password_hash (R33), must_change_password, security_version,
-is_bootstrap_admin, R34, and the R30 reversal with the pre-check result.
-Owner decisions are cited as owner decisions, not confirmed rules.
+Record in docs/decisions/0003-user-identity-persistence.md §11: the columns,
+constraints, index and trigger; the "!" marker; security-version semantics;
+R34; the R30 reversal with the pre-check query; the backfill and the
+migration/rollback policy (E16). Owner decisions are cited as owner
+decisions, not confirmed rules.
 Layer: Docs
 ```
 
-**Total so far: 2 user stories (US-BE-006 done, US-BE-007 planned), 8 tasks (TASK-BE-024…025 done, TASK-BE-026…031 planned).**
+#### TASK-BE-032 — Case-insensitive login-identifier lookup (E10)
+
+```
+Persistence query used later by login and reset completion. Integration
+tests: mixed-case match, padded input, unknown identifier, stored casing
+preserved, and the query can use ux_users_login_identifier_lower.
+Layer: Infrastructure / Tests
+```
+
+#### TASK-BE-033 — Seed rollback safety test (E16)
+
+```
+Integration test: with a user holding a seeded role, migrating down past
+SeedAuthorizationCatalog fails on the RESTRICT foreign key and every row
+survives.
+Layer: Tests
+```
+
+### US-BE-008 — Auth session, reset-ticket and throttle persistence (Slice 2B)
+
+```
+Delivers: tables and Domain/Infrastructure types for auth_sessions
+(contract §3.3 fields, including client_app and client_platform),
+refresh_tokens (token_hash unique, consumed_at), password_reset_tickets
+(code_hash, issued_at, expires_at, issued_by_user_id nullable for System,
+channel, consumed_at, superseded_at; at most one open ticket per user by a
+partial unique index) and auth_throttle_counters (contract §17: key_hash,
+scope, window_start, failure_count, blocked_until).
+Depends on: Slice 2.
+Key acceptance: hashes only (no token or code column); FKs RESTRICT to users;
+partial unique "one open ticket per user"; cleanup of expired throttle rows is
+bounded and tested; down-and-up tests; no pending model changes.
+Verify: PostgreSQL integration tests.
+Must not change: users semantics from Slice 2; the catalog.
+```
+
+### US-BE-009 — Minimal `audit_events` (Slice 3)
+
+```
+Delivers: audit_events exactly as contract §14.1 (every logical-model §15.4
+field plus actor_type), CHECKs linking actor_type/actor_user_id/
+actor_role_code, an append-only trigger rejecting UPDATE and DELETE, and the
+Application IAuditWriter with its Infrastructure implementation writing in
+the caller's transaction.
+Depends on: Slice 2.
+Key acceptance: a forced audit-write failure rolls back the paired change
+(BR-186); UPDATE/DELETE rejected by the database; System events have no user,
+no role and source SystemJob; correlation_id NOT NULL.
+Verify: PostgreSQL integration tests.
+Must not change: Slice 2 schema.
+```
+
+### US-BE-010 — Application layer and use cases (Slice 4)
+
+```
+Delivers: IPasswordHasher over ASP.NET Core PasswordHasher<User> (shared
+framework, no new package), ITemporaryPasswordGenerator (contract §10),
+IResetCodeGenerator (§10A), IClock and business-date provider
+(Business:TimeZone), IPasswordResetDelivery (no implementation registered:
+"no channel"), user repository with the Slice 2 lookup; use cases CreateUser
+(Party validity E8, R31, R43), DisableUser, ReactivateUser,
+IssuePasswordReset (503 path when no channel), CompletePasswordReset,
+ReissueInitialPassword, ChangePassword — each with bootstrap protection,
+session revocation through the Slice 2B store and audit through Slice 3, in
+one transaction.
+Depends on: Slices 2, 2B, 3.
+Key acceptance: every rule and error code of contract §5.5, §5.6, §9.1, §9.4–
+§9.6, §9.8, §10, §10A, §11 has a test; the Application test project is added
+in this slice.
+Must not change: contract semantics; the apps.
+```
+
+### US-BE-011 — Bootstrap seeder and operator commands (Slice 5)
+
+```
+Delivers: the startup seeder (contract §11) and the operator commands
+reset-bootstrap-password and issue-password-reset (§10A), each audited with
+actor_type System and a reason, printing secrets only to the terminal.
+Depends on: Slice 4.
+Key acceptance: seeder is a no-op when an active Admin exists; never
+overwrites a password; startup fails if its audit write fails; commands refuse
+the protected cases.
+```
+
+### US-BE-012 — Auth endpoints and HTTP security pipeline (Slice 6)
+
+```
+Delivers: /api/v1/auth/* (contract §5), JWT issuance and validation with the
+key ring (§3.2, §3.2.1), the app-audience policy (§4.1), the password-change
+gate (§7), CSRF and CORS (§8), throttling (§17) over the Slice 2B store,
+ProblemDetails (§12), correlation ID (§13), HTTPS/HSTS (§18), Serilog.
+Depends on: Slice 4 (Slice 5 for end-to-end tests with a real admin).
+Needs packages not yet in the solution (JwtBearer, Serilog, Mvc.Testing):
+restore requires nuget.org access.
+Key acceptance: WebApplicationFactory tests for every status and code in
+§5, §6, §12 and every throttle layer in §17; tokens with a wrong alg, kid,
+iss, aud, skew or app are rejected.
+```
+
+### US-BE-013 — Users endpoints (Slice 7)
+
+```
+Delivers: /api/v1/users and /api/v1/roles (contract §9) through the Slice 4
+use cases, with the §9 check order.
+Depends on: Slice 6.
+Key acceptance: 401/403/404/409/503 and the bootstrap protections for each
+endpoint; no endpoint returns a reset secret.
+```
+
+**Total: 8 user stories (US-BE-006 done; US-BE-007 next; US-BE-008…013 planned). Tasks: TASK-BE-024…025 done; TASK-BE-026…033 for US-BE-007. Tasks for US-BE-008…013 are written when each slice starts.**
 
 ---
 
-## D. FUTURE SLICES (not yet started — placeholders only, per §C)
+## D. FRONTEND ALIGNMENT
 
-Slices 3–7 of the plan (minimal `audit_events`; the
-`CreateUser`/`DisableUser`/`ReactivateUser`/`ResetPassword`/`ChangePassword`
-Application layer; the bootstrap admin seeder and break-glass; auth
-endpoints + JWT; user management endpoints) will each be added here as
-US-BE-008 through US-BE-012 when that slice begins, each following its own
-RED→GREEN→REFACTOR cycle and its own report. They are planned against
-contract v1.4 and R1–R43, not against plan §5 (whose Slices 4, 6 and 7 are
-superseded). Do not treat their absence here as forgotten scope.
+Both Flutter apps still follow the pre-contract mock design. Their alignment with contract v1.5 is planned in `docs/implementation/sprints/frontend-auth-contract-alignment-plan.md` and starts only after the matching backend endpoints exist (Slices 6–7). This sprint does not modify `apps/`.
 
 ---
 
 ## E. GIT / PROCESS RULES FOR THIS SPRINT
 
-Same as Sprint 1's discipline, restated:
 - Do not modify `apps/contractra_admin` or `apps/contractra_employee`.
 - Do not touch unrelated concurrent-session work.
-- PostgreSQL integration tests only against `CONTRACTRA_TEST_POSTGRES`
-  ephemeral databases — never the development database.
-- No broad git commands (`git add .`, `clean`, `reset`, `stash`, `revert`).
-- Commit only after each slice's tests are green; do not push unless
-  explicitly asked.
+- PostgreSQL integration tests only against `CONTRACTRA_TEST_POSTGRES` ephemeral databases — never the development database. The project's test server is PostgreSQL 18 (ADR 0001 §14); on PostgreSQL 16 the nine `ON DELETE RESTRICT` tests report 23503 instead of 23001 (see §A), and new tests must not depend on that difference.
+- No broad git commands (`git add .`, `clean`, `reset`, `stash`, `revert`); stage explicit paths.
+- RED → GREEN → REFACTOR per task; commit only after the slice's tests are green; do not push unless explicitly asked.

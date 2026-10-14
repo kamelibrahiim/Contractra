@@ -1,6 +1,6 @@
 # ADR 0004: Authorization catalog seed
 
-**Status:** Implemented (EF Core data migration + PostgreSQL integration tests). Backend Sprint 2, Slice 1 (US-BE-006, TASK-BE-024/025).
+**Status:** Implemented (EF Core data migration + PostgreSQL integration tests). Backend Sprint 2, Slice 1 (US-BE-006, TASK-BE-024/025). Commits: `1e10742` (migration, seed tests, this ADR) and `bc63d5f` (the existing tests the seed required, see §4).
 
 **Scope:** the reference rows in `roles`, `permissions` and `role_permissions` (tables from ADR 0002). No user, no user-level grant, no schema change.
 
@@ -38,9 +38,13 @@ ADR 0002 §9 left the catalog empty and said that populating it, including how t
 - `Payroll.View` has zero `role_permissions` rows, and a raw-SQL attempt to add one is still rejected by the trigger;
 - migrating down to `AddAuthorizationCatalog` removes all seeded rows, and migrating up restores them.
 
-Existing tests that created their own catalog rows were changed to use unique codes, so they no longer collide with the seed.
+Existing tests that created their own catalog rows were changed to use unique codes, so they no longer collide with the seed: `PayrollViewGuardTests`, `AuthorizationCatalogCodeUniquenessTests` and `UserIdentitySliceMigrationTests`. *Correction (2026-10-15):* those changes were not part of `1e10742`; they were committed afterwards as `bc63d5f`. A clean checkout of `1e10742` alone fails 12 integration tests (23505 on `ux_roles_code_lower` / `ux_permissions_code_lower`); `bc63d5f` and later pass them.
 
-## 5. Not decided here
+## 5. Rollback
+
+`Down()` deletes the seeded rows by id. Once any user is assigned a seeded role, or any role is granted a seeded permission, those rows are referenced through `ON DELETE RESTRICT` foreign keys, so rolling the seed back fails atomically and nothing is deleted. That is the intended behaviour: `Down()` is a development and test tool, and production goes forward with a corrective migration instead (plan §1D, E16). A test proves the failure leaves every row in place (Backend Sprint 2, TASK-BE-033).
+
+## 6. Not decided here
 
 - The role↔permission mapping for the rest of spec §7.3 (plan §4 Q6). It is decided module by module, when each module is built.
 - What `Deprecated` means for authorization in general (ADR 0002 §8). For user creation, owner decision R43 says a Deprecated role cannot be assigned.

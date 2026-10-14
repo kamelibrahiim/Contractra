@@ -102,6 +102,8 @@ Authentication is **explicitly out of scope** for this slice and for Backend Spr
 
 The logical model lists `password_hash` as a sensitive field (§1.7), and adding it later is additive. Its format and algorithm are future authentication decisions.
 
+> *Later (Backend Sprint 2):* this section describes Backend Sprint 1. The credential columns and their rules are added by Sprint 2, Slice 2 and recorded in §11, which supersedes "no credential is stored" from the moment that slice is committed. Lockout is not adopted; throttling replaces it (auth contract v1.5 §17, owner instruction R45).
+
 ## 7. Sprint boundaries
 
 This ADR does not change the Backend Sprint 1 scope: persistence only, with no Application use cases, API endpoints or authentication.
@@ -211,7 +213,9 @@ Links a login account to its commercial party: an engineer is both a user and a 
 
 ## 11. Planned changes (Backend Sprint 2, Slice 2 — not implemented yet)
 
-Recorded 2026-10-01. These are **owner decisions**, not confirmed business rules; the sources are `docs/implementation/backend/features/admin-user-creation-plan.md` §1B and the auth contract (v1.4). They are implemented by US-BE-007 in `docs/implementation/backend/sprints/sprint-02.md`, which will update this ADR with the final details when the slice is built.
+Recorded 2026-10-01; re-specified 2026-10-15 for auth contract v1.5. These are **owner decisions** (and the engineering decisions E1–E16 that make them implementable), not confirmed business rules; the sources are `docs/implementation/backend/features/admin-user-creation-plan.md` §1B and §1D and the auth contract (v1.5). They are implemented by US-BE-007 in `docs/implementation/backend/sprints/sprint-02.md`, whose acceptance criteria are the precise specification; this section is rewritten with the final details when the slice is committed.
+
+- **v1.5 additions (2026-10-15):** `temporary_password_expires_at` (E4); the reserved "no usable password" marker `!` for pending resets and for rows that existed before credentials (E1, E2); `security_version` starts at 1 and increments once per successful security-state change, including those made during creation (E7); the aggregate refuses bootstrap-protected mutations and a trigger forbids changing `is_bootstrap_admin` (E7); a case-insensitive login lookup (E10); additive, data-preserving migrations with Down for development and test only (E16).
 
 - **R30 — one account per Party.** `UNIQUE(party_id)` on `user_party_links`, replacing `ix_user_party_links_party_id`; reverses the 2026-09-26 decision in §9.3. A pre-check query must confirm that no existing rows violate it before the migration is applied.
 - **R33 — password hash.** ASP.NET Core `PasswordHasher<TUser>` behind an Application `IPasswordHasher`; column `users.password_hash text NOT NULL`; on login, `SuccessRehashNeeded` triggers a transparent rehash. The Domain stores only the hash string and never hashes. `logical-data-model-ar.md` §1.7 still applies: the hash is never logged or audited. This replaces the §6 statement that no credential is stored.

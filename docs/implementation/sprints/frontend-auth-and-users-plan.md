@@ -1,6 +1,6 @@
 # Frontend Plan — Login, Forced Password Change, Admin User Management
 
-> ⚠️ **Auth contract superseded by v1.4 (2026-10-01).** The default password `12345678`, the `users.disabled` login message and the non-versioned `/api/...` paths in this plan are **obsolete**. The source of truth is `docs/implementation/backend/features/auth-and-users-api-contract.md`; the required frontend changes are listed in its §16. The text below is kept unchanged as history.
+> ⚠️ **Superseded by the auth contract (v1.4 on 2026-10-01, now v1.5 of 2026-10-15).** The default password `12345678`, the `users.disabled` login message, the non-versioned `/api/...` paths and the "show the new password after a reset" dialog in this plan are **obsolete**. The source of truth is `docs/implementation/backend/features/auth-and-users-api-contract.md` (§16 lists the frontend changes); the ordered work for both apps is `docs/implementation/sprints/frontend-auth-contract-alignment-plan.md`. The text below is kept unchanged as history.
 
 **Status:** Draft — awaiting approval. No code has been written for this plan yet.
 **Doc status:** Derived planning document, not authoritative for business rules. If it conflicts with any source ranked in `docs/documentation-index-ar.md`, the source wins.

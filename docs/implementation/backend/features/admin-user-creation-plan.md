@@ -1,13 +1,15 @@
 # Admin-created user accounts + authentication — implementation plan
 
-> Planning document only. No Domain/Application/Infrastructure/API code, no EF Core migrations, and no database changes were made while producing this document.
+> Planning document. It records decisions and their history; it is not itself an implementation record. What is actually built is tracked in `docs/implementation/backend/sprints/sprint-02.md` §A and in Git.
 
-Status: 🟡 Re-baselined on contract v1.4 — §1B (R1–R43) supersedes parts of §1; §5 Slices 2, 4, 6 and 7 are superseded by contract v1.4 and `sprint-02.md`
-Date: 2026-09-26 (revised after owner review) · 2026-09-27 (reconciliation decisions R1–R25) · 2026-10-01 (R26–R43, re-baseline)
+Status: 🟡 Re-baselined on contract **v1.5** — §1D (R44–R45, E1–E16, 2026-10-15) and §1B (R1–R43) supersede parts of §1; §5 Slices 2, 4, 6 and 7 are superseded by the contract and `sprint-02.md`
+Date: 2026-09-26 (revised after owner review) · 2026-09-27 (reconciliation decisions R1–R25) · 2026-10-01 (R26–R43, re-baseline) · 2026-10-15 (R44–R45, E1–E16, audit resolution)
 Source task: `claude-code-prompt-01-backend.md`
 Scope: `Contractra.Domain`, `Contractra.Application`, `Contractra.Infrastructure`, `Contractra.Api`, both test projects, `docs/`. `apps/` is out of scope.
 
-> ⚠️ **Read §1B first.** The owner's decisions after the cross-project reconciliation and the contract audits are recorded in §1B as R1–R43. Where §1B and anything below it disagree, **§1B wins**; for the auth and user-management API, `auth-and-users-api-contract.md` (v1.4) is the source of truth. In particular: **C4 is superseded by R1** (forced password change is back), and **C2 is amended by R13** (two app-access permissions added). §5 Slices 2, 4, 6 and 7 describe the pre-reconciliation design and are marked superseded; they are kept as written so the history of the decision is visible.
+> ⚠️ **Read §1D, then §1B.** The owner's decisions after the cross-project reconciliation and the contract audits are recorded in §1B as R1–R43; the owner instructions of 2026-10-15 and the engineering decisions that resolve the documentation-consistency audit are in §1D. Where §1D or §1B and anything below them disagree, **the later section wins**; for the auth and user-management API, `auth-and-users-api-contract.md` (**v1.5**) is the source of truth. In particular: **C4 is superseded by R1** (forced password change is back), **C2 is amended by R13** (two app-access permissions added), and **the reset part of R3 is superseded by R44** (a reset no longer hands a temporary password to the Admin). §5 Slices 2, 4, 6 and 7 describe the pre-reconciliation design and are marked superseded; they are kept as written so the history of the decision is visible.
+>
+> *Correction (2026-10-15):* the first line of this document used to say no code or migration had been made "while producing this document". That was true of the 2026-09-26 draft only. Slice 1 is implemented and committed (`1e10742`, fixtures `bc63d5f`).
 
 ---
 
@@ -161,12 +163,48 @@ The exact engineering details (login app field, allowed calls during a forced ch
 **Owner items that were open here are now closed** by R15–R19 above (reset permission, password rules, idle timeout, mobile token delivery, bootstrap admin). The engineering proposals above are resolved in `auth-and-users-api-contract.md`.
 
 **Work to re-plan before Slice 2:**
-- **Slice 1** — ✅ amended for R13 (2026-09-27, still uncommitted): 6 permissions and 7 role grants; tests updated (RED shown, then GREEN).
+- **Slice 1** — ✅ amended for R13 (2026-09-27): 6 permissions and 7 role grants; tests updated (RED shown, then GREEN). *Committed 2026-10-15 as `1e10742` (seed, seed tests, ADR 0004); the three existing test classes it required were committed separately as `bc63d5f`.*
 - **Slice 2** now covers `password_hash` (R33), `must_change_password`, `security_version`, `is_bootstrap_admin`, the R34 aggregate change and the R30 `UNIQUE(party_id)` change. It is defined as **US-BE-007 in `sprint-02.md`**, which replaces §5 Slice 2 below.
 - **Slice 4** gains temporary-password generation (R2, R3) and the password rules (R14, R16).
 - **Slice 6** gains the forced-change gate, the web cookie and mobile body delivery (R6, R18), session revocation, the per-role idle timeout (R17), the security-version check, the app-access check, correlation IDs and `/api/v1`.
 - **Slice 7** returns the temporary password once from create and reset.
 - ✅ The API contract (`auth-and-users-api-contract.md`) is written (2026-09-27; v1.4 on 2026-10-01). Slice 2 is re-planned (US-BE-007, `sprint-02.md`); Slices 3–7 are re-planned against the contract as each one starts.
+
+---
+
+## 1D. Audit resolution (2026-10-15) — owner instructions R44–R45 and engineering decisions E1–E16
+
+**Context.** The read-only documentation-consistency audit of 2026-10-15 found a reset-impersonation risk, no brute-force requirement, and several ambiguities (app authorization, audit fields, identifier matching, Party validity, security-version and migration semantics, slice ordering). The owner then instructed engineering to resolve them, owning routine technical and security decisions but not business policy. The two instructions that change an earlier owner decision are recorded as R44–R45; everything else is an engineering decision (E1–E16), applied in contract v1.5. Items that still need the owner are listed in contract §19 (OC-1 … OC-6).
+
+### Owner instructions (2026-10-15)
+
+| # | Instruction (owner's words, condensed) | Effect |
+|---|---|---|
+| **R44** | "Choose a secure, practical password-reset design that does not allow an administrator to learn a user's temporary plaintext password and impersonate the user … Preserve the existing bootstrap-admin protections and out-of-band break-glass recovery rules. If a delivery channel is not implemented, do not pretend it exists." | **Supersedes the reset half of R3** (temporary password returned to the Admin). R15 (`Users.Manage`), R20/R27 (bootstrap protection), R43 (no reset of a Disabled user) are unchanged. Creation (R2) is unchanged; its residual risk is contract §19 OC-3. Whether R44 should apply to every account or only to accounts with sensitive permissions is contract §19 OC-1; v1.5 applies it to every account, the safer reading. |
+| **R45** | "Define and implement a practical defense against repeated login and reset attempts … without allowing an attacker to trivially lock out another user's account … Do not introduce an unbounded in-memory limiter as the only production defense if the deployment may use multiple instances." | Throttling becomes required (contract §17). **Q5 (lockout) stays deferred** and is now an explicit non-goal: no hard lockout. |
+
+### Engineering decisions
+
+| # | Decision | Why / alternatives rejected | Contract |
+|---|---|---|---|
+| **E1** | Reset = Admin *issues* (current password invalidated, sessions revoked) → single-use 80-bit code delivered to the user → user completes and chooses the password. No channel exists yet: the API fails closed with 503 and an operator command issues codes on the server. | Returning a reset code to the Admin would reproduce the impersonation. Burning a ticket after N wrong codes was rejected: it would let anyone who knows an identifier cancel a user's reset. | §5.6, §9.6, §10A |
+| **E2** | No usable password (pending reset, pre-credential accounts) and expired temporary passwords fail login with the generic 401 and the dummy hash. | Consistent with R11/R42: no state is revealed. | §5.1 |
+| **E3** | An account still on its first temporary password is re-armed with `POST /users/{id}/initial-password`, not with a reset; `credentialState` tells the Admin which action applies. | Such an account cannot have acted in the system (§7 gate), so this exposes nothing beyond creation (R2). Without it, an expired temporary password would need the operator. | §9.2, §9.8 |
+| **E4** | Temporary passwords: CSPRNG, 12 chars, at least one upper, lower and digit by rejection sampling; expire after 72 h. | R2's "mixed letters and digits" made precise; a never-expiring temporary password is a standing credential known to a third party. | §10 |
+| **E5** | Five throttling layers keyed by IP, (identifier, IP), identifier and user; distributed attacks slowed to one attempt per 30 s per account instead of locked; shared PostgreSQL store; in-memory limiter only as a per-instance first line; fail closed if the store is down. | Hard lockout rejected (DoS of legitimate users). In-memory-only rejected (multiple instances). | §17 |
+| **E6** | Every endpoint declares an audience (`public`, `any session`, `admin`, `employee`); `admin`/`employee` endpoints require both the matching `app` claim and the app-access permission in `perm`; mismatch → 403 `auth.app_access_denied`; undeclared audience fails closed. | The `app` claim alone was not stated to be checked, and a header is caller-controlled. | §4.1, §9 |
+| **E7** | `security_version` starts at 1 and increments by exactly 1 on every successful security-state change inside the aggregate, including assignments made during creation; rejected changes leave it unchanged. The aggregate refuses bootstrap-protected mutations; the database rejects any change to `is_bootstrap_admin` and forbids it together with `must_change_password`. | Removes the "fixed initial value" and "does creation count" ambiguities; defence in depth for R27. | §3.5, §11 |
+| **E8** | An Engineer account's Party must be `Active` and hold an `Engineer` party role active on the business date (`PartyRole.IsActiveOn`), business date in `Africa/Cairo` by configuration. | `NeedsClassification` is "unresolved historical names" awaiting the accountant (logical model §2, BR-058). The party-role code literal and the time zone are not fixed by the documents (contract §19 OC-4). | §9.1 |
+| **E9** | JWT: HS256 pinned, `iss`/`aud`/`exp`/`nbf` validated with ≤ 30 s skew, required claims, `kid` key ring with planned and emergency rotation; ≥ 256-bit keys; startup fails without a valid key. | Library defaults (5-minute skew, algorithm from header) are too permissive. Refresh tokens are opaque, so emergency rotation signs nobody out. | §3.2, §3.2.1 |
+| **E10** | Login and reset completion find users with `lower(login_identifier) = lower(@input)` on the existing expression index; no trimming. | ADR 0003 §3.2's lookup note made a contract rule. | §5.1, §5.6 |
+| **E11** | Change-password consumes the latest unconsumed refresh token of the session in `sid`; the request carries no token. | Removes the ambiguity in R36. | §5.5 |
+| **E12** | `audit_events` keeps every logical-model §15.4 field and adds R40's `actor_type`; `actor_role_code` follows a deterministic rule; `source` uses the logical model's values with a stated mapping; state changes fail closed (rollback, 500); `AccessDenied` stays a denial even if its own audit write fails, with a Serilog alert. | The audit found the contract and §15.4 disagreeing; nothing from §15.4 is dropped. | §14.1, §14.2 |
+| **E13** | Input limits (identifier 256, password 128, reset code 32, body 16 KiB) checked before hashing; bootstrap password must satisfy the same rules. | Prevents hashing-cost abuse with huge inputs; NIST SP 800-63B allows a 64+ maximum. | §1, §5.5, §11 |
+| **E14** | HTTPS only (no HTTP redirect for the API), HSTS on the web origin, secrets only in secret stores, NTP, least-privilege database roles, explicit trusted proxies and CORS origins. | Operational requirements the contract lacked. | §1, §18 |
+| **E15** | Idle timeouts are configuration with the NFR-SEC-007 defaults, bounded 5 min … 24 h. | NFR-SEC-007 says "configurable"; bounds prevent a typo from disabling the control. | §3.1 |
+| **E16** | Migrations: `Up` is additive and preserves data (backfills, creates new indexes before dropping old ones, fails rather than rewrites on conflicting data). `Down` exists for development and test databases and is tested there; it is not a production rollback tool — production goes forward with a corrective migration. Rolling back `SeedAuthorizationCatalog` while users reference seeded roles fails atomically on the `RESTRICT` foreign keys and loses nothing. | Answers the audit's rollback questions without pretending Down is safe on live data. | `sprint-02.md` US-BE-007; ADR 0003 §11 |
+
+**Correction to C5's rationale.** C5 says the logical model's event names win "since it is the higher-precedence source per `documentation-index-ar.md`". The index ranks `system-specification-and-team-reference-ar.md` at 15 and `logical-data-model-ar.md` at 16 (1 is highest), and spec UC-002 lists `UserDeactivated` / `RoleChanged`. C5's names stand as an **owner decision**, not by precedence; the spec/logical-model disagreement is reported for the documentation owner (contract §19 OC-5).
 
 ---
 
@@ -216,7 +254,7 @@ Slice 1 from the task file's suggested order is removed (already done, see §0).
 
 ### Slice 1 — Roles & permissions catalog seed (C2, C3)
 
-> ✅ **Built and amended for R13.** The final seed has **6 permissions and 7 role grants** (Admin ← `Apps.Admin.Access`, `Users.Manage`, `Permissions.Grant`, `Roles.Manage`; OfficeStaff ← `Apps.Admin.Access`; Accountant ← `Apps.Admin.Access`; Engineer ← `Apps.Employee.Access`). The "4 permissions / 3 rows" figures below are historical. The ADR is `docs/decisions/0004-authorization-catalog-seed.md`.
+> ✅ **Built, amended for R13, committed (`1e10742`; fixture fixes `bc63d5f`).** The final seed has **6 permissions and 7 role grants** (Admin ← `Apps.Admin.Access`, `Users.Manage`, `Permissions.Grant`, `Roles.Manage`; OfficeStaff ← `Apps.Admin.Access`; Accountant ← `Apps.Admin.Access`; Engineer ← `Apps.Employee.Access`). The "4 permissions / 3 rows" figures below are historical. The ADR is `docs/decisions/0004-authorization-catalog-seed.md`.
 
 - **Files:**
   - New EF Core migration `SeedAuthorizationCatalog` (data-only, deterministic `Guid` v7-shaped IDs, additive, no schema change).

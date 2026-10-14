@@ -161,7 +161,9 @@ This slice only **records** the `Active → Deprecated` transition. It does not 
 
 ## 9. No seed data
 
-**Decision (approved):**
+> **Update (2026-10-01): the catalog is now seeded.** This section described the state at the time of this ADR. The seed was decided separately, as anticipated below, and implemented in Backend Sprint 2, Slice 1 (migration `SeedAuthorizationCatalog`, commit `feat(auth-slice-1): seed authorization catalog (6 permissions, 4 roles, 7 role grants)`): 4 roles, 6 permissions and 7 role grants, with `Payroll.View` granted to no role. See [ADR 0004](0004-authorization-catalog-seed.md). The guards in §6 are unchanged.
+
+**Decision at the time (approved):**
 - The four roles in spec §7.1 (`Engineer`, `OfficeStaff`, `Accountant`, `Admin`) are not seeded.
 - The permission list in spec §7.3 is explicitly 🔵 proposed, and it has the format contradiction described in §5.1.
 

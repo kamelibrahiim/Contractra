@@ -1,5 +1,7 @@
 # Sprint 1
 
+> ⚠️ **Auth contract superseded by v1.4 (2026-10-01).** The default password `12345678`, the `users.disabled` login message and the non-versioned `/api/...` paths in this sprint are **obsolete**. The source of truth is `docs/implementation/backend/features/auth-and-users-api-contract.md`; the required frontend changes are listed in its §16. The text below is kept unchanged as history.
+
 **Project:** Contractra — Frontend (Admin & Employee apps)
 **Doc status:** Derived planning document — not authoritative for business rules. On any conflict with `docs/documentation-index-ar.md`-ranked sources, the sources win.
 **Backend state assumed:** Party Identity implemented · Authorization Catalog implemented · Users/Auth NOT implemented · Operations/Sites NOT implemented · Financial modules NOT implemented.

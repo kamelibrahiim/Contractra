@@ -183,7 +183,9 @@ The rule has two halves, enforced in two places:
 
 Links a login account to its commercial party: an engineer is both a user and a party (`logical-data-model-ar.md` §1.3, §1.4).
 
-**A party may be linked from more than one user (owner decision, 2026-09-26).**
+> **Reversed (owner decision R30, 2026-10-01): one account per Party.** `user_party_links` will get `UNIQUE(party_id)`. A lost password is handled by reset and a disabled account by reactivate — never by a second account. This is a **planned change** for Backend Sprint 2, Slice 2 (US-BE-007): before the migration, a pre-check must confirm that no existing rows violate it. Until that migration exists, the implemented state below is unchanged. The text below records the 2026-09-26 decision as history.
+
+**A party may be linked from more than one user (owner decision, 2026-09-26 — reversed by R30, see above).**
 - **Confirmed:** `UNIQUE(user_id)`, so a user links to at most one party.
 - **Decided:** `party_id` is **not** unique.
 - **Why:** there is no way to change a login identifier and no unlink operation. The only way to give an engineer a new login is therefore to disable the old account and create a new one, and both must stay linked to the same party so earlier custody and expense history stays attached. A `UNIQUE(party_id)` would make that impossible.
@@ -200,9 +202,18 @@ Links a login account to its commercial party: an engineer is both a user and a 
 
 ## 10. Unresolved (not decided here)
 
-1. ~~**`user_party_links.party_id` uniqueness.**~~ **Resolved (owner decision, 2026-09-26): not unique.** See §9.3. Still open: whether to warn when a party has more than one *active* linked account.
-2. **Authentication credential format**: password storage, hashing algorithm, tokens, lockout (§6).
+1. ~~**`user_party_links.party_id` uniqueness.**~~ **Resolved (owner decision, 2026-09-26): not unique — reversed 2026-10-01 by owner decision R30: unique (one account per Party).** See §9.3 and §11. The earlier open question about warning on several active linked accounts no longer applies.
+2. **Authentication credential format**: password storage and hashing algorithm are decided by owner decision R33 (§11); tokens are defined in the auth contract; lockout is still deferred (§6).
 3. **Audit behavior** for user lifecycle events (§8).
 4. **Login identifier character set and length**, including whether non-ASCII identifiers are allowed (§3.2 limitation).
 5. **"At least one role per user" (FR-AUTH-003).** Not enforced in the domain or the database: a `User` may have zero roles, following the `Party` precedent (ADR 0001 §4), and the Sprint plan (§H.3) defers the rule to the Application layer. Whether it should ever become a domain invariant is still open.
-6. **Role and user status on assignment.** `AssignRole` does not check whether the role is `Deprecated` or the user is `Disabled`. What those states mean for authorization is undecided (ADR 0002 §8).
+6. **Role and user status on assignment.** `AssignRole` does not check whether the role is `Deprecated` or the user is `Disabled`. What those states mean for authorization is undecided (ADR 0002 §8). *(Partly settled for user creation by owner decision R43, 2026-10-01: a Deprecated role cannot be assigned through `CreateUser`; enforced in the Application layer, per the auth contract §9.1.)*
+
+## 11. Planned changes (Backend Sprint 2, Slice 2 — not implemented yet)
+
+Recorded 2026-10-01. These are **owner decisions**, not confirmed business rules; the sources are `docs/implementation/backend/features/admin-user-creation-plan.md` §1B and the auth contract (v1.4). They are implemented by US-BE-007 in `docs/implementation/backend/sprints/sprint-02.md`, which will update this ADR with the final details when the slice is built.
+
+- **R30 — one account per Party.** `UNIQUE(party_id)` on `user_party_links`, replacing `ix_user_party_links_party_id`; reverses the 2026-09-26 decision in §9.3. A pre-check query must confirm that no existing rows violate it before the migration is applied.
+- **R33 — password hash.** ASP.NET Core `PasswordHasher<TUser>` behind an Application `IPasswordHasher`; column `users.password_hash text NOT NULL`; on login, `SuccessRehashNeeded` triggers a transparent rehash. The Domain stores only the hash string and never hashes. `logical-data-model-ar.md` §1.7 still applies: the hash is never logged or audited. This replaces the §6 statement that no credential is stored.
+- **R34 — security state goes through the aggregate.** `UserRole.End()` and `UserPermission.Revoke()` become `internal`; `User.EndRole(...)` and `User.RevokePermission(...)` are the only public paths. Every `User` mutator that changes security state increments `security_version` inside the aggregate.
+- The same slice adds `must_change_password`, `security_version` and `is_bootstrap_admin` (with a partial unique index allowing at most one bootstrap admin) to `users`, as defined by the auth contract §3.5, §7 and §11.

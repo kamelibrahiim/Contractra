@@ -183,7 +183,9 @@ If:
 
 report the issue before changing system behavior.
 
-Do not modify any file under `docs/` — it is authoritative source material, not project scaffolding.
+Everything under `docs/` **except** `docs/implementation/**` and `docs/decisions/**` is authoritative source material and is read-only: do not modify it.
+
+`docs/implementation/**` (plans, sprints, API contracts) and `docs/decisions/**` (ADRs) are working documents. Claude Code may edit them when a task asks for it.
 
 ---
 
@@ -490,9 +492,9 @@ At the time this guidance was established:
 * PostgreSQL persistence has been configured.
 * EF Core is configured in Infrastructure.
 * `ContractraDbContext` exists.
-* The domain model is still at an early implementation stage.
-* No EF Core migrations currently exist.
-* Automated test coverage has not yet been established.
+* The domain model covers Parties and Identity (users, roles, permissions, user role/permission grants, user–party links); there is no Application or API logic yet.
+* EF Core migrations exist under `Contractra.Infrastructure/Migrations`, including the Slice 1 authorization catalog seed (`SeedAuthorizationCatalog`).
+* Tests exist: `Contractra.Domain.Tests` (unit) and `Contractra.Infrastructure.IntegrationTests` (PostgreSQL, ephemeral databases via `CONTRACTRA_TEST_POSTGRES`).
 
 Always verify this section against the repository because the project will evolve.
 

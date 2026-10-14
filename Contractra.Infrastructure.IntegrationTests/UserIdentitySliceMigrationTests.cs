@@ -41,7 +41,11 @@ public class UserIdentitySliceMigrationTests : IClassFixture<PostgresTestDatabas
     public async Task Down_RemovesTheWholeSlice_KeepsPartyAndCatalogObjectsAndData_AndUpReappliesCleanly()
     {
         var party = new Party("م. طرف قبل الترحيل", PartyStatus.Active);
-        var role = new Role(new RoleCode("Engineer"), RoleStatus.Active);
+        // Not "Engineer": Sprint 2's SeedAuthorizationCatalog migration (which
+        // sits after AddAuthorizationCatalog, inside the slice this test rolls
+        // back and reapplies) now seeds that exact code as a permanent row in
+        // the fixture's already-fully-migrated starting state.
+        var role = new Role(new RoleCode("PreSliceTestRole"), RoleStatus.Active);
         await using (var seedContext = _fixture.CreateDbContext())
         {
             seedContext.Parties.Add(party);

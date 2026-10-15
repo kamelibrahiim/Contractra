@@ -1,6 +1,6 @@
 # ADR 0005: Persistence for auth sessions, refresh tokens, password-reset tickets and throttle counters
 
-**Status:** Accepted for implementation (engineering decisions E17–E25, reviewer approval 2026-10-15). Backend Sprint 2, Slice 2B (US-BE-008, TASK-BE-034…048). Not implemented until the Slice 2B implementation commit; `docs/implementation/backend/sprints/sprint-02.md` §A records the implementation state.
+**Status:** Implemented (Domain + EF Core configuration + four migrations + persistence operations + PostgreSQL integration tests), in the Slice 2B implementation commit that follows the design commit `b59d4c9`. Engineering decisions E17–E25, reviewer approval 2026-10-15. Backend Sprint 2, Slice 2B (US-BE-008, TASK-BE-034…048); `docs/implementation/backend/sprints/sprint-02.md` §A records the implementation state. The throttle **policy** remains unimplemented and pending review (§8).
 
 **Scope:** four new tables — `auth_sessions`, `refresh_tokens`, `password_reset_tickets`, `auth_throttle_counters` — their Domain types (sessions, refresh tokens, reset tickets) and Infrastructure persistence operations. No change to `users`, the authorization catalog, the Application layer, the API or the Flutter apps.
 
@@ -58,6 +58,8 @@ Index `ix_auth_sessions_user_id_active` on `(user_id) WHERE revoked_at IS NULL`:
 | `issued_at` | |
 | `consumed_at` | `ck_refresh_tokens_consumed_not_before_issued`; EF concurrency token |
 
+Index `ix_refresh_tokens_session_id` (the foreign key; loading a session's tokens). *Added during implementation:* EF Core creates a foreign-key index by convention; it is named explicitly rather than removed.
+
 `ex_refresh_tokens_one_unconsumed_per_session`: `EXCLUDE USING btree (session_id WITH =) WHERE (consumed_at IS NULL) DEFERRABLE INITIALLY DEFERRED`. An exclusion constraint is used because PostgreSQL cannot defer a partial unique index, and EF Core does not order an `UPDATE` before an `INSERT` by a partial index's predicate; checking at commit makes the statement order irrelevant.
 
 ### 3.3 `password_reset_tickets`
@@ -73,7 +75,9 @@ Index `ix_auth_sessions_user_id_active` on `(user_id) WHERE revoked_at IS NULL`:
 | `consumed_at` | `ck_password_reset_tickets_consumed_not_before_issued` · `ck_password_reset_tickets_consumed_before_expiry` (`consumed_at < expires_at`) |
 | `superseded_at` | `ck_password_reset_tickets_superseded_not_before_issued` · `ck_password_reset_tickets_not_consumed_and_superseded` |
 
-`ex_password_reset_tickets_one_open_per_user`: `EXCLUDE USING btree (user_id WITH =) WHERE (consumed_at IS NULL AND superseded_at IS NULL) DEFERRABLE INITIALLY DEFERRED`. Index `ix_password_reset_tickets_user_id_issued_at` on `(user_id, issued_at DESC)` for "latest ticket of a user" (`credentialState`, contract §9.2).
+`ex_password_reset_tickets_one_open_per_user`: `EXCLUDE USING btree (user_id WITH =) WHERE (consumed_at IS NULL AND superseded_at IS NULL) DEFERRABLE INITIALLY DEFERRED`. Index `ix_password_reset_tickets_user_id_issued_at` on `(user_id, issued_at DESC)` for "latest ticket of a user" (`credentialState`, contract §9.2), and `ix_password_reset_tickets_issued_by_user_id` (the second foreign key; *added during implementation*, EF Core convention, named explicitly).
+
+`code_hash` and `refresh_tokens.token_hash` are mapped to private backing fields; the Domain properties return copies, so a caller changing a returned array cannot change what is persisted.
 
 **Open, valid, expired.** *Open* = not consumed and not superseded. *Valid at t* = open and `issued_at <= t < expires_at`. Expiry cannot appear in an index predicate, so an expired ticket stays *open* until it is superseded; issuing therefore always supersedes first. Expired tickets are kept: `credentialState = ResetRequired` is derived from them.
 
@@ -118,9 +122,23 @@ Not documented — decided by the TASK-BE-034 spike tests before the schema was 
 - If `xmin` cannot be mapped as specified: an application-managed `row_version integer` column on `auth_sessions`, incremented by the Domain on every change and by the bulk-revocation SQL. Decided before `AddAuthSessions` is written.
 - If two concurrent commits could both pass a deferred exclusion check: serialize on a parent row lock before inserting (the main flows already do, through `users.security_version` and the token row), and keep the constraint as a backstop. This would be reported for review.
 
-## 7. Spike results
+## 7. Spike results (TASK-BE-034, PostgreSQL 18.6, Npgsql EF Core 10.0.3, EF Core 10.0.12)
 
-Recorded with the implementation commit.
+`Contractra.Infrastructure.IntegrationTests/PersistenceBehaviorSpikeTests.cs` — 10 tests, all passing; no fallback from §6 was needed.
+
+1. **`xmin`.** A `uint` shadow property configured with `IsRowVersion()` maps to `xmin` and is a concurrency token. A stale save raises `DbUpdateConcurrencyException`, also after a set-based `ExecuteUpdate`; the winner reads the new `xmin` back and can save again. *Observed:* the EF migration operation **does** list an `xmin` column (`xmin:xid`), and the scaffolded `AddAuthSessions` migration shows it; the Npgsql SQL generator leaves it out of the DDL, and the created table has only its real columns. The §5 wording "no `xmin` column in a scaffolded migration" was therefore inaccurate: the migration file lists it, the database never gets it.
+2. **Deferred exclusion.** Statement order inside a transaction does not matter; two open rows are rejected at commit with `23P01` and the constraint's name. Two transactions that each inserted a conflicting row and committed concurrently: exactly one committed in each of 5 rounds; every loser got `23P01` (no `40P01` observed). This demonstrates, but cannot prove, the absence of a race; the main flows serialize on row locks first (§4).
+3. **EF behaviour.** A nullable concurrency token whose original value is null generates `AND consumed_at IS NULL`; the concurrent loser raises `DbUpdateConcurrencyException` and the winner's value stays. A deferred violation surfaces as a **raw `PostgresException` (`23P01`)**, not wrapped in `DbUpdateException`, both from `SaveChanges` (auto transaction) and from `CommitAsync` of a user transaction; nothing is persisted. Inside a user transaction, committing after a failed `SaveChanges` **persists the earlier work**; disposing without commit rolls everything back (E25 confirmed).
+4. **Throttle lock-or-create.** 50 concurrent steps on one key: no lost update (one retry after a concurrent insert observed). Fixed lock order with opposite input order: no deadlock.
+
+**Test-environment finding.** The test server allows 100 connections (97 for non-superusers). Test classes that race up to 50 connections each, running in parallel, exhausted it (`53300`). They now run alone in a non-parallel xUnit collection (`ConcurrencyTestCollection`). This is not a defect of the store, but it confirms that every waiting throttle step holds a connection, which the lock timeout bounds (§4) and Slice 6 must size.
+
+## 7A. Notes for the slices that use this persistence
+
+- Conflicts surface as `DbUpdateConcurrencyException` or as a `PostgresException` with SQLSTATE `23505`, `23P01` or `40P01`, possibly unwrapped (§7.3); classify by SQLSTATE through the exception chain.
+- `RevokeAllActiveAsync` and ticket supersession are set-based `UPDATE`s: entities already tracked by the context are not refreshed. A tracked entity changed afterwards fails its concurrency check rather than overwriting.
+- Timestamps come from the caller's clock. `revoked_at >= created_at` and `superseded_at >= issued_at` can refuse a write when clocks of two instances disagree (for example a session created by another instance a moment "after" the revocation time). This fails safe (the change is refused, nothing is half-written) but is not reported as a conflict; contract §18 requires NTP.
+- Issuing a ticket inside a caller transaction leaves the commit to the caller, which must not commit after any failure (E25).
 
 ## 8. Not decided here
 

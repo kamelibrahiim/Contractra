@@ -9,7 +9,7 @@
 > and engineering's (E1–E16), recorded in the plan; this file does not
 > re-derive them.
 
-Status: 🟡 Slices 1 and 2 done and committed (see §A) · Slice 2B specified (US-BE-008, ADR 0005), in progress · Slices 3–7 planned · baseline: **contract v1.5** (Draft; §22 proposals pending review), owner decisions R1–R45, engineering decisions E1–E25
+Status: 🟡 Slices 1, 2 and 2B done and committed (see §A) · Slices 3–7 planned · baseline: **contract v1.5** (Draft; §22 proposals pending review), owner decisions R1–R45, engineering decisions E1–E25
 Date: 2026-09-26 · updated 2026-09-27 · 2026-10-01 · 2026-10-15
 Scope: `Contractra_System` backend (.NET 10 / ASP.NET Core / EF Core / PostgreSQL, Clean Architecture)
 Source: `docs/implementation/backend/features/admin-user-creation-plan.md`
@@ -40,7 +40,8 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
 - **Backend Sprint 1 — closed.** `User`, `UserRole`, `UserPermission`, `UserPartyLink` (Domain, EF configuration, PostgreSQL constraints, tests) and the authorization catalog (`Role`, `Permission`, `RolePermission`, ADR 0002) are implemented. The Sprint 1 file still reads "Draft for review / planning document only" because C1 forbids editing it; its stories are complete as described in ADRs 0002 and 0003. This line is the record of its closure.
 - **Slice 1 (US-BE-006) — done and committed.** `1e10742 feat(auth-slice-1): seed authorization catalog` (migration `SeedAuthorizationCatalog`, `AuthorizationCatalogSeedTests`, ADR 0004) and `bc63d5f test(auth-slice-1): keep catalog fixtures clear of the seeded codes` (the three existing test classes the seed required; without them a clean checkout of `1e10742` fails 12 integration tests). 4 roles, 6 permissions, 7 role grants, `Payroll.View` granted to no role.
 - **Slice 2 (US-BE-007) — done and committed** in `feat(auth-slice-2): user credential and security state` (the commit after `3307bd0`): credential and security-state columns with their constraints, bootstrap index and trigger, backfill of existing rows, aggregate-only security mutations (R34) with security-version semantics (E7), one account per Party (R30), case-insensitive login lookup (E10), seed-rollback safety test. Details: ADR 0003 §11. Tests on PostgreSQL 16.15: Domain 215/215; Integration 206/215 — the same 9 environment-specific RESTRICT tests as below fail; every other test passes, including the 38 new integration test cases (177 → 215) and the 58 new Domain test cases (157 → 215).
-- **Not done:** `Contractra.Application` has no files beyond the template. No authentication, JWT, password hashing, sessions, throttling or `audit_events`. `Contractra.Api/Program.cs` still has the `/weatherforecast` template.
+- **Slice 2B (US-BE-008) — done and committed** in `feat(auth-slice-2b): session, refresh-token, reset-ticket and throttle persistence` (the commit after the design commit `b59d4c9`). Four additive migrations (`AddAuthSessions`, `AddRefreshTokens`, `AddPasswordResetTickets`, `AddAuthThrottleCounters`); Domain `AuthSession`/`RefreshToken`, `PasswordResetTicket`, `ClientApp`, `ClientPlatform`, `SessionRevokeReason`; Infrastructure session lookup and revoke-all, atomic ticket issue, and the policy-free throttle store with batched cleanup. Spike results and implementation notes: ADR 0005 §7, §7A. Tests on **PostgreSQL 18.6**: build 0 warnings / 0 errors; Domain **267/267** (+52: `AuthSessionTests` 31, `PasswordResetTicketTests` 21); Integration **341/341** (+126: spikes 10, schema 82, per-migration down-and-up 4, slice down-and-up 1, sessions 9, tickets 9, throttle store 11), stable over 6 consecutive full runs; `ModelConsistencyTests` passing; no leftover `contractra_test_*` database. The throttle **policy** is not implemented (contract §22, pending review).
+- **Not done:** `Contractra.Application` has no files beyond the template. No authentication, JWT, password hashing, throttle policy or `audit_events`. `Contractra.Api/Program.cs` still has the `/weatherforecast` template.
 - **Baseline on PostgreSQL 18.6 (worktree `backend/auth-slice-3` at `fb45c1d`, 2026-10-15):** build 0 warnings / 0 errors; Domain 215/215; Integration **215/215** — the 9 `ON DELETE RESTRICT` tests below pass on PostgreSQL 18, confirming their failures on 16.15 were version-specific. 28 ephemeral `contractra_test_<guid>` databases were created and all dropped.
 - **Test baseline (clean clone of `bc63d5f`, PostgreSQL 16.15, 2026-10-15):** Domain 157/157 passed; Integration 168/177 passed. The 9 failures are environment-specific and pre-existing (identical at `78de706`, before the seed): they assert SQLSTATE `23001` for `ON DELETE RESTRICT`, which the project's PostgreSQL 18 (ADR 0001 §14) reports and PostgreSQL 16 reports as `23503`. The owner reported 177/177 on PostgreSQL 18 for the working tree that became `bc63d5f` (not re-run here, because no PostgreSQL 18 was available).
 
@@ -76,7 +77,7 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
 |---|---|---|---|---|
 | 1 | US-BE-006 | Authorization catalog seed | Sprint 1 | ✅ Done (`1e10742`, `bc63d5f`) |
 | 2 | US-BE-007 | `users` credential and security state; aggregate-only security mutations; one account per Party; case-insensitive login lookup | Slice 1 | ✅ Done (see §A) |
-| 2B | US-BE-008 | Persistence for sessions, refresh tokens, reset tickets and the throttle store | Slice 2 | Specified (ADR 0005); in progress |
+| 2B | US-BE-008 | Persistence for sessions, refresh tokens, reset tickets and the throttle store | Slice 2 | ✅ Done (see §A; ADR 0005) |
 | 3 | US-BE-009 | Minimal `audit_events` (contract §14) | Slice 2 | Planned |
 | 4 | US-BE-010 | Application layer: hashing, temporary passwords, clock, use cases | 2, 2B, 3 | Planned |
 | 5 | US-BE-011 | Bootstrap seeder; operator commands | 4 | Planned |
@@ -315,7 +316,9 @@ survives.
 Layer: Tests
 ```
 
-### US-BE-008 — Auth session, reset-ticket and throttle persistence (Slice 2B)
+### US-BE-008 — Auth session, reset-ticket and throttle persistence (Slice 2B) — ✅ done
+
+> *Deviations recorded at implementation (2026-10-15):* the new constraint and index names are asserted by the new `AuthPersistenceSchemaTests` rather than added to `SchemaConstraintNameTests` (TASK-BE-046), which is unchanged; EF Core's convention foreign-key indexes `ix_refresh_tokens_session_id` and `ix_password_reset_tickets_issued_by_user_id` are kept and named; the scaffolded `AddAuthSessions` migration lists `xmin`, which the Npgsql DDL generator leaves out (ADR 0005 §7); the four concurrency-heavy test classes run in a non-parallel collection because together they exceeded the test server's connection limit.
 
 > Re-specified 2026-10-15 after the design review: engineering decisions E17–E25 (plan §1D), physical design in ADR 0005. The original text said "partial unique index" for one open ticket per user; it is a **deferred exclusion constraint** (ADR 0005 §3.3). The throttle **policy** is out of scope (contract §22, pending review).
 
@@ -536,7 +539,7 @@ Key acceptance: 401/403/404/409/503 and the bootstrap protections for each
 endpoint; no endpoint returns a reset secret.
 ```
 
-**Total: 8 user stories (US-BE-006 and US-BE-007 done; US-BE-008 in progress; US-BE-009…013 planned). Tasks: TASK-BE-024…033 done; TASK-BE-034…048 written for US-BE-008. Tasks for US-BE-009…013 are written when each slice starts.**
+**Total: 8 user stories (US-BE-006, US-BE-007 and US-BE-008 done; US-BE-009…013 planned). Tasks: TASK-BE-024…048 done. Tasks for US-BE-009…013 are written when each slice starts.**
 
 ---
 

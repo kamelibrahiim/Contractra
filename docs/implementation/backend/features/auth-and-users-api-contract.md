@@ -3,7 +3,7 @@
 Status: 🟡 Draft v1.5 — engineering revision of v1.4, made under the owner's instruction of 2026-10-15 to resolve the documentation-consistency audit. It is the implementation baseline for Backend Sprint 2 from Slice 2 onward. The items in §19 still need owner confirmation; until the owner confirms or overrides them, each one behaves as written here. v1.4 is not retroactively approved by this revision. **§22 lists proposed v1.6 amendments (2026-10-15). They are pending review and are not applied to §1–§21: until accepted, §1–§21 remain the v1.5 text.**
 Date: 2026-09-27 · revised 2026-10-01 (v1.4) · 2026-10-15 (v1.5)
 Implements: Backend Sprint 2 (`docs/implementation/backend/sprints/sprint-02.md`) · plan `admin-user-creation-plan.md` §1B and §1D
-Implementation status (2026-10-15): **no endpoint in this contract exists in code.** The authorization catalog seed (Slice 1, commits `1e10742` and `bc63d5f`) and the user credential/security-state schema (Slice 2, see `sprint-02.md`) are the only parts with code behind them. Everything else here is specification.
+Implementation status (2026-10-15): **no endpoint in this contract exists in code.** The authorization catalog seed (Slice 1, commits `1e10742` and `bc63d5f`), the user credential/security-state schema (Slice 2) and the persistence for sessions, refresh tokens, reset tickets and the throttle store (Slice 2B, ADR 0005; no throttle policy) are the only parts with code behind them (see `sprint-02.md` §A). Everything else here is specification.
 
 > **How to read this contract.** Every rule carries its basis:
 > - **[N]** Normative: stated by an authoritative document (`docs/documentation-index-ar.md` order). Cited.
@@ -790,7 +790,7 @@ Each item below behaves as written in this contract until the owner confirms or 
 |---|---|---|
 | Role/permission catalog and grants (§2) | 1 — US-BE-006 | ✅ Implemented (`1e10742`, tests fixed in `bc63d5f`) |
 | `users` credential and security state, bootstrap flag/index/trigger, one account per Party, case-insensitive lookup (§3.5, §5.1, §9.1, §11) | 2 — US-BE-007 | See `sprint-02.md` §A for the current state |
-| Sessions, refresh tokens, reset tickets, throttle store (§3.3, §10A, §17) | 2B — US-BE-008 | Planned |
+| Sessions, refresh tokens, reset tickets, throttle store (§3.3, §10A, §17) | 2B — US-BE-008 | Persistence implemented (ADR 0005; see `sprint-02.md` §A). Throttle policy not implemented (§22, pending review) |
 | `audit_events` (§14) | 3 — US-BE-009 | Planned |
 | Use cases: create, disable, reactivate, issue/complete reset, initial re-issue, change password (§5.5, §5.6, §9) | 4 — US-BE-010 | Planned |
 | Bootstrap seeder and operator commands (§10A, §11) | 5 — US-BE-011 | Planned |

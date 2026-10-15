@@ -22,6 +22,147 @@ namespace Contractra.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Contractra.Domain.Identity.AuthSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AbsoluteExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("absolute_expires_at");
+
+                    b.Property<string>("ClientApp")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("client_app");
+
+                    b.Property<string>("ClientPlatform")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("client_platform");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("LastRefreshedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_refreshed_at");
+
+                    b.Property<string>("RevokeReason")
+                        .HasColumnType("text")
+                        .HasColumnName("revoke_reason");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_auth_sessions");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_auth_sessions_user_id_active")
+                        .HasFilter("revoked_at IS NULL");
+
+                    b.ToTable("auth_sessions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_auth_sessions_absolute_expiry_after_creation", "absolute_expires_at > created_at");
+
+                            t.HasCheckConstraint("ck_auth_sessions_client_app_valid_values", "client_app IN ('admin', 'employee')");
+
+                            t.HasCheckConstraint("ck_auth_sessions_client_platform_valid_values", "client_platform IN ('web', 'mobile')");
+
+                            t.HasCheckConstraint("ck_auth_sessions_last_refreshed_not_before_creation", "last_refreshed_at >= created_at");
+
+                            t.HasCheckConstraint("ck_auth_sessions_revocation_fields_together", "(revoked_at IS NULL) = (revoke_reason IS NULL)");
+
+                            t.HasCheckConstraint("ck_auth_sessions_revoke_reason_valid_values", "revoke_reason IS NULL OR revoke_reason IN ('logout', 'idle', 'refresh_reuse', 'app_access_lost', 'user_disabled', 'password_reset_issued', 'password_reset_completed', 'initial_password_reissued', 'password_changed')");
+
+                            t.HasCheckConstraint("ck_auth_sessions_revoked_not_before_creation", "revoked_at IS NULL OR revoked_at >= created_at");
+                        });
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.PasswordResetTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("channel");
+
+                    b.Property<byte[]>("CodeHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("code_hash");
+
+                    b.Property<DateTimeOffset?>("ConsumedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at");
+
+                    b.Property<Guid?>("IssuedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issued_by_user_id");
+
+                    b.Property<DateTimeOffset?>("SupersededAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("superseded_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_password_reset_tickets");
+
+                    b.HasIndex("IssuedByUserId")
+                        .HasDatabaseName("ix_password_reset_tickets_issued_by_user_id");
+
+                    b.HasIndex("UserId", "IssuedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_password_reset_tickets_user_id_issued_at");
+
+                    b.ToTable("password_reset_tickets", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_password_reset_tickets_channel_valid", "char_length(channel) BETWEEN 1 AND 32");
+
+                            t.HasCheckConstraint("ck_password_reset_tickets_code_hash_length", "octet_length(code_hash) = 32");
+
+                            t.HasCheckConstraint("ck_password_reset_tickets_consumed_before_expiry", "consumed_at IS NULL OR consumed_at < expires_at");
+
+                            t.HasCheckConstraint("ck_password_reset_tickets_consumed_not_before_issued", "consumed_at IS NULL OR consumed_at >= issued_at");
+
+                            t.HasCheckConstraint("ck_password_reset_tickets_expires_after_issued", "expires_at > issued_at");
+
+                            t.HasCheckConstraint("ck_password_reset_tickets_not_consumed_and_superseded", "consumed_at IS NULL OR superseded_at IS NULL");
+
+                            t.HasCheckConstraint("ck_password_reset_tickets_superseded_not_before_issued", "superseded_at IS NULL OR superseded_at >= issued_at");
+                        });
+                });
+
             modelBuilder.Entity("Contractra.Domain.Identity.Permission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -44,6 +185,48 @@ namespace Contractra.Infrastructure.Migrations
                     b.ToTable("permissions", null, t =>
                         {
                             t.HasCheckConstraint("ck_permissions_status_valid_values", "status IN ('Active', 'Deprecated')");
+                        });
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ConsumedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<byte[]>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_refresh_tokens");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("ix_refresh_tokens_session_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_refresh_tokens_token_hash");
+
+                    b.ToTable("refresh_tokens", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_refresh_tokens_consumed_not_before_issued", "consumed_at IS NULL OR consumed_at >= issued_at");
+
+                            t.HasCheckConstraint("ck_refresh_tokens_token_hash_length", "octet_length(token_hash) = 32");
                         });
                 });
 
@@ -400,6 +583,82 @@ namespace Contractra.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Contractra.Infrastructure.Persistence.Throttling.AuthThrottleCounter", b =>
+                {
+                    b.Property<string>("Scope")
+                        .HasColumnType("text")
+                        .HasColumnName("scope");
+
+                    b.Property<byte[]>("KeyHash")
+                        .HasColumnType("bytea")
+                        .HasColumnName("key_hash");
+
+                    b.Property<DateTimeOffset?>("BlockedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("blocked_until");
+
+                    b.Property<int>("FailureCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("failure_count");
+
+                    b.Property<DateTimeOffset>("WindowStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("window_start");
+
+                    b.HasKey("Scope", "KeyHash")
+                        .HasName("pk_auth_throttle_counters");
+
+                    b.HasIndex("WindowStart")
+                        .HasDatabaseName("ix_auth_throttle_counters_window_start");
+
+                    b.ToTable("auth_throttle_counters", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_auth_throttle_counters_blocked_until_not_before_window_start", "blocked_until IS NULL OR blocked_until >= window_start");
+
+                            t.HasCheckConstraint("ck_auth_throttle_counters_failure_count_positive", "failure_count >= 1");
+
+                            t.HasCheckConstraint("ck_auth_throttle_counters_key_hash_length", "octet_length(key_hash) = 32");
+
+                            t.HasCheckConstraint("ck_auth_throttle_counters_scope_valid_values", "scope IN ('login_pair', 'identifier', 'change_password_user')");
+                        });
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.AuthSession", b =>
+                {
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_auth_sessions_users_user_id");
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.PasswordResetTicket", b =>
+                {
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("IssuedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_password_reset_tickets_users_issued_by_user_id");
+
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_password_reset_tickets_users_user_id");
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.RefreshToken", b =>
+                {
+                    b.HasOne("Contractra.Domain.Identity.AuthSession", null)
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_refresh_tokens_auth_sessions_session_id");
+                });
+
             modelBuilder.Entity("Contractra.Domain.Identity.RolePermission", b =>
                 {
                     b.HasOne("Contractra.Domain.Identity.Permission", null)
@@ -496,6 +755,11 @@ namespace Contractra.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_party_roles_parties_party_id");
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.AuthSession", b =>
+                {
+                    b.Navigation("RefreshTokens");
                 });
 
             modelBuilder.Entity("Contractra.Domain.Identity.Role", b =>

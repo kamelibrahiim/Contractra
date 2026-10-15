@@ -174,7 +174,7 @@ The exact engineering details (login app field, allowed calls during a forced ch
 
 ## 1D. Audit resolution (2026-10-15) — owner instructions R44–R45 and engineering decisions E1–E16
 
-**Context.** The read-only documentation-consistency audit of 2026-10-15 found a reset-impersonation risk, no brute-force requirement, and several ambiguities (app authorization, audit fields, identifier matching, Party validity, security-version and migration semantics, slice ordering). The owner then instructed engineering to resolve them, owning routine technical and security decisions but not business policy. The two instructions that change an earlier owner decision are recorded as R44–R45; everything else is an engineering decision (E1–E16), applied in contract v1.5. Items that still need the owner are listed in contract §19 (OC-1 … OC-6).
+**Context.** The read-only documentation-consistency audit of 2026-10-15 found a reset-impersonation risk, no brute-force requirement, and several ambiguities (app authorization, audit fields, identifier matching, Party validity, security-version and migration semantics, slice ordering). The owner then instructed engineering to resolve them, owning routine technical and security decisions but not business policy. The two instructions that change an earlier owner decision are recorded as R44–R45; everything else is an engineering decision (E1–E16), applied in contract v1.5. Items that still need the owner are listed in contract §19 (OC-1 … OC-7; *corrected 2026-10-15: this sentence said OC-6, but §19 has seven items*).
 
 ### Owner instructions (2026-10-15)
 
@@ -203,6 +203,22 @@ The exact engineering details (login app field, allowed calls during a forced ch
 | **E14** | HTTPS only (no HTTP redirect for the API), HSTS on the web origin, secrets only in secret stores, NTP, least-privilege database roles, explicit trusted proxies and CORS origins. | Operational requirements the contract lacked. | §1, §18 |
 | **E15** | Idle timeouts are configuration with the NFR-SEC-007 defaults, bounded 5 min … 24 h. | NFR-SEC-007 says "configurable"; bounds prevent a typo from disabling the control. | §3.1 |
 | **E16** | Migrations: `Up` is additive and preserves data (backfills, creates new indexes before dropping old ones, fails rather than rewrites on conflicting data). `Down` exists for development and test databases and is tested there; it is not a production rollback tool — production goes forward with a corrective migration. Rolling back `SeedAuthorizationCatalog` while users reference seeded roles fails atomically on the `RESTRICT` foreign keys and loses nothing. | Answers the audit's rollback questions without pretending Down is safe on live data. | `sprint-02.md` US-BE-007; ADR 0003 §11 |
+
+### Engineering decisions for Slice 2B (2026-10-15) — E17–E25
+
+Approved by the reviewer for the implementation of Slice 2B (US-BE-008). They are engineering decisions about persistence, not business rules. Details: `docs/decisions/0005-auth-session-and-throttle-persistence.md`. The **throttle policy** (windows, thresholds, escalation, source grouping, Layer 3 mitigation) is **not** decided here: it is proposed in contract §22 and pending review before Slice 6.
+
+| # | Decision | Why / alternatives rejected | ADR 0005 |
+|---|---|---|---|
+| **E17** | Four additive migrations (`AddAuthSessions`, `AddRefreshTokens`, `AddPasswordResetTickets`, `AddAuthThrottleCounters`), each with its own Down/Up test; `users` and the catalog unchanged. | One migration per table, as in Sprint 1 (ADR 0003 §7). | §2 |
+| **E18** | No Application interfaces or use cases in Slice 2B. Domain: `AuthSession`/`RefreshToken`, `PasswordResetTicket`, `ClientApp`, `ClientPlatform`, `SessionRevokeReason`. Infrastructure: throttle row type, configurations, persistence operations. | Interfaces are added with the first consuming use case (Slice 4/6). | §2 |
+| **E19** | Hashes are `bytea` of exactly 32 bytes; no raw token or code column anywhere. | Contract §3.1, §10A, §17. | §2, §3 |
+| **E20** | `auth_sessions` uses `xmin` as its concurrency token; nine revoke reasons tied to contract events; first revocation kept; absolute expiry derived, never written as a revocation. | A revocation committed during a rotation must make the rotation fail. | §3.1, §4 |
+| **E21** | `refresh_tokens` has an `id`, unique `token_hash`, one unconsumed token per session by a **deferred** exclusion constraint, `consumed_at` concurrency token; rotation is one transaction. | A partial unique index cannot be deferred and EF Core does not order statements by an index predicate. | §3.2, §4 |
+| **E22** | `password_reset_tickets`: one open ticket per user (deferred exclusion), `consumed_at < expires_at` CHECK, concurrency tokens; issue = supersede then insert in one transaction; a failed code check writes nothing. | Contract §5.6, §9.6, §10A. | §3.3, §4 |
+| **E23** | `auth_throttle_counters`: the contract's five columns, primary key `(scope, key_hash)`; generic ordered lock-or-create, write, delete and batched `SKIP LOCKED` cleanup; **no policy** in Slice 2B. | The policy is pending review (contract §22). | §3.4, §4 |
+| **E24** | Slice 2B deletes only expired throttle rows; session, token and ticket history is kept; purge is a later owner/operations decision. | Session rows are the only record of revocations (contract §14). | §2 |
+| **E25** | A failed `SaveChanges` inside a caller transaction aborts the operation; the transaction is never committed afterwards. | EF Core rolls a failed save back only to a savepoint. | §2 |
 
 **Correction to C5's rationale.** C5 says the logical model's event names win "since it is the higher-precedence source per `documentation-index-ar.md`". The index ranks `system-specification-and-team-reference-ar.md` at 15 and `logical-data-model-ar.md` at 16 (1 is highest), and spec UC-002 lists `UserDeactivated` / `RoleChanged`. C5's names stand as an **owner decision**, not by precedence; the spec/logical-model disagreement is reported for the documentation owner (contract §19 OC-5).
 

@@ -17,7 +17,7 @@ A newer file date never decides precedence by itself (same rule as the index).
 
 | File | Kind | Status |
 |---|---|---|
-| `backend/features/auth-and-users-api-contract.md` | API contract | Current — v1.5 (Draft; owner confirmations in its §19) |
+| `backend/features/auth-and-users-api-contract.md` | API contract | Current — v1.5 (Draft; owner confirmations in its §19; proposed v1.6 amendments in its §22, pending review and not applied) |
 | `backend/features/admin-user-creation-plan.md` | Decision record and plan | Current — §1D / §1B binding; §5 Slices 2, 4, 6, 7 superseded |
 | `backend/sprints/sprint-02.md` | **Backend** Sprint 2 | Active |
 | `backend/sprints/sprint-01.md` | **Backend** Sprint 1 | Closed. Its header still says "Draft for review" because owner decision C1 forbids editing it; its closure is recorded in `sprint-02.md` §A. |
@@ -25,6 +25,7 @@ A newer file date never decides precedence by itself (same rule as the index).
 | `sprints/frontend-auth-and-users-plan.md` | Frontend plan (mock-first) | History; superseded by the contract (banner) |
 | `sprints/frontend-auth-contract-alignment-plan.md` | Frontend plan against contract v1.5 | Current; starts after the matching backend slices |
 | `../decisions/0001` … `0004` | ADRs | Implemented as each states |
+| `../decisions/0005` | ADR — Slice 2B persistence (sessions, refresh tokens, reset tickets, throttle store) | Accepted for implementation; status recorded in `backend/sprints/sprint-02.md` §A |
 
 **Two files are called `sprint-01.md`**: the one under `backend/sprints/` is the backend sprint, the one under `sprints/` is the frontend sprint. Always cite the full path.
 

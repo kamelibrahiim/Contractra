@@ -1,6 +1,6 @@
 # Auth & Users API Contract
 
-Status: 🟡 Draft v1.5 — engineering revision of v1.4, made under the owner's instruction of 2026-10-15 to resolve the documentation-consistency audit. It is the implementation baseline for Backend Sprint 2 from Slice 2 onward. The items in §19 still need owner confirmation; until the owner confirms or overrides them, each one behaves as written here. v1.4 is not retroactively approved by this revision.
+Status: 🟡 Draft v1.5 — engineering revision of v1.4, made under the owner's instruction of 2026-10-15 to resolve the documentation-consistency audit. It is the implementation baseline for Backend Sprint 2 from Slice 2 onward. The items in §19 still need owner confirmation; until the owner confirms or overrides them, each one behaves as written here. v1.4 is not retroactively approved by this revision. **§22 lists proposed v1.6 amendments (2026-10-15). They are pending review and are not applied to §1–§21: until accepted, §1–§21 remain the v1.5 text.**
 Date: 2026-09-27 · revised 2026-10-01 (v1.4) · 2026-10-15 (v1.5)
 Implements: Backend Sprint 2 (`docs/implementation/backend/sprints/sprint-02.md`) · plan `admin-user-creation-plan.md` §1B and §1D
 Implementation status (2026-10-15): **no endpoint in this contract exists in code.** The authorization catalog seed (Slice 1, commits `1e10742` and `bc63d5f`) and the user credential/security-state schema (Slice 2, see `sprint-02.md`) are the only parts with code behind them. Everything else here is specification.
@@ -779,6 +779,8 @@ Each item below behaves as written in this contract until the owner confirms or 
 | OC-5 | **Upstream documentation defects** (protected documents, not edited here): (a) spec UC-002 lists `UserDeactivated` / `RoleChanged`, while logical model §1.8 lists `UserDisabled` / `RoleEnded` — the index ranks the spec (15) above the logical model (16), so C5's choice of the logical-model names stands only as an owner decision; (b) logical model §15.4 `source` still names `PWA` after ADR-033; (c) `documentation-index-ar.md` does not list `docs/decisions/**` or `docs/implementation/**` (their order is given in `docs/implementation/README.md`). | Logical-model names and values used; documented here. |
 | OC-6 | **`actor_role_code` for users with several roles.** Confirm the deterministic rule in §14.1, which the data dictionary does not spell out. | §14.1 rule. |
 | OC-7 | **Finding the Party for an Engineer account.** §9.1 requires `partyId`, but no endpoint lets the Admin app search Parties, and the permission that should guard reading Parties (`Parties.View` or similar, spec §7.3) is not seeded (Q6). Decide the permission (and its role grant) so a read-only Party lookup (`GET /api/v1/parties?role=Engineer&status=Active&search=…`, audience `admin`) can be added. | No lookup: until decided, an Engineer account can only be created with a known Party id; the Admin app's Engineer form is blocked on this (frontend plan FA-4). |
+| OC-8 | **Layer 3 starvation by a distributed attacker** (added 2026-10-15). With the §22 proposals, a single source cannot monopolize a user's sign-in attempts, but about 30 or more coordinated sources can keep taking every 30-second slot (§22 H). Accept this as a documented limitation (with operator alerting and an operator unblock command), or require trusted-device protection (§22 M3: a long-lived device credential, a new table, changes to both apps). Relates to owner instruction R45. | Undecided; the throttle policy (§17, §22) is not finalized until this is reviewed. Does not block Slice 2B. |
+| OC-9 | **Retention of session, refresh-token and reset-ticket history** (added 2026-10-15). Session rows are the only record of revocations (§14). | Nothing is deleted except expired throttle rows (Slice 2B, ADR 0005 E24). |
 
 ---
 
@@ -808,3 +810,75 @@ Each item below behaves as written in this contract until the owner confirms or 
 | 2026-10-01 | v1.3. Owner decisions R28–R29: bootstrap admin protected from direct-permission grants/revokes, including its `Payroll.View` (§11, §12, §15); no API recovery path for a lost bootstrap password, recovery is out-of-band and an operational procedure must exist (§11). Confirmed as owner decisions: reactivate on the bootstrap admin → 409, and protection rejections are 409 + Serilog, not `AccessDenied`. |
 | 2026-10-01 | v1.4. Owner decisions R30–R43 from the final contract audit: one account per Party and `partyId` required for Engineers (§9.1, §12); bootstrap break-glass — second Admin and operator-only CLI (§9.6, §11, §15); password hash and transparent rehash, dummy hash on login (§5.1); 30-second refresh reuse grace (§3.3, §5.2); change-password consumes and reissues the refresh token (§3.3, §5.5); refresh rule limited to login/refresh/logout (§6); `client_platform` stored on the session (§3.3, §5.1); users-endpoint check order (§9, §11); `actor_type`/nullable `actor_user_id`, CSRF rejection Serilog-only (§6, §8, §14); bootstrap audit events and `PayrollViewGranted` instead of `PermissionGranted` (§11, §14); protection checks the target (§11); duplicate/deprecated role and disabled-reset rules (§9.1, §9.6, §12). Header corrected; revision history put in date order; frontend items F-05, F-08, F-09 and the new R-driven items added to §16. |
 | 2026-10-15 | v1.5. Resolves the 2026-10-15 documentation-consistency audit under the owner's instructions R44–R45 and engineering decisions E1–E16 (plan §1D). **Password reset redesigned** so the Admin never learns a usable credential: issue + single-use code + user completion (§5.6, §9.6, §10A), with an interim operator procedure and fail-closed 503 while no delivery channel exists; `PasswordReset` event split into `PasswordResetIssued`/`PasswordResetCompleted`. **Temporary passwords** limited to creation and a new initial re-issue (§9.8), with a 72-hour expiry and a class guarantee (§10); `credentialState` added to the user object (§9.2). **Brute-force protection** (§17) without hard lockout; 429 `auth.too_many_attempts`. **App audience** enforced on every request (§4.1) and added to the §9 check order. **Audit** fields reconciled with logical model §15.4 and fail-closed rules defined (§14.1, §14.2). **Login identifier** matching made explicit (§5.1). **Party validity** for Engineer accounts defined (§9.1). **Security version** initial value and increments defined (§3.5). JWT validation, key ring and rotation (§3.2, §3.2.1); input limits, HTTPS, password maximum length (§1, §5.5); configurable idle timeouts (§3.1); operational requirements (§18); owner confirmations (§19); implementation map (§20). Status set to Draft v1.5 pending §19; v1.4 is not retroactively approved. |
+| 2026-10-15 | §22 added: **proposed** v1.6 amendments for Slice 2B persistence (F, G) and for the throttle policy (A–E, H, mitigation M1–M5), and §19 OC-8, OC-9. Pending review; §1–§21 are unchanged and remain the v1.5 Draft text. |
+
+---
+
+## 22. Proposed v1.6 amendments — pending review (2026-10-15)
+
+> **Status: proposed, not applied, not approved policy.** Nothing in this section changes §1–§21. F and G describe how Slice 2B stores data (engineering decisions E20–E22, ADR 0005) and are approved for implementation as persistence design; their wording here becomes part of the contract only when the contract revision is accepted. A–E, H and M1–M5 are **proposed changes to the brute-force policy (§17)**; they are not implemented in Slice 2B and are not final until reviewed together with OC-8. Classification: *clarification* = makes existing text precise without changing its intent; *policy change* = changes what the text permits.
+
+T = threshold, W = window (15 minutes by default). "Max" = most attempts possible against one account.
+
+### A. Window type (§17) — policy change
+
+- **Current:** "5 failures / 15 minutes" (layers 2, 4); "after 10 failures within 15 minutes" (layer 3). The window type is not stated; "within" reads as sliding.
+- **Proposed:** an **anchored fixed window**: it starts at the first counted attempt after a reset and ends W later.
+- **Consequences:** implementable with the five stored columns. At a window boundary up to 2(T−1) failures can fall inside one 15-minute span before the limit applies; long-run rates are unchanged. An exact sliding window would need the last T attempt times per key (a sixth column or an events table).
+- **Max before the limit applies (sliding → anchored):** layer 2: 5 → 8 · layer 3: 10 → 18 before slow mode · layer 4: 5 → 8.
+
+### B. Layer 2 escalation (§17) — clarification with a material effect
+
+- **Current:** 5 failures / 15 minutes → 429 for the pair; "the delay doubles with each further failure, up to 15 minutes"; a success clears the counter. No base delay and no end of escalation are stated.
+- **Proposed:** base delay **30 s** when the 5th failure is reached; delays 30, 60, 120, 240, 480 s, then capped at 900 s. Escalation ends after **15 minutes without a failure**, or on a success.
+- **Consequences:** without a quiet-period end, the counter resets at the fixed-window boundary before the 900-second cap is ever reached (around t = 930 s), so one source gets about 35 attempts per hour against an account. With B: **12 in the first hour, then 4 per hour**. A real user who mistypes 5 times waits 30 s; 10 consecutive mistakes give 15-minute waits on that network only, and one success clears them. B is also what limits one source to one admitted attempt per 900 s, which H relies on.
+
+### C. Layer 3 slot (§17) — clarification
+
+- **Current:** "accepts at most one attempt per 30 seconds from any address until 15 minutes pass without a failure."
+- **Proposed:** the same, enforced at admission (before the password is verified): every admitted attempt, including a successful one, takes the slot; a success does not end slow mode (as the §17 test list already says).
+- **Consequences:** at most **120 attempts per hour per account** in slow mode, the real user included. Without enforcement at admission, parallel attempts would all pass.
+
+### D. Counting at admission (§17) — clarification (one minor behavioural effect)
+
+- **Current:** limits are stated in failures; "throttle checks run before any password hashing"; concurrency is not addressed.
+- **Proposed:** an attempt is counted when it is admitted. A success removes its own count (layers 3, 4) or clears the counter (layer 2). An attempt whose completion is never recorded (crash) counts as a failure until its window ends.
+- **Consequences:** thresholds hold exactly under any concurrency (max exactly T per window). Without D, a parallel burst is bounded only by layer 1, and on change-password (no layer 1) not at all. A real user's in-flight attempt counts for milliseconds; a server crash costs one count.
+
+### E. Source grouping (§17) — policy change
+
+- **Current:** "client IP" is not defined further.
+- **Proposed:** one source = one IPv4 address, or one IPv6 **/64**, determined after the trusted-proxy rules of §17.
+- **Consequences:** without it, one IPv6 host can rotate through 2^64 addresses and bypass layers 1, 2 and 5. Users sharing a /64 with an attacker (same LAN) share that source's limits.
+
+### F. Sessions and refresh tokens (§3.3) — clarification (implemented in Slice 2B)
+
+`refresh_tokens` has an `id`; at most one unconsumed refresh token per session (checked at commit); rotation consumes the old token, inserts the new one and updates `last_refreshed_at` in one transaction; a concurrent rotation of the same token loses and changes nothing. Revoke reasons: `logout`, `idle`, `refresh_reuse`, `app_access_lost`, `user_disabled`, `password_reset_issued`, `password_reset_completed`, `initial_password_reissued`, `password_changed`; the first revocation is kept. Absolute expiry is derived from `absolute_expires_at` and is not written as a revocation.
+
+### G. Reset tickets (§9.6, §10A) — clarification (implemented in Slice 2B)
+
+*Open* = not consumed and not superseded; at most one open ticket per user. Issuing supersedes every open ticket (expired ones included) and inserts the new one in one transaction. A ticket can be consumed only while open and before `expires_at` (also enforced by the database). A wrong, expired, consumed or superseded code writes nothing to the ticket. Tickets are kept after expiry (`credentialState = ResetRequired`).
+
+### H. Correction of the Layer 3 claim (§17) — correction
+
+§17 says the real user "waits at most 30 seconds between tries". That holds only while the attacker cannot take every slot. With A–E: each admitted attacker attempt is a failure that escalates the attacker's own layer 2 counter, and a source rejected by layer 2 cannot take a layer 3 slot (admission is all-or-nothing), so in the long run **one source gets at most one slot per 900 s of the 30 available**. Taking every slot needs about **30 or more coordinated sources**; such an attacker can keep the real user waiting indefinitely (OC-8).
+
+### Layer 3 mitigation options (for Slice 6, pending review with OC-8)
+
+| Option | Effect | Trade-off | Schema |
+|---|---|---|---|
+| **M1** — E (source grouping) + layer 2 checked in the same admission + B + rejected attempts never take a slot | No single source can monopolize | Does not stop ≈30+ coordinated sources | None |
+| M2 — k > 1 slots per period, at most one per source | A few sources cannot starve the user | Raises the guess cap to k × 120/hour; still starvable by ≈30k sources. Not recommended. | None (new scope rows) |
+| **M3** — trusted devices: a device that signed in successfully before gets its own per-device limit instead of the shared slot | Known devices cannot be starved by distributed attackers | A new long-lived device credential, retention and privacy rules, changes to both apps; a first sign-in from a new device can still be starved | New `trusted_devices` table (Slice 6) |
+| M4 — CAPTCHA or proof-of-work in slow mode | Raises the attacker's cost per attempt | Third-party dependency or battery cost on field devices; solvable by bots. Not recommended. | Possibly a replay cache |
+| **M5** — operator command to clear an identifier's throttle (with reason, audited) + Serilog alert when slow mode starts | Incident response | Manual | None |
+
+Proposed: M1 and M5 required in Slice 6; M3 is the owner decision OC-8.
+
+### Proposed limits after A–E and M1 (pending review)
+
+| Attacker | Max against one account |
+|---|---|
+| One source (login and reset completion share counters) | 9 in the first 15 minutes, 12 in the first hour, then 4 per hour |
+| Many sources | 18 before slow mode, then 120 per hour (the real user included) |
+| Change-password, per user | 5 per window, at most 8 in any 15-minute span, 20 per hour |

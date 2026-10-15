@@ -9,7 +9,7 @@
 > and engineering's (E1–E16), recorded in the plan; this file does not
 > re-derive them.
 
-Status: 🟡 Slices 1 and 2 done and committed (see §A) · Slices 2B–7 planned · baseline: **contract v1.5**, owner decisions R1–R45, engineering decisions E1–E16
+Status: 🟡 Slices 1 and 2 done and committed (see §A) · Slice 2B specified (US-BE-008, ADR 0005), in progress · Slices 3–7 planned · baseline: **contract v1.5** (Draft; §22 proposals pending review), owner decisions R1–R45, engineering decisions E1–E25
 Date: 2026-09-26 · updated 2026-09-27 · 2026-10-01 · 2026-10-15
 Scope: `Contractra_System` backend (.NET 10 / ASP.NET Core / EF Core / PostgreSQL, Clean Architecture)
 Source: `docs/implementation/backend/features/admin-user-creation-plan.md`
@@ -25,6 +25,7 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
 3. `docs/implementation/backend/features/admin-user-creation-plan.md` — the plan. **§1D (R44–R45, E1–E16) and §1B (R1–R43) are binding and override §1 where they differ**; §1 (C1–C6) is binding except C4 (superseded) and C2 (amended); §4 Q6 is deferred and Q5 is a non-goal (R45); §5 Slices 2, 4, 6 and 7 are superseded.
 4. `docs/implementation/backend/features/auth-and-users-api-contract.md` (**v1.5**) — source of truth for the auth and user-management API. Its §19 lists the owner confirmations still open; none blocks Slice 2.
 5. `docs/decisions/0004-authorization-catalog-seed.md` — the Slice 1 seed.
+6. `docs/decisions/0005-auth-session-and-throttle-persistence.md` — the Slice 2B persistence design (E17–E25).
 
 **Two files are called `sprint-01.md`.** `docs/implementation/sprints/sprint-01.md` is the **frontend** Sprint 1 (Admin and Employee apps). `docs/implementation/backend/sprints/sprint-01.md` is the **backend** Sprint 1. This file only ever refers to the backend one as "Sprint 1".
 
@@ -40,6 +41,7 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
 - **Slice 1 (US-BE-006) — done and committed.** `1e10742 feat(auth-slice-1): seed authorization catalog` (migration `SeedAuthorizationCatalog`, `AuthorizationCatalogSeedTests`, ADR 0004) and `bc63d5f test(auth-slice-1): keep catalog fixtures clear of the seeded codes` (the three existing test classes the seed required; without them a clean checkout of `1e10742` fails 12 integration tests). 4 roles, 6 permissions, 7 role grants, `Payroll.View` granted to no role.
 - **Slice 2 (US-BE-007) — done and committed** in `feat(auth-slice-2): user credential and security state` (the commit after `3307bd0`): credential and security-state columns with their constraints, bootstrap index and trigger, backfill of existing rows, aggregate-only security mutations (R34) with security-version semantics (E7), one account per Party (R30), case-insensitive login lookup (E10), seed-rollback safety test. Details: ADR 0003 §11. Tests on PostgreSQL 16.15: Domain 215/215; Integration 206/215 — the same 9 environment-specific RESTRICT tests as below fail; every other test passes, including the 38 new integration test cases (177 → 215) and the 58 new Domain test cases (157 → 215).
 - **Not done:** `Contractra.Application` has no files beyond the template. No authentication, JWT, password hashing, sessions, throttling or `audit_events`. `Contractra.Api/Program.cs` still has the `/weatherforecast` template.
+- **Baseline on PostgreSQL 18.6 (worktree `backend/auth-slice-3` at `fb45c1d`, 2026-10-15):** build 0 warnings / 0 errors; Domain 215/215; Integration **215/215** — the 9 `ON DELETE RESTRICT` tests below pass on PostgreSQL 18, confirming their failures on 16.15 were version-specific. 28 ephemeral `contractra_test_<guid>` databases were created and all dropped.
 - **Test baseline (clean clone of `bc63d5f`, PostgreSQL 16.15, 2026-10-15):** Domain 157/157 passed; Integration 168/177 passed. The 9 failures are environment-specific and pre-existing (identical at `78de706`, before the seed): they assert SQLSTATE `23001` for `ON DELETE RESTRICT`, which the project's PostgreSQL 18 (ADR 0001 §14) reports and PostgreSQL 16 reports as `23503`. The owner reported 177/177 on PostgreSQL 18 for the working tree that became `bc63d5f` (not re-run here, because no PostgreSQL 18 was available).
 
 ---
@@ -74,7 +76,7 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
 |---|---|---|---|---|
 | 1 | US-BE-006 | Authorization catalog seed | Sprint 1 | ✅ Done (`1e10742`, `bc63d5f`) |
 | 2 | US-BE-007 | `users` credential and security state; aggregate-only security mutations; one account per Party; case-insensitive login lookup | Slice 1 | ✅ Done (see §A) |
-| 2B | US-BE-008 | Persistence for sessions, refresh tokens, reset tickets and the throttle store | Slice 2 | Planned |
+| 2B | US-BE-008 | Persistence for sessions, refresh tokens, reset tickets and the throttle store | Slice 2 | Specified (ADR 0005); in progress |
 | 3 | US-BE-009 | Minimal `audit_events` (contract §14) | Slice 2 | Planned |
 | 4 | US-BE-010 | Application layer: hashing, temporary passwords, clock, use cases | 2, 2B, 3 | Planned |
 | 5 | US-BE-011 | Bootstrap seeder; operator commands | 4 | Planned |
@@ -315,20 +317,150 @@ Layer: Tests
 
 ### US-BE-008 — Auth session, reset-ticket and throttle persistence (Slice 2B)
 
+> Re-specified 2026-10-15 after the design review: engineering decisions E17–E25 (plan §1D), physical design in ADR 0005. The original text said "partial unique index" for one open ticket per user; it is a **deferred exclusion constraint** (ADR 0005 §3.3). The throttle **policy** is out of scope (contract §22, pending review).
+
 ```
-Delivers: tables and Domain/Infrastructure types for auth_sessions
-(contract §3.3 fields, including client_app and client_platform),
-refresh_tokens (token_hash unique, consumed_at), password_reset_tickets
-(code_hash, issued_at, expires_at, issued_by_user_id nullable for System,
-channel, consumed_at, superseded_at; at most one open ticket per user by a
-partial unique index) and auth_throttle_counters (contract §17: key_hash,
-scope, window_start, failure_count, blocked_until).
-Depends on: Slice 2.
-Key acceptance: hashes only (no token or code column); FKs RESTRICT to users;
-partial unique "one open ticket per user"; cleanup of expired throttle rows is
-bounded and tested; down-and-up tests; no pending model changes.
-Verify: PostgreSQL integration tests.
-Must not change: users semantics from Slice 2; the catalog.
+As a: backend developer building the authentication foundation
+
+I want: sessions, refresh tokens, password-reset tickets and throttle
+counters to be stored with database-enforced invariants and safe concurrent
+behaviour
+
+So that: the Slice 4 use cases can revoke sessions, rotate refresh tokens and
+issue/complete resets atomically, and Slice 6 can build the throttle policy on
+a shared store
+
+Acceptance Criteria — schema (ADR 0005 §3):
+- Four additive migrations in order: AddAuthSessions, AddRefreshTokens,
+  AddPasswordResetTickets, AddAuthThrottleCounters. Each migrates down and up
+  on an ephemeral database leaving users and catalog data intact; the whole
+  slice rolls back to MakeUserPartyLinkOnePerParty and forward again.
+- Hashes only: every hash column is bytea of exactly 32 bytes; no column holds
+  a raw token or code (each table's column list is asserted exactly).
+- All foreign keys ON DELETE RESTRICT.
+- auth_sessions: client_app (admin/employee), client_platform (web/mobile),
+  absolute expiry after creation, last refresh not before creation,
+  revocation fields set together, nine revoke reasons; xmin concurrency token.
+- refresh_tokens: unique token_hash; at most one unconsumed token per session,
+  enforced at commit (deferred exclusion constraint).
+- password_reset_tickets: at most one open ticket per user, enforced at commit;
+  consumed_at < expires_at; never both consumed and superseded.
+- auth_throttle_counters: the five contract columns, primary key
+  (scope, key_hash), failure_count >= 1, three scope codes.
+- The EF model has no pending changes (ModelConsistencyTests).
+
+Acceptance Criteria — Domain:
+- AuthSession.Start creates a session with its first refresh token;
+  Rotate consumes the presented unconsumed token, issues the replacement and
+  updates last_refreshed_at, and refuses a revoked or expired session or an
+  unknown/consumed token without changing anything; Revoke keeps the first
+  revocation. All timestamps UTC; hashes exactly 32 bytes.
+- PasswordResetTicket.Issue / Supersede / Consume: consumption only while open
+  and before expiry; supersession only while open.
+
+Acceptance Criteria — persistence and concurrency:
+- Rotation is atomic: of N concurrent rotations of one token exactly one
+  succeeds; the session ends with one consumed token and one replacement; a
+  loser changes nothing. A revocation committed during a rotation makes the
+  rotation fail; no revocation is lost.
+- Revoke-all for a user (optionally excluding one session) touches only
+  active sessions.
+- Issuing a ticket supersedes the open ticket and inserts the new one in one
+  transaction; concurrent issues leave exactly one open ticket; concurrent
+  completions leave exactly one winner; a failed code check writes nothing.
+- A failed SaveChanges inside a caller transaction is never followed by a
+  commit (E25); tests prove the whole operation rolls back.
+- Throttle store: ordered lock-or-create, write back, delete; N concurrent
+  steps on one key lose no update; opposite input order does not deadlock;
+  cleanup deletes at most a batch of expired, unblocked rows, skips locked
+  rows and never deletes rows of a scope without a configured window.
+
+Business Rules:
+- Contract v1.5 §3.1, §3.3, §3.6, §5.6, §9.6, §10A, §14, §17 (Draft);
+  owner decisions R5, R17, R21, R35, R36, R38, R44, R45; engineering
+  decisions E1, E5, E11, E16, E17–E25.
+
+Dependencies:
+- US-BE-007 (Slice 2)
+
+Out of Scope:
+- The throttle policy and state machine, the Layer 3 mitigation, trusted
+  devices (contract §22, OC-8; Slice 6)
+- Hashing, token/code generation, clocks, use cases (Slice 4); audit (Slice 3)
+- Any purge of session, token or ticket history (OC-9)
+
+Must not change in this slice:
+- users semantics and constraints from Slice 2; the authorization catalog;
+  either Flutter app; contract §1–§21.
+
+Affected Layers:
+- Domain / Infrastructure / Database / Tests / ADR
+```
+
+#### TASK-BE-034 — Behaviour spikes (before any schema)
+
+```
+Integration tests, run on PostgreSQL 18.6 before the schema is written:
+(1) xmin as a uint shadow row version: no xmin column in the generated DDL,
+    a concurrent update raises DbUpdateConcurrencyException;
+(2) deferred exclusion constraint: statement order inside a transaction does
+    not matter; two transactions that each insert a conflicting row and
+    commit concurrently — exactly one commits (loser's SQLSTATE recorded);
+(3) nullable concurrency token: generated SQL uses IS NULL; a concurrent
+    loser raises DbUpdateConcurrencyException; how a deferred violation
+    surfaces from SaveChanges; a failed SaveChanges inside a user transaction
+    rolls back only to a savepoint (E25);
+(4) throttle lock-or-create: no lost update under concurrency; fixed lock
+    order with opposite input order does not deadlock.
+If a spike fails, stop and apply the ADR 0005 §6 fallback or ask for review.
+Layer: Tests
+```
+
+#### TASK-BE-035 … 037 — Domain types
+
+```
+035 ClientApp, ClientPlatform, SessionRevokeReason.
+036 AuthSession and RefreshToken (Start, Rotate, Revoke, IsActiveAt).
+037 PasswordResetTicket (Issue, Supersede, Consume, IsOpen, IsValidAt).
+RED first against a compiling skeleton.
+Layer: Domain · Files: Contractra.Domain/Identity/*, Domain tests
+```
+
+#### TASK-BE-038 … 041 — Configurations and migrations
+
+```
+038 AddAuthSessions · 039 AddRefreshTokens (deferred exclusion) ·
+040 AddPasswordResetTickets (deferred exclusion, CHECKs) ·
+041 AddAuthThrottleCounters.
+Scaffolded with dotnet ef (never applied to a shared database), hand-edited for
+CHECKs, partial index and exclusion constraints. Schema and per-migration
+down-and-up tests.
+Layer: Infrastructure / Database / Tests
+```
+
+#### TASK-BE-042 … 044 — Persistence operations
+
+```
+042 Sessions: find by refresh-token hash (loads the presented and the live
+    token only), revoke all active sessions of a user (optionally except one).
+043 Tickets: issue (supersede open + insert, one transaction), find the open
+    ticket of a user.
+044 Throttle store: ordered lock-or-create / write / delete in one short
+    transaction with a lock timeout; batched SKIP LOCKED cleanup. No policy.
+Layer: Infrastructure / Tests
+```
+
+#### TASK-BE-045 … 048 — Concurrency, regression, documentation, verification
+
+```
+045 Concurrency suites (rotation, revocation, ticket issue/complete, throttle,
+    cleanup), each with independent contexts released together.
+046 SchemaConstraintNameTests updated; slice-level down-and-up; existing
+    down-migrating tests still pass through the new Down steps.
+047 Status lines (this file §A, ADR 0005 status and §7 spike results).
+048 Build (0 warnings) and both suites on PostgreSQL 18.6; no pending model
+    changes; no leftover contractra_test_* databases.
+Layer: Tests / Docs
 ```
 
 ### US-BE-009 — Minimal `audit_events` (Slice 3)
@@ -404,7 +536,7 @@ Key acceptance: 401/403/404/409/503 and the bootstrap protections for each
 endpoint; no endpoint returns a reset secret.
 ```
 
-**Total: 8 user stories (US-BE-006 and US-BE-007 done; US-BE-008…013 planned). Tasks: TASK-BE-024…033 done. Tasks for US-BE-008…013 are written when each slice starts.**
+**Total: 8 user stories (US-BE-006 and US-BE-007 done; US-BE-008 in progress; US-BE-009…013 planned). Tasks: TASK-BE-024…033 done; TASK-BE-034…048 written for US-BE-008. Tasks for US-BE-009…013 are written when each slice starts.**
 
 ---
 

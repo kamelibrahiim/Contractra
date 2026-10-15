@@ -2,8 +2,10 @@ namespace Contractra.Domain.Identity;
 
 /// <summary>
 /// Dated assignment of a Role to a User. Owned by User; created only through
-/// User.AssignRole. Ending an assignment records EndedAt; the record is never
-/// deleted, and the same role may be assigned again later as a new record.
+/// User.AssignRole and ended only through User.EndRole (R34), so the user's
+/// security version always moves with it. Ending an assignment records EndedAt;
+/// the record is never deleted, and the same role may be assigned again later
+/// as a new record.
 /// Timestamps are UTC instants, so an ended assignment stops at that moment.
 /// </summary>
 public sealed class UserRole
@@ -43,7 +45,7 @@ public sealed class UserRole
     /// "now" as asOf; this entity never reads the system clock, and endedAt is
     /// a historical fact, not a scheduled future end.
     /// </summary>
-    public void End(DateTimeOffset endedAt, DateTimeOffset asOf)
+    internal void End(DateTimeOffset endedAt, DateTimeOffset asOf)
     {
         EnsureUtc(endedAt, nameof(endedAt));
 

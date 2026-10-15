@@ -6,7 +6,7 @@ namespace Contractra.Domain.Tests.Identity;
 
 public class UserPartyLinkTests
 {
-    private static User NewUser(string login = "Engineer.Ahmed") => new(new LoginIdentifier(login), UserStatus.Active);
+    private static User NewUser(string login = "Engineer.Ahmed") => new(new LoginIdentifier(login), UserStatus.Active, TestUsers.Hash, mustChangePassword: false);
 
     private static Party NewParty(string name = "م. أحمد") => new(name, PartyStatus.Active);
 
@@ -58,11 +58,13 @@ public class UserPartyLinkTests
     }
 
     [Fact]
-    public void TwoUsers_MayLinkToTheSameParty()
+    public void OnePerPartyUniqueness_IsNotVisibleInsideOneUser_SoTheDatabaseEnforcesIt()
     {
-        // Owner decision (2026-09-26): party_id is not unique. For example, a
-        // disabled old account and its replacement both stay linked to the same
-        // engineer party, so earlier custody and expense history stays attached.
+        // Owner decision R30 (2026-10-01): one account per Party. A User aggregate
+        // only sees its own link, so it cannot detect another user's link to the
+        // same party; ux_user_party_links_party_id is the guard
+        // (UserPartyLinkIntegrityTests.TwoUsers_CannotLinkToTheSameParty). The
+        // 2026-09-26 decision this test used to document is reversed.
         var party = NewParty();
 
         var oldAccount = NewUser("Engineer.Ahmed.Old").LinkToParty(party);

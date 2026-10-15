@@ -19,16 +19,17 @@ public class UserIdentitySliceMigrationTests : IClassFixture<PostgresTestDatabas
     private const string SliceTables = "'users', 'user_roles', 'user_permissions', 'user_party_links'";
 
     private const string SliceConstraints =
-        "'pk_users', 'ck_users_status_valid_values', " +
+        "'pk_users', 'ck_users_status_valid_values', 'ck_users_password_hash_not_empty', 'ck_users_security_version_positive', " +
+        "'ck_users_temporary_password_requires_change', 'ck_users_bootstrap_admin_never_must_change', " +
         "'pk_user_roles', 'fk_user_roles_users_user_id', 'fk_user_roles_roles_role_id', 'ck_user_roles_ended_at_after_assigned_at', 'ex_user_roles_no_overlapping_period', " +
         "'pk_user_permissions', 'fk_user_permissions_users_user_id', 'fk_user_permissions_permissions_permission_id', 'ck_user_permissions_ended_at_after_granted_at', 'ex_user_permissions_no_overlapping_period', " +
         "'pk_user_party_links', 'fk_user_party_links_users_user_id', 'fk_user_party_links_parties_party_id'";
 
     private const string SliceIndexes =
-        "'ux_users_login_identifier', 'ux_users_login_identifier_lower', " +
+        "'ux_users_login_identifier', 'ux_users_login_identifier_lower', 'ux_users_is_bootstrap_admin', " +
         "'ux_user_roles_user_id_role_id_active', 'ix_user_roles_role_id', " +
         "'ux_user_permissions_user_id_permission_id_active', 'ix_user_permissions_permission_id', " +
-        "'ux_user_party_links_user_id', 'ix_user_party_links_party_id'";
+        "'ux_user_party_links_user_id', 'ix_user_party_links_party_id', 'ux_user_party_links_party_id'";
 
     private readonly PostgresTestDatabaseFixture _fixture;
 
@@ -98,7 +99,7 @@ public class UserIdentitySliceMigrationTests : IClassFixture<PostgresTestDatabas
         }
 
         // The re-created schema is usable end to end.
-        var user = new User(new LoginIdentifier("After.Reapply"), UserStatus.Active);
+        var user = TestUsers.NewUser("After.Reapply", UserStatus.Active);
         var at = new DateTimeOffset(2026, 9, 26, 8, 0, 0, TimeSpan.Zero);
         user.AssignRole(role, at, at);
         user.LinkToParty(party);

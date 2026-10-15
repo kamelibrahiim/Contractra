@@ -24,7 +24,7 @@ public class UserRolesMigrationTests : IClassFixture<PostgresTestDatabaseFixture
     [Fact]
     public async Task Down_RemovesOnlyUserRoles_KeepsUsersAndEarlierObjects_AndUpReappliesCleanly()
     {
-        var user = new User(new LoginIdentifier("Migration.RoleHolder"), UserStatus.Active);
+        var user = TestUsers.NewUser("Migration.RoleHolder", UserStatus.Active);
         await using (var seedContext = _fixture.CreateDbContext())
         {
             seedContext.Users.Add(user);

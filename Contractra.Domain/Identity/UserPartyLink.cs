@@ -3,9 +3,9 @@ namespace Contractra.Domain.Identity;
 /// <summary>
 /// Links a login account to its commercial Party - an engineer is both a user
 /// and a party. Owned by User; created only through User.LinkToParty. A user
-/// links to at most one party. A party may be linked from more than one user
-/// (owner decision), e.g. a disabled account and its replacement. There is no
-/// unlink operation: no lifecycle is documented for this link.
+/// links to at most one party, and a party to at most one user (owner decision
+/// R30, one account per Party; the database enforces both). There is no unlink
+/// operation: no lifecycle is documented for this link.
 /// </summary>
 public sealed class UserPartyLink
 {

@@ -11,7 +11,7 @@ public class UserTests
     [InlineData(UserStatus.Disabled)]
     public void Constructor_UsesTheExplicitlySuppliedStatus(UserStatus status)
     {
-        var user = new User(NewLoginIdentifier(), status);
+        var user = new User(NewLoginIdentifier(), status, TestUsers.Hash, mustChangePassword: false);
 
         Assert.Equal(status, user.Status);
     }
@@ -21,7 +21,7 @@ public class UserTests
     {
         var loginIdentifier = NewLoginIdentifier();
 
-        var user = new User(loginIdentifier, UserStatus.Active);
+        var user = new User(loginIdentifier, UserStatus.Active, TestUsers.Hash, mustChangePassword: false);
 
         Assert.Equal(loginIdentifier, user.LoginIdentifier);
     }
@@ -29,7 +29,7 @@ public class UserTests
     [Fact]
     public void Constructor_GeneratesAVersion7Guid_WhenNoIdIsProvided()
     {
-        var user = new User(NewLoginIdentifier(), UserStatus.Active);
+        var user = new User(NewLoginIdentifier(), UserStatus.Active, TestUsers.Hash, mustChangePassword: false);
 
         Assert.Equal('7', user.Id.ToString()[14]);
     }
@@ -39,7 +39,7 @@ public class UserTests
     {
         var id = Guid.CreateVersion7();
 
-        var user = new User(id, NewLoginIdentifier(), UserStatus.Active);
+        var user = new User(id, NewLoginIdentifier(), UserStatus.Active, TestUsers.Hash, mustChangePassword: false);
 
         Assert.Equal(id, user.Id);
     }
@@ -55,7 +55,7 @@ public class UserTests
     [Fact]
     public void Disable_ChangesActiveToDisabled()
     {
-        var user = new User(NewLoginIdentifier(), UserStatus.Active);
+        var user = new User(NewLoginIdentifier(), UserStatus.Active, TestUsers.Hash, mustChangePassword: false);
 
         user.Disable();
 
@@ -65,7 +65,7 @@ public class UserTests
     [Fact]
     public void Disable_Throws_WhenAlreadyDisabled()
     {
-        var user = new User(NewLoginIdentifier(), UserStatus.Disabled);
+        var user = new User(NewLoginIdentifier(), UserStatus.Disabled, TestUsers.Hash, mustChangePassword: false);
 
         Assert.Throws<InvalidOperationException>(() => user.Disable());
         Assert.Equal(UserStatus.Disabled, user.Status);
@@ -74,7 +74,7 @@ public class UserTests
     [Fact]
     public void Reactivate_ChangesDisabledToActive()
     {
-        var user = new User(NewLoginIdentifier(), UserStatus.Disabled);
+        var user = new User(NewLoginIdentifier(), UserStatus.Disabled, TestUsers.Hash, mustChangePassword: false);
 
         user.Reactivate();
 
@@ -84,7 +84,7 @@ public class UserTests
     [Fact]
     public void Reactivate_Throws_WhenAlreadyActive()
     {
-        var user = new User(NewLoginIdentifier(), UserStatus.Active);
+        var user = new User(NewLoginIdentifier(), UserStatus.Active, TestUsers.Hash, mustChangePassword: false);
 
         Assert.Throws<InvalidOperationException>(() => user.Reactivate());
         Assert.Equal(UserStatus.Active, user.Status);

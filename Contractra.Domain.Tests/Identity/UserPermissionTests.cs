@@ -9,7 +9,7 @@ public class UserPermissionTests
     // microsecond steps rather than .NET's 100-ns ticks.
     private static readonly DateTimeOffset GrantedAt = new(2026, 9, 1, 8, 0, 0, TimeSpan.Zero);
 
-    private static User NewUser() => new(new LoginIdentifier("Accountant.User01"), UserStatus.Active);
+    private static User NewUser() => new(new LoginIdentifier("Accountant.User01"), UserStatus.Active, TestUsers.Hash, mustChangePassword: false);
 
     private static Permission NewPermission(string code = "Reports.Monthly.View") =>
         new(new PermissionCode(code), PermissionStatus.Active);
@@ -118,7 +118,8 @@ public class UserPermissionTests
     {
         var user = NewUser();
         var permission = NewPermission();
-        GrantNow(user, permission, GrantedAt).Revoke(GrantedAt.AddDays(10), GrantedAt.AddDays(10));
+        GrantNow(user, permission, GrantedAt);
+        user.RevokePermission(permission, GrantedAt.AddDays(10), GrantedAt.AddDays(10));
 
         Assert.Throws<InvalidOperationException>(() =>
             user.GrantPermission(permission, GrantedAt.AddDays(5), GrantedAt.AddDays(12)));
@@ -131,7 +132,7 @@ public class UserPermissionTests
         var user = NewUser();
         var permission = NewPermission(PermissionCode.PayrollView);
         var first = GrantNow(user, permission, GrantedAt);
-        first.Revoke(GrantedAt.AddDays(10), GrantedAt.AddDays(10));
+        user.RevokePermission(permission, GrantedAt.AddDays(10), GrantedAt.AddDays(10));
 
         var second = GrantNow(user, permission, GrantedAt.AddDays(20));
 
@@ -147,7 +148,8 @@ public class UserPermissionTests
         var user = NewUser();
         var permission = NewPermission();
         var revokedAt = GrantedAt.AddDays(10);
-        GrantNow(user, permission, GrantedAt).Revoke(revokedAt, revokedAt);
+        GrantNow(user, permission, GrantedAt);
+        user.RevokePermission(permission, revokedAt, revokedAt);
 
         var second = GrantNow(user, permission, revokedAt);
 
@@ -157,7 +159,9 @@ public class UserPermissionTests
     [Fact]
     public void IsActiveAt_IsFalse_BeforeTheGrantInstant()
     {
-        var grant = GrantNow(NewUser(), NewPermission(), GrantedAt);
+        var user = NewUser();
+        var permission = NewPermission();
+        var grant = GrantNow(user, permission, GrantedAt);
 
         Assert.False(grant.IsActiveAt(GrantedAt.AddMicroseconds(-1)));
         Assert.True(grant.IsActiveAt(GrantedAt));
@@ -166,9 +170,11 @@ public class UserPermissionTests
     [Fact]
     public void IsActiveAt_StopsExactlyAtTheRevocationInstant()
     {
-        var grant = GrantNow(NewUser(), NewPermission(), GrantedAt);
+        var user = NewUser();
+        var permission = NewPermission();
+        var grant = GrantNow(user, permission, GrantedAt);
         var revokedAt = GrantedAt.AddHours(5);
-        grant.Revoke(revokedAt, revokedAt);
+        user.RevokePermission(permission, revokedAt, revokedAt);
 
         Assert.True(grant.IsActiveAt(revokedAt.AddMicroseconds(-1)));
         Assert.False(grant.IsActiveAt(revokedAt));
@@ -177,10 +183,12 @@ public class UserPermissionTests
     [Fact]
     public void Revoke_SetsRevokedAt()
     {
-        var grant = GrantNow(NewUser(), NewPermission(), GrantedAt);
+        var user = NewUser();
+        var permission = NewPermission();
+        var grant = GrantNow(user, permission, GrantedAt);
         var revokedAt = GrantedAt.AddDays(3);
 
-        grant.Revoke(revokedAt, revokedAt.AddMinutes(1));
+        user.RevokePermission(permission, revokedAt, revokedAt.AddMinutes(1));
 
         Assert.Equal(revokedAt, grant.RevokedAt);
     }
@@ -188,40 +196,48 @@ public class UserPermissionTests
     [Fact]
     public void Revoke_Throws_WhenRevokedAtIsAfterAsOf()
     {
-        var grant = GrantNow(NewUser(), NewPermission(), GrantedAt);
+        var user = NewUser();
+        var permission = NewPermission();
+        var grant = GrantNow(user, permission, GrantedAt);
         var asOf = GrantedAt.AddDays(3);
 
-        Assert.Throws<ArgumentException>(() => grant.Revoke(asOf.AddMicroseconds(1), asOf));
+        Assert.Throws<ArgumentException>(() => user.RevokePermission(permission, asOf.AddMicroseconds(1), asOf));
         Assert.Null(grant.RevokedAt);
     }
 
     [Fact]
     public void Revoke_Throws_WhenRevokedAtIsBeforeGrantedAt()
     {
-        var grant = GrantNow(NewUser(), NewPermission(), GrantedAt);
+        var user = NewUser();
+        var permission = NewPermission();
+        var grant = GrantNow(user, permission, GrantedAt);
 
-        Assert.Throws<ArgumentException>(() => grant.Revoke(GrantedAt.AddMicroseconds(-1), GrantedAt));
+        Assert.Throws<ArgumentException>(() => user.RevokePermission(permission, GrantedAt.AddMicroseconds(-1), GrantedAt));
         Assert.Null(grant.RevokedAt);
     }
 
     [Fact]
     public void Revoke_Throws_WhenAlreadyRevoked()
     {
-        var grant = GrantNow(NewUser(), NewPermission(), GrantedAt);
+        var user = NewUser();
+        var permission = NewPermission();
+        var grant = GrantNow(user, permission, GrantedAt);
         var firstRevoke = GrantedAt.AddDays(1);
-        grant.Revoke(firstRevoke, firstRevoke);
+        user.RevokePermission(permission, firstRevoke, firstRevoke);
 
-        Assert.Throws<InvalidOperationException>(() => grant.Revoke(firstRevoke.AddDays(1), firstRevoke.AddDays(1)));
+        Assert.Throws<InvalidOperationException>(() => user.RevokePermission(permission, firstRevoke.AddDays(1), firstRevoke.AddDays(1)));
         Assert.Equal(firstRevoke, grant.RevokedAt);
     }
 
     [Fact]
     public void Revoke_RejectsANonUtcTimestamp()
     {
-        var grant = GrantNow(NewUser(), NewPermission(), GrantedAt);
+        var user = NewUser();
+        var permission = NewPermission();
+        var grant = GrantNow(user, permission, GrantedAt);
         var cairoTime = new DateTimeOffset(2026, 9, 2, 11, 0, 0, TimeSpan.FromHours(3));
 
-        Assert.Throws<ArgumentException>(() => grant.Revoke(cairoTime, cairoTime));
+        Assert.Throws<ArgumentException>(() => user.RevokePermission(permission, cairoTime, cairoTime));
         Assert.Null(grant.RevokedAt);
     }
 

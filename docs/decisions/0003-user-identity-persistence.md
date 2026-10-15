@@ -1,6 +1,6 @@
 # ADR 0003: Physical persistence design for the User identity slice
 
-**Status:** Implemented for all four entities: `User`, `UserRole`, `UserPermission` and `UserPartyLink` (Domain + EF Core configuration + PostgreSQL constraints + tests). There is no Application layer, API, authentication, or audit infrastructure.
+**Status:** Implemented for all four entities: `User`, `UserRole`, `UserPermission` and `UserPartyLink` (Domain + EF Core configuration + PostgreSQL constraints + tests), and — since Backend Sprint 2, Slice 2 — the user's credential and security state (§11). There is still no Application layer, API, authentication flow, or audit infrastructure.
 
 **Scope:** `users`, `user_roles`, `user_permissions` and `user_party_links`, the remaining W1-A identity work (`docs/mvp-entity-scope-matrix-ar.md` §4.1). The backend Sprint 1 plan is in `docs/implementation/backend/sprints/sprint-01.md`.
 
@@ -185,7 +185,7 @@ The rule has two halves, enforced in two places:
 
 Links a login account to its commercial party: an engineer is both a user and a party (`logical-data-model-ar.md` §1.3, §1.4).
 
-> **Reversed (owner decision R30, 2026-10-01): one account per Party.** `user_party_links` will get `UNIQUE(party_id)`. A lost password is handled by reset and a disabled account by reactivate — never by a second account. This is a **planned change** for Backend Sprint 2, Slice 2 (US-BE-007): before the migration, a pre-check must confirm that no existing rows violate it. Until that migration exists, the implemented state below is unchanged. The text below records the 2026-09-26 decision as history.
+> **Reversed (owner decision R30, 2026-10-01): one account per Party — implemented in Backend Sprint 2, Slice 2.** `user_party_links` now has `ux_user_party_links_party_id UNIQUE (party_id)` (migration `MakeUserPartyLinkOnePerParty`, §11.4). A lost password is handled by reset and a disabled account by reactivate — never by a second account. The text below records the 2026-09-26 decision as history; its "Database" line describes the schema before that migration.
 
 **A party may be linked from more than one user (owner decision, 2026-09-26 — reversed by R30, see above).**
 - **Confirmed:** `UNIQUE(user_id)`, so a user links to at most one party.
@@ -205,19 +205,59 @@ Links a login account to its commercial party: an engineer is both a user and a 
 ## 10. Unresolved (not decided here)
 
 1. ~~**`user_party_links.party_id` uniqueness.**~~ **Resolved (owner decision, 2026-09-26): not unique — reversed 2026-10-01 by owner decision R30: unique (one account per Party).** See §9.3 and §11. The earlier open question about warning on several active linked accounts no longer applies.
-2. **Authentication credential format**: password storage and hashing algorithm are decided by owner decision R33 (§11); tokens are defined in the auth contract; lockout is still deferred (§6).
+2. **Authentication credential format**: password storage and hashing algorithm are decided by owner decision R33 (§11); tokens are defined in the auth contract; lockout is not adopted — throttling replaces it (auth contract v1.5 §17, R45).
 3. **Audit behavior** for user lifecycle events (§8).
 4. **Login identifier character set and length**, including whether non-ASCII identifiers are allowed (§3.2 limitation).
 5. **"At least one role per user" (FR-AUTH-003).** Not enforced in the domain or the database: a `User` may have zero roles, following the `Party` precedent (ADR 0001 §4), and the Sprint plan (§H.3) defers the rule to the Application layer. Whether it should ever become a domain invariant is still open.
 6. **Role and user status on assignment.** `AssignRole` does not check whether the role is `Deprecated` or the user is `Disabled`. What those states mean for authorization is undecided (ADR 0002 §8). *(Partly settled for user creation by owner decision R43, 2026-10-01: a Deprecated role cannot be assigned through `CreateUser`; enforced in the Application layer, per the auth contract §9.1.)*
 
-## 11. Planned changes (Backend Sprint 2, Slice 2 — not implemented yet)
+## 11. Credential and security state (Backend Sprint 2, Slice 2 — implemented)
 
-Recorded 2026-10-01; re-specified 2026-10-15 for auth contract v1.5. These are **owner decisions** (and the engineering decisions E1–E16 that make them implementable), not confirmed business rules; the sources are `docs/implementation/backend/features/admin-user-creation-plan.md` §1B and §1D and the auth contract (v1.5). They are implemented by US-BE-007 in `docs/implementation/backend/sprints/sprint-02.md`, whose acceptance criteria are the precise specification; this section is rewritten with the final details when the slice is committed.
+Specified 2026-10-01 for auth contract v1.4 and re-specified 2026-10-15 for v1.5; implemented by US-BE-007 (`docs/implementation/backend/sprints/sprint-02.md`). The basis is **owner decisions** (R1, R5, R19, R20, R26, R27, R30, R33, R34, R44) and the **engineering decisions** E1–E4, E7, E10 and E16 in `docs/implementation/backend/features/admin-user-creation-plan.md` §1D — not confirmed business rules. `logical-data-model-ar.md` §1.7 still applies: the hash is never logged or audited.
 
-- **v1.5 additions (2026-10-15):** `temporary_password_expires_at` (E4); the reserved "no usable password" marker `!` for pending resets and for rows that existed before credentials (E1, E2); `security_version` starts at 1 and increments once per successful security-state change, including those made during creation (E7); the aggregate refuses bootstrap-protected mutations and a trigger forbids changing `is_bootstrap_admin` (E7); a case-insensitive login lookup (E10); additive, data-preserving migrations with Down for development and test only (E16).
+### 11.1 Columns and the "no usable password" marker
 
-- **R30 — one account per Party.** `UNIQUE(party_id)` on `user_party_links`, replacing `ix_user_party_links_party_id`; reverses the 2026-09-26 decision in §9.3. A pre-check query must confirm that no existing rows violate it before the migration is applied.
-- **R33 — password hash.** ASP.NET Core `PasswordHasher<TUser>` behind an Application `IPasswordHasher`; column `users.password_hash text NOT NULL`; on login, `SuccessRehashNeeded` triggers a transparent rehash. The Domain stores only the hash string and never hashes. `logical-data-model-ar.md` §1.7 still applies: the hash is never logged or audited. This replaces the §6 statement that no credential is stored.
-- **R34 — security state goes through the aggregate.** `UserRole.End()` and `UserPermission.Revoke()` become `internal`; `User.EndRole(...)` and `User.RevokePermission(...)` are the only public paths. Every `User` mutator that changes security state increments `security_version` inside the aggregate.
-- The same slice adds `must_change_password`, `security_version` and `is_bootstrap_admin` (with a partial unique index allowing at most one bootstrap admin) to `users`, as defined by the auth contract §3.5, §7 and §11.
+| Column | Rule |
+|---|---|
+| `password_hash text NOT NULL` | `ck_users_password_hash_not_empty` (`<> ''`). The Domain stores the string it is given and never hashes (R33: ASP.NET Core `PasswordHasher<TUser>` behind an Application `IPasswordHasher`, Slice 4). The value **`!`** (`User.UnusablePasswordHash`) means *no usable password*: a reset is pending, or the row existed before credentials. `User.HasUsablePassword` is false for it; the Application never passes it to a hasher (it is not valid base64 either). |
+| `must_change_password boolean NOT NULL` | R1. True only while the account is on a temporary password it has never changed. |
+| `temporary_password_expires_at timestamptz NULL` | E4. `ck_users_temporary_password_requires_change`: set only together with `must_change_password`. |
+| `security_version integer NOT NULL` | E7. `ck_users_security_version_positive` (`>= 1`). Also the EF Core **optimistic-concurrency token**: two writers that loaded the same version cannot both commit, so a change can never be hidden behind a version number another change already used (otherwise a token issued between the two commits would stay valid). |
+| `is_bootstrap_admin boolean NOT NULL DEFAULT false` | R20. `ux_users_is_bootstrap_admin` (unique, `WHERE is_bootstrap_admin`): at most one. `ck_users_bootstrap_admin_never_must_change` (R19). `trg_users_forbid_bootstrap_flag_change` rejects any `UPDATE` that changes the flag (23514, trigger name as constraint name, same shape as ADR 0002 §6). |
+
+### 11.2 Domain rules (`User`)
+
+- Constructor: requires the hash and `must_change_password`; a temporary-password expiry (UTC) is required exactly when `must_change_password` is true. New users start at security version 1. The initial status is still a constructor argument (§4).
+- `User.CreateBootstrapAdmin(...)`: the only path to `IsBootstrapAdmin = true`; requires the active `Admin` role and the `Payroll.View` permission, assigns the role and grants `Payroll.View` directly (C3), never forces a password change.
+- Every successful security-state mutator increments the version by exactly one — `AssignRole`, `EndRole`, `GrantPermission`, `RevokePermission`, `Disable`, `Reactivate`, `ChangePassword`, `BeginPasswordReset`, `ReissueTemporaryPassword` — including assignments made while a user is being created. A rejected call changes nothing. `LinkToParty` is not a security-state change.
+- **R34:** `UserRole.End` and `UserPermission.Revoke` are `internal`; `User.EndRole(role, …)` and `User.RevokePermission(permission, …)` end the open assignment/grant or throw if there is none.
+- `ChangePassword(hash)`: Active users; clears the forced change and the expiry. Used for the user's own change, reset completion and the bootstrap break-glass command (R26).
+- `BeginPasswordReset()`: Active, not bootstrap, not on an initial temporary password; sets the hash to `!` (R44, E1).
+- `ReissueTemporaryPassword(hash, expiresAt, asOf)`: Active, not bootstrap, still on its initial temporary password (E3).
+- On the bootstrap admin the aggregate refuses `Disable`, `Reactivate`, `AssignRole`, `EndRole`, `GrantPermission`, `RevokePermission`, `BeginPasswordReset` and `ReissueTemporaryPassword` (`InvalidOperationException`). This is a second line of defence: the Application use cases return 409 `users.bootstrap_account_protected` before reaching it (auth contract §11).
+
+### 11.3 Migration `AddUserCredentialState` (`20261014233000`)
+
+Additive and data-preserving (E16). Existing rows are **backfilled, not rewritten**: `password_hash = '!'`, `must_change_password = true`, `temporary_password_expires_at = NULL`, `security_version = 1`, `is_bootstrap_admin = false`; status unchanged, so Disabled users stay Disabled. Such accounts cannot sign in until an Admin re-issues an initial password (auth contract §9.8). The backfill defaults of `password_hash`, `must_change_password` and `security_version` are then dropped, so every new row states its credential state; `is_bootstrap_admin` keeps `DEFAULT false`. `Down()` drops the trigger, function, index, constraints and columns.
+
+### 11.4 Migration `MakeUserPartyLinkOnePerParty` (`20261014233100`) — R30
+
+Creates `ux_user_party_links_party_id` (unique) **before** dropping `ix_user_party_links_party_id`, so `party_id` is never unindexed. If any party is linked from more than one user, the index creation fails with 23505 and the migration rolls back without touching any row. **Pre-check** to run on any shared database before applying it — it must return no rows:
+
+```sql
+SELECT party_id, COUNT(*) FROM user_party_links GROUP BY party_id HAVING COUNT(*) > 1;
+```
+
+How to resolve rows it returns is a business decision taken before the migration; the migration never merges or deletes links. `Down()` restores the non-unique index.
+
+### 11.5 Case-insensitive lookup (E10)
+
+`UserLoginLookup.WhereLoginIdentifierMatches` (`Contractra.Infrastructure/Persistence/Queries`) runs `lower(login_identifier) = lower(@input)` with the input always bound as a parameter, so it uses `ux_users_login_identifier_lower` (§3.2). The input is not trimmed; padded input matches nobody. The query is composable (`Include`).
+
+### 11.6 Rollback policy (E16)
+
+Every migration has a down-and-up test on an ephemeral database, and `ModelConsistencyTests` proves the model has no changes missing from a migration. `Down()` is a development and test tool, not a production rollback: on shared or production databases the schema goes forward with a corrective migration. Rolling back `SeedAuthorizationCatalog` while users hold seeded roles fails on the `RESTRICT` foreign keys and loses nothing (`SeedAuthorizationCatalogRollbackTests`; ADR 0004 §5).
+
+### 11.7 Tests
+
+Domain: `UserCredentialTests`, `UserSecurityVersionTests`, `UserBootstrapAdminTests`, and the existing User/UserRole/UserPermission/UserPartyLink tests updated to the new constructor and to `EndRole`/`RevokePermission`. Integration: `UserCredentialStateTests` (round trip, constraints, no backfill defaults, concurrency token), `BootstrapAdminPersistenceTests` (index, CHECK, trigger), `UserCredentialStateMigrationTests` (backfill, down-and-up), `UserPartyLinkOnePerPartyMigrationTests` (failure without change on duplicates, down-and-up), `UserLoginLookupTests`, `SeedAuthorizationCatalogRollbackTests`, `ModelConsistencyTests`, and the existing schema and integrity tests updated for R30 and the new columns.

@@ -9,7 +9,7 @@ public class UserRoleTests
     // microsecond steps rather than .NET's 100-ns ticks.
     private static readonly DateTimeOffset AssignedAt = new(2026, 9, 1, 8, 0, 0, TimeSpan.Zero);
 
-    private static User NewUser() => new(new LoginIdentifier("Engineer.User01"), UserStatus.Active);
+    private static User NewUser() => new(new LoginIdentifier("Engineer.User01"), UserStatus.Active, TestUsers.Hash, mustChangePassword: false);
 
     private static Role NewRole(string code = "Engineer") => new(new RoleCode(code), RoleStatus.Active);
 
@@ -91,7 +91,7 @@ public class UserRoleTests
         var user = NewUser();
         var role = NewRole();
         var first = AssignNow(user, role, AssignedAt);
-        first.End(AssignedAt.AddDays(10), AssignedAt.AddDays(10));
+        user.EndRole(role, AssignedAt.AddDays(10), AssignedAt.AddDays(10));
 
         Assert.Throws<InvalidOperationException>(() =>
             user.AssignRole(role, AssignedAt.AddDays(5), AssignedAt.AddDays(12)));
@@ -104,7 +104,7 @@ public class UserRoleTests
         var user = NewUser();
         var role = NewRole();
         var first = AssignNow(user, role, AssignedAt);
-        first.End(AssignedAt.AddDays(10), AssignedAt.AddDays(10));
+        user.EndRole(role, AssignedAt.AddDays(10), AssignedAt.AddDays(10));
 
         var second = AssignNow(user, role, AssignedAt.AddDays(20));
 
@@ -120,7 +120,8 @@ public class UserRoleTests
         var user = NewUser();
         var role = NewRole();
         var endedAt = AssignedAt.AddDays(10);
-        AssignNow(user, role, AssignedAt).End(endedAt, endedAt);
+        AssignNow(user, role, AssignedAt);
+        user.EndRole(role, endedAt, endedAt);
 
         var second = AssignNow(user, role, endedAt);
 
@@ -132,7 +133,9 @@ public class UserRoleTests
     [Fact]
     public void IsActiveAt_IsFalse_BeforeTheAssignmentInstant()
     {
-        var userRole = AssignNow(NewUser(), NewRole(), AssignedAt);
+        var user = NewUser();
+        var role = NewRole();
+        var userRole = AssignNow(user, role, AssignedAt);
 
         Assert.False(userRole.IsActiveAt(AssignedAt.AddMicroseconds(-1)));
     }
@@ -140,7 +143,9 @@ public class UserRoleTests
     [Fact]
     public void IsActiveAt_IsTrue_FromTheAssignmentInstant_WhileNotEnded()
     {
-        var userRole = AssignNow(NewUser(), NewRole(), AssignedAt);
+        var user = NewUser();
+        var role = NewRole();
+        var userRole = AssignNow(user, role, AssignedAt);
 
         Assert.True(userRole.IsActiveAt(AssignedAt));
         Assert.True(userRole.IsActiveAt(AssignedAt.AddYears(5)));
@@ -149,9 +154,11 @@ public class UserRoleTests
     [Fact]
     public void IsActiveAt_StopsExactlyAtTheEndInstant()
     {
-        var userRole = AssignNow(NewUser(), NewRole(), AssignedAt);
+        var user = NewUser();
+        var role = NewRole();
+        var userRole = AssignNow(user, role, AssignedAt);
         var endedAt = AssignedAt.AddHours(5);
-        userRole.End(endedAt, endedAt);
+        user.EndRole(role, endedAt, endedAt);
 
         Assert.True(userRole.IsActiveAt(endedAt.AddMicroseconds(-1)));
         Assert.False(userRole.IsActiveAt(endedAt));
@@ -160,10 +167,12 @@ public class UserRoleTests
     [Fact]
     public void End_SetsEndedAt()
     {
-        var userRole = AssignNow(NewUser(), NewRole(), AssignedAt);
+        var user = NewUser();
+        var role = NewRole();
+        var userRole = AssignNow(user, role, AssignedAt);
         var endedAt = AssignedAt.AddDays(3);
 
-        userRole.End(endedAt, endedAt.AddMinutes(1));
+        user.EndRole(role, endedAt, endedAt.AddMinutes(1));
 
         Assert.Equal(endedAt, userRole.EndedAt);
     }
@@ -171,40 +180,48 @@ public class UserRoleTests
     [Fact]
     public void End_Throws_WhenEndedAtIsAfterAsOf()
     {
-        var userRole = AssignNow(NewUser(), NewRole(), AssignedAt);
+        var user = NewUser();
+        var role = NewRole();
+        var userRole = AssignNow(user, role, AssignedAt);
         var asOf = AssignedAt.AddDays(3);
 
-        Assert.Throws<ArgumentException>(() => userRole.End(asOf.AddMicroseconds(1), asOf));
+        Assert.Throws<ArgumentException>(() => user.EndRole(role, asOf.AddMicroseconds(1), asOf));
         Assert.Null(userRole.EndedAt);
     }
 
     [Fact]
     public void End_Throws_WhenEndedAtIsBeforeAssignedAt()
     {
-        var userRole = AssignNow(NewUser(), NewRole(), AssignedAt);
+        var user = NewUser();
+        var role = NewRole();
+        var userRole = AssignNow(user, role, AssignedAt);
 
-        Assert.Throws<ArgumentException>(() => userRole.End(AssignedAt.AddMicroseconds(-1), AssignedAt));
+        Assert.Throws<ArgumentException>(() => user.EndRole(role, AssignedAt.AddMicroseconds(-1), AssignedAt));
         Assert.Null(userRole.EndedAt);
     }
 
     [Fact]
     public void End_Throws_WhenAlreadyEnded()
     {
-        var userRole = AssignNow(NewUser(), NewRole(), AssignedAt);
+        var user = NewUser();
+        var role = NewRole();
+        var userRole = AssignNow(user, role, AssignedAt);
         var firstEnd = AssignedAt.AddDays(1);
-        userRole.End(firstEnd, firstEnd);
+        user.EndRole(role, firstEnd, firstEnd);
 
-        Assert.Throws<InvalidOperationException>(() => userRole.End(firstEnd.AddDays(1), firstEnd.AddDays(1)));
+        Assert.Throws<InvalidOperationException>(() => user.EndRole(role, firstEnd.AddDays(1), firstEnd.AddDays(1)));
         Assert.Equal(firstEnd, userRole.EndedAt);
     }
 
     [Fact]
     public void End_RejectsANonUtcTimestamp()
     {
-        var userRole = AssignNow(NewUser(), NewRole(), AssignedAt);
+        var user = NewUser();
+        var role = NewRole();
+        var userRole = AssignNow(user, role, AssignedAt);
         var cairoTime = new DateTimeOffset(2026, 9, 2, 11, 0, 0, TimeSpan.FromHours(3));
 
-        Assert.Throws<ArgumentException>(() => userRole.End(cairoTime, cairoTime));
+        Assert.Throws<ArgumentException>(() => user.EndRole(role, cairoTime, cairoTime));
         Assert.Null(userRole.EndedAt);
     }
 

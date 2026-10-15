@@ -32,7 +32,7 @@ public class UserRoleIntegrityTests : IClassFixture<PostgresTestDatabaseFixture>
         await using (var dbContext = _fixture.CreateDbContext())
         {
             var tracked = await dbContext.Users.Include(u => u.Roles).SingleAsync(u => u.Id == user.Id);
-            tracked.Roles.Single().End(T0.AddDays(3), T0.AddDays(3));
+            tracked.EndRole(role, T0.AddDays(3), T0.AddDays(3));
             await dbContext.SaveChangesAsync();
         }
 
@@ -193,7 +193,7 @@ public class UserRoleIntegrityTests : IClassFixture<PostgresTestDatabaseFixture>
 
     private async Task<(User User, Role Role)> SeedUserAndRoleAsync()
     {
-        var user = new User(new LoginIdentifier($"UserRole.{Guid.NewGuid():N}"), UserStatus.Active);
+        var user = TestUsers.NewUser($"UserRole.{Guid.NewGuid():N}", UserStatus.Active);
         await using (var dbContext = _fixture.CreateDbContext())
         {
             dbContext.Users.Add(user);

@@ -31,6 +31,10 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("fk_role_permissions_permissions_permission_id")]
     [InlineData("pk_users")]
     [InlineData("ck_users_status_valid_values")]
+    [InlineData("ck_users_password_hash_not_empty")]
+    [InlineData("ck_users_security_version_positive")]
+    [InlineData("ck_users_temporary_password_requires_change")]
+    [InlineData("ck_users_bootstrap_admin_never_must_change")]
     [InlineData("pk_user_roles")]
     [InlineData("fk_user_roles_users_user_id")]
     [InlineData("fk_user_roles_roles_role_id")]
@@ -65,12 +69,13 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("ux_role_permissions_role_id_permission_id")]
     [InlineData("ix_role_permissions_permission_id")]
     [InlineData("ux_users_login_identifier_lower")]
+    [InlineData("ux_users_is_bootstrap_admin")]
     [InlineData("ux_user_roles_user_id_role_id_active")]
     [InlineData("ix_user_roles_role_id")]
     [InlineData("ux_user_permissions_user_id_permission_id_active")]
     [InlineData("ix_user_permissions_permission_id")]
     [InlineData("ux_user_party_links_user_id")]
-    [InlineData("ix_user_party_links_party_id")]
+    [InlineData("ux_user_party_links_party_id")]
     public async Task ExpectedIndex_ExistsInPgIndexes(string indexName)
     {
         await using var connection = await OpenConnectionAsync();
@@ -152,7 +157,7 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
     }
 
     [Fact]
-    public async Task UserPartyLinks_AreUniqueOnUserOnly_NotOnParty()
+    public async Task UserPartyLinks_AreUniqueOnUser_AndOnParty()
     {
         await using var connection = await OpenConnectionAsync();
         await using var command = new NpgsqlCommand(
@@ -170,8 +175,10 @@ public class SchemaConstraintNameTests : IClassFixture<PostgresTestDatabaseFixtu
 
         Assert.StartsWith("CREATE UNIQUE INDEX", indexes["ux_user_party_links_user_id"]);
         Assert.Contains("(user_id)", indexes["ux_user_party_links_user_id"]);
-        Assert.StartsWith("CREATE INDEX", indexes["ix_user_party_links_party_id"]);
-        Assert.DoesNotContain(indexes.Values, def => def.StartsWith("CREATE UNIQUE INDEX") && def.Contains("(party_id)"));
+        // Owner decision R30: one account per Party.
+        Assert.StartsWith("CREATE UNIQUE INDEX", indexes["ux_user_party_links_party_id"]);
+        Assert.Contains("(party_id)", indexes["ux_user_party_links_party_id"]);
+        Assert.False(indexes.ContainsKey("ix_user_party_links_party_id"));
     }
 
     [Fact]

@@ -77,15 +77,19 @@ public class UserPartyLinkIntegrityTests : IClassFixture<PostgresTestDatabaseFix
     }
 
     [Fact]
-    public async Task TwoUsers_MayLinkToTheSameParty()
+    public async Task TwoUsers_CannotLinkToTheSameParty()
     {
-        // Owner decision (2026-09-26): party_id is not unique, e.g. a disabled
-        // account and its replacement both stay linked to the same engineer.
+        // Owner decision R30 (2026-10-01) reversed the 2026-09-26 decision: one
+        // account per Party. A lost password is reset and a disabled account is
+        // reactivated, never replaced by a second account.
         var party = await SeedPartyAsync();
         await using var connection = await OpenConnectionAsync();
         await InsertAsync(connection, (await SeedUserAsync()).Id, party.Id);
 
-        Assert.Equal(1, await InsertAsync(connection, (await SeedUserAsync()).Id, party.Id));
+        await PostgresAssert.FailsWithAsync(
+            async () => await InsertAsync(connection, (await SeedUserAsync()).Id, party.Id),
+            "23505",
+            "ux_user_party_links_party_id");
     }
 
     [Fact]
@@ -140,7 +144,7 @@ public class UserPartyLinkIntegrityTests : IClassFixture<PostgresTestDatabaseFix
 
     private async Task<User> SeedUserAsync()
     {
-        var user = new User(new LoginIdentifier($"PartyLink.{Guid.NewGuid():N}"), UserStatus.Active);
+        var user = TestUsers.NewUser($"PartyLink.{Guid.NewGuid():N}", UserStatus.Active);
         await using var dbContext = _fixture.CreateDbContext();
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync();

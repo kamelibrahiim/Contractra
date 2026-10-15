@@ -24,7 +24,7 @@ public class UserPartyLinksMigrationTests : IClassFixture<PostgresTestDatabaseFi
     [Fact]
     public async Task Down_RemovesOnlyUserPartyLinks_KeepsEarlierObjects_AndUpReappliesCleanly()
     {
-        var user = new User(new LoginIdentifier("Migration.LinkedEngineer"), UserStatus.Active);
+        var user = TestUsers.NewUser("Migration.LinkedEngineer", UserStatus.Active);
         await using (var seedContext = _fixture.CreateDbContext())
         {
             seedContext.Users.Add(user);

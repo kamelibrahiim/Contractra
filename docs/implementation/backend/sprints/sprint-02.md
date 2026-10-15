@@ -9,7 +9,7 @@
 > and engineering's (E1–E16), recorded in the plan; this file does not
 > re-derive them.
 
-Status: 🟡 Slice 1 done and committed · Slice 2 next (see §A for the exact state) · Slices 2B–7 planned · baseline: **contract v1.5**, owner decisions R1–R45, engineering decisions E1–E16
+Status: 🟡 Slices 1 and 2 done and committed (see §A) · Slices 2B–7 planned · baseline: **contract v1.5**, owner decisions R1–R45, engineering decisions E1–E16
 Date: 2026-09-26 · updated 2026-09-27 · 2026-10-01 · 2026-10-15
 Scope: `Contractra_System` backend (.NET 10 / ASP.NET Core / EF Core / PostgreSQL, Clean Architecture)
 Source: `docs/implementation/backend/features/admin-user-creation-plan.md`
@@ -38,6 +38,7 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
 
 - **Backend Sprint 1 — closed.** `User`, `UserRole`, `UserPermission`, `UserPartyLink` (Domain, EF configuration, PostgreSQL constraints, tests) and the authorization catalog (`Role`, `Permission`, `RolePermission`, ADR 0002) are implemented. The Sprint 1 file still reads "Draft for review / planning document only" because C1 forbids editing it; its stories are complete as described in ADRs 0002 and 0003. This line is the record of its closure.
 - **Slice 1 (US-BE-006) — done and committed.** `1e10742 feat(auth-slice-1): seed authorization catalog` (migration `SeedAuthorizationCatalog`, `AuthorizationCatalogSeedTests`, ADR 0004) and `bc63d5f test(auth-slice-1): keep catalog fixtures clear of the seeded codes` (the three existing test classes the seed required; without them a clean checkout of `1e10742` fails 12 integration tests). 4 roles, 6 permissions, 7 role grants, `Payroll.View` granted to no role.
+- **Slice 2 (US-BE-007) — done and committed** in `feat(auth-slice-2): user credential and security state` (the commit after `3307bd0`): credential and security-state columns with their constraints, bootstrap index and trigger, backfill of existing rows, aggregate-only security mutations (R34) with security-version semantics (E7), one account per Party (R30), case-insensitive login lookup (E10), seed-rollback safety test. Details: ADR 0003 §11. Tests on PostgreSQL 16.15: Domain 215/215; Integration 206/215 — the same 9 environment-specific RESTRICT tests as below fail; every other test passes, including the 38 new integration test cases (177 → 215) and the 58 new Domain test cases (157 → 215).
 - **Not done:** `Contractra.Application` has no files beyond the template. No authentication, JWT, password hashing, sessions, throttling or `audit_events`. `Contractra.Api/Program.cs` still has the `/weatherforecast` template.
 - **Test baseline (clean clone of `bc63d5f`, PostgreSQL 16.15, 2026-10-15):** Domain 157/157 passed; Integration 168/177 passed. The 9 failures are environment-specific and pre-existing (identical at `78de706`, before the seed): they assert SQLSTATE `23001` for `ON DELETE RESTRICT`, which the project's PostgreSQL 18 (ADR 0001 §14) reports and PostgreSQL 16 reports as `23503`. The owner reported 177/177 on PostgreSQL 18 for the working tree that became `bc63d5f` (not re-run here, because no PostgreSQL 18 was available).
 
@@ -72,7 +73,7 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
 | Slice | Story | Delivers | Depends on | Status |
 |---|---|---|---|---|
 | 1 | US-BE-006 | Authorization catalog seed | Sprint 1 | ✅ Done (`1e10742`, `bc63d5f`) |
-| 2 | US-BE-007 | `users` credential and security state; aggregate-only security mutations; one account per Party; case-insensitive login lookup | Slice 1 | Next (see §A) |
+| 2 | US-BE-007 | `users` credential and security state; aggregate-only security mutations; one account per Party; case-insensitive login lookup | Slice 1 | ✅ Done (see §A) |
 | 2B | US-BE-008 | Persistence for sessions, refresh tokens, reset tickets and the throttle store | Slice 2 | Planned |
 | 3 | US-BE-009 | Minimal `audit_events` (contract §14) | Slice 2 | Planned |
 | 4 | US-BE-010 | Application layer: hashing, temporary passwords, clock, use cases | 2, 2B, 3 | Planned |
@@ -120,7 +121,7 @@ were written before R13 and are superseded by the list above.
 
 TASK-BE-024 (seed migration) and TASK-BE-025 (PostgreSQL integration tests): done, as recorded in ADR 0004.
 
-### US-BE-007 — User credential and security state (Slice 2)
+### US-BE-007 — User credential and security state (Slice 2) — ✅ done
 
 > Planned 2026-10-01 against contract v1.4 (R30, R33, R34); **re-specified 2026-10-15 for contract v1.5** (R44, E2, E3, E4, E7, E10, E16). Schema, Domain and one persistence query only: no Application use cases, no API, no audit table, no seeder, no session tables.
 
@@ -403,7 +404,7 @@ Key acceptance: 401/403/404/409/503 and the bootstrap protections for each
 endpoint; no endpoint returns a reset secret.
 ```
 
-**Total: 8 user stories (US-BE-006 done; US-BE-007 next; US-BE-008…013 planned). Tasks: TASK-BE-024…025 done; TASK-BE-026…033 for US-BE-007. Tasks for US-BE-008…013 are written when each slice starts.**
+**Total: 8 user stories (US-BE-006 and US-BE-007 done; US-BE-008…013 planned). Tasks: TASK-BE-024…033 done. Tasks for US-BE-008…013 are written when each slice starts.**
 
 ---
 

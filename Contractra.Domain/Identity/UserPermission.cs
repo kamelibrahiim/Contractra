@@ -2,7 +2,8 @@ namespace Contractra.Domain.Identity;
 
 /// <summary>
 /// Direct grant of a Permission to a User, on top of any role. Owned by User;
-/// created only through User.GrantPermission. Revoking records RevokedAt; the
+/// created only through User.GrantPermission and revoked only through
+/// User.RevokePermission (R34). Revoking records RevokedAt; the
 /// record is never deleted, and the same permission may be granted again later
 /// as a new record. This is the only sanctioned path for Payroll.View (BR-235),
 /// which Role.GrantPermission rejects. Timestamps are UTC instants.
@@ -44,7 +45,7 @@ public sealed class UserPermission
     /// "now" as asOf; this entity never reads the system clock, and revokedAt is
     /// a historical fact, not a scheduled future revocation.
     /// </summary>
-    public void Revoke(DateTimeOffset revokedAt, DateTimeOffset asOf)
+    internal void Revoke(DateTimeOffset revokedAt, DateTimeOffset asOf)
     {
         EnsureUtc(revokedAt, nameof(revokedAt));
 

@@ -24,7 +24,7 @@ public class UserPermissionsMigrationTests : IClassFixture<PostgresTestDatabaseF
     [Fact]
     public async Task Down_RemovesOnlyUserPermissions_KeepsEarlierObjects_AndUpReappliesCleanly()
     {
-        var user = new User(new LoginIdentifier("Migration.PermissionHolder"), UserStatus.Active);
+        var user = TestUsers.NewUser("Migration.PermissionHolder", UserStatus.Active);
         await using (var seedContext = _fixture.CreateDbContext())
         {
             seedContext.Users.Add(user);

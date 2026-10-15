@@ -105,22 +105,57 @@ namespace Contractra.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool>("IsBootstrapAdmin")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_bootstrap_admin");
+
                     b.Property<string>("LoginIdentifier")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("login_identifier");
+
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("boolean")
+                        .HasColumnName("must_change_password");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("password_hash");
+
+                    b.Property<int>("SecurityVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("security_version");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("status");
 
+                    b.Property<DateTimeOffset?>("TemporaryPasswordExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("temporary_password_expires_at");
+
                     b.HasKey("Id")
                         .HasName("pk_users");
 
+                    b.HasIndex("IsBootstrapAdmin")
+                        .IsUnique()
+                        .HasDatabaseName("ux_users_is_bootstrap_admin")
+                        .HasFilter("is_bootstrap_admin");
+
                     b.ToTable("users", null, t =>
                         {
+                            t.HasCheckConstraint("ck_users_bootstrap_admin_never_must_change", "NOT (is_bootstrap_admin AND must_change_password)");
+
+                            t.HasCheckConstraint("ck_users_password_hash_not_empty", "password_hash <> ''");
+
+                            t.HasCheckConstraint("ck_users_security_version_positive", "security_version >= 1");
+
                             t.HasCheckConstraint("ck_users_status_valid_values", "status IN ('Active', 'Disabled')");
+
+                            t.HasCheckConstraint("ck_users_temporary_password_requires_change", "temporary_password_expires_at IS NULL OR must_change_password");
                         });
                 });
 
@@ -142,7 +177,8 @@ namespace Contractra.Infrastructure.Migrations
                         .HasName("pk_user_party_links");
 
                     b.HasIndex("PartyId")
-                        .HasDatabaseName("ix_user_party_links_party_id");
+                        .IsUnique()
+                        .HasDatabaseName("ux_user_party_links_party_id");
 
                     b.HasIndex("UserId")
                         .IsUnique()

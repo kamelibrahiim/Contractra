@@ -25,15 +25,16 @@ public sealed class UserPartyLinkConfiguration : IEntityTypeConfiguration<UserPa
             .HasColumnName("party_id")
             .IsRequired();
 
-        // UNIQUE(user_id) is documented (logical-data-model-ar.md §1.6). party_id is
-        // deliberately not unique (owner decision): a party may be linked from more
-        // than one account, e.g. a disabled account and its replacement.
+        // UNIQUE(user_id) is documented (logical-data-model-ar.md §1.6).
         builder.HasIndex(l => l.UserId)
             .IsUnique()
             .HasDatabaseName("ux_user_party_links_user_id");
 
+        // One account per Party (owner decision R30, reversing the 2026-09-26
+        // decision that a party could be linked from several users).
         builder.HasIndex(l => l.PartyId)
-            .HasDatabaseName("ix_user_party_links_party_id");
+            .IsUnique()
+            .HasDatabaseName("ux_user_party_links_party_id");
 
         builder.HasOne<Party>()
             .WithMany()

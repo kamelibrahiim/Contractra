@@ -20,11 +20,11 @@ public class UserUniquenessAndLifecycleTests : IClassFixture<PostgresTestDatabas
     public async Task LoginIdentifier_IsUnique_CaseInsensitively(string existing, string duplicate)
     {
         await using var dbContext = _fixture.CreateDbContext();
-        dbContext.Users.Add(new User(new LoginIdentifier(existing), UserStatus.Active));
+        dbContext.Users.Add(TestUsers.NewUser(existing, UserStatus.Active));
         await dbContext.SaveChangesAsync();
 
         await using var dbContext2 = _fixture.CreateDbContext();
-        dbContext2.Users.Add(new User(new LoginIdentifier(duplicate), UserStatus.Active));
+        dbContext2.Users.Add(TestUsers.NewUser(duplicate, UserStatus.Active));
 
         await PostgresAssert.FailsWithAsync(() => dbContext2.SaveChangesAsync(), "23505", "ux_users_login_identifier_lower");
     }
@@ -33,8 +33,8 @@ public class UserUniquenessAndLifecycleTests : IClassFixture<PostgresTestDatabas
     public async Task DistinctLoginIdentifiers_AreAllowed()
     {
         await using var dbContext = _fixture.CreateDbContext();
-        dbContext.Users.Add(new User(new LoginIdentifier("Distinct.UserA"), UserStatus.Active));
-        dbContext.Users.Add(new User(new LoginIdentifier("Distinct.UserB"), UserStatus.Active));
+        dbContext.Users.Add(TestUsers.NewUser("Distinct.UserA", UserStatus.Active));
+        dbContext.Users.Add(TestUsers.NewUser("Distinct.UserB", UserStatus.Active));
 
         await dbContext.SaveChangesAsync(); // must not throw
     }
@@ -43,7 +43,7 @@ public class UserUniquenessAndLifecycleTests : IClassFixture<PostgresTestDatabas
     public async Task CaseOnlyDuplicate_IsRejected_EvenThroughRawSql()
     {
         await using var connection = await OpenConnectionAsync();
-        const string insert = "INSERT INTO users (id, login_identifier, status) VALUES (@id, @login_identifier, 'Active');";
+        const string insert = $"INSERT INTO users ({TestUsers.RawInsertColumns}) VALUES (@id, @login_identifier, 'Active', '{TestUsers.Hash}', false, 1);";
 
         await PostgresAssert.ExecuteAsync(connection, null, insert,
             ("id", Guid.CreateVersion7()), ("login_identifier", "RawSql.Kamel"));
@@ -58,7 +58,7 @@ public class UserUniquenessAndLifecycleTests : IClassFixture<PostgresTestDatabas
     [Fact]
     public async Task StoredLoginIdentifier_KeepsTheSuppliedValueExactly()
     {
-        var user = new User(new LoginIdentifier("Admin.User01"), UserStatus.Disabled);
+        var user = TestUsers.NewUser("Admin.User01", UserStatus.Disabled);
 
         await using (var dbContext = _fixture.CreateDbContext())
         {
@@ -85,7 +85,7 @@ public class UserUniquenessAndLifecycleTests : IClassFixture<PostgresTestDatabas
             () => PostgresAssert.ExecuteAsync(
                 connection,
                 null,
-                "INSERT INTO users (id, login_identifier, status) VALUES (@id, @login_identifier, @status);",
+                $"INSERT INTO users ({TestUsers.RawInsertColumns}) VALUES (@id, @login_identifier, @status, '{TestUsers.Hash}', false, 1);",
                 ("id", Guid.CreateVersion7()),
                 ("login_identifier", $"StatusCheck.{Guid.NewGuid():N}"),
                 ("status", status)),
@@ -103,7 +103,7 @@ public class UserUniquenessAndLifecycleTests : IClassFixture<PostgresTestDatabas
         var inserted = await PostgresAssert.ExecuteAsync(
             connection,
             null,
-            "INSERT INTO users (id, login_identifier, status) VALUES (@id, @login_identifier, @status);",
+            $"INSERT INTO users ({TestUsers.RawInsertColumns}) VALUES (@id, @login_identifier, @status, '{TestUsers.Hash}', false, 1);",
             ("id", Guid.CreateVersion7()),
             ("login_identifier", $"StatusCheck.{Guid.NewGuid():N}"),
             ("status", status));

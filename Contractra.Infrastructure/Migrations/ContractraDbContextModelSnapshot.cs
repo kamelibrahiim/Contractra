@@ -22,6 +22,166 @@ namespace Contractra.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Contractra.Domain.Audit.AuditEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("action_type");
+
+                    b.Property<string>("ActorRoleCode")
+                        .HasColumnType("text")
+                        .HasColumnName("actor_role_code");
+
+                    b.Property<string>("ActorType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("actor_type");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_by_user_id");
+
+                    b.Property<string>("BusinessDocumentNumber")
+                        .HasColumnType("text")
+                        .HasColumnName("business_document_number");
+
+                    b.Property<string>("CausationId")
+                        .HasColumnType("text")
+                        .HasColumnName("causation_id");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasColumnType("text")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<Guid?>("ManagedCompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("managed_company_id");
+
+                    b.Property<string>("NewStatus")
+                        .HasColumnType("text")
+                        .HasColumnName("new_status");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at_utc");
+
+                    b.Property<Guid?>("OperationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("operation_id");
+
+                    b.Property<string>("PreviousStatus")
+                        .HasColumnType("text")
+                        .HasColumnName("previous_status");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.Property<Guid?>("SiteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("site_id");
+
+                    b.Property<string>("Snapshot")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("snapshot");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_events");
+
+                    b.HasIndex("ActorUserId")
+                        .HasDatabaseName("ix_audit_events_actor_user_id");
+
+                    b.HasIndex("ApprovedByUserId")
+                        .HasDatabaseName("ix_audit_events_approved_by_user_id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_audit_events_idempotency_key")
+                        .HasFilter("idempotency_key IS NOT NULL");
+
+                    b.HasIndex("EntityType", "EntityId", "OccurredAtUtc")
+                        .HasDatabaseName("ix_audit_events_entity");
+
+                    b.ToTable("audit_events", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_audit_events_action_type_valid_values", "action_type IN ('UserCreated', 'UserDisabled', 'UserReactivated', 'RoleAssigned', 'RoleEnded', 'PermissionGranted', 'PermissionRevoked', 'PayrollViewGranted', 'PayrollViewRevoked', 'PasswordChanged', 'PasswordResetIssued', 'PasswordResetCompleted', 'InitialPasswordReissued', 'BootstrapPasswordReset', 'AccessDenied')");
+
+                            t.HasCheckConstraint("ck_audit_events_actor_consistency", "(actor_type = 'User' AND actor_user_id IS NOT NULL) OR (actor_type = 'System' AND actor_user_id IS NULL AND actor_role_code IS NULL)");
+
+                            t.HasCheckConstraint("ck_audit_events_actor_role_code_valid", "actor_role_code IS NULL OR actor_role_code ~ '^\\S(.*\\S)?$'");
+
+                            t.HasCheckConstraint("ck_audit_events_actor_type_valid_values", "actor_type IN ('User', 'System')");
+
+                            t.HasCheckConstraint("ck_audit_events_approved_by_not_yet_defined", "approved_by_user_id IS NULL");
+
+                            t.HasCheckConstraint("ck_audit_events_business_document_number_valid", "business_document_number IS NULL OR (char_length(business_document_number) <= 128 AND business_document_number ~ '^\\S(.*\\S)?$')");
+
+                            t.HasCheckConstraint("ck_audit_events_causation_id_format", "causation_id IS NULL OR causation_id ~ '^[A-Za-z0-9._-]{1,64}$'");
+
+                            t.HasCheckConstraint("ck_audit_events_context_not_yet_defined", "managed_company_id IS NULL AND operation_id IS NULL AND site_id IS NULL");
+
+                            t.HasCheckConstraint("ck_audit_events_correlation_id_format", "correlation_id ~ '^[A-Za-z0-9._-]{1,64}$'");
+
+                            t.HasCheckConstraint("ck_audit_events_entity_type_valid", "entity_type ~ '^[A-Z][A-Za-z0-9]{0,63}$'");
+
+                            t.HasCheckConstraint("ck_audit_events_idempotency_key_format", "idempotency_key IS NULL OR idempotency_key ~ '^[!-~]+$'");
+
+                            t.HasCheckConstraint("ck_audit_events_idempotency_key_length", "idempotency_key IS NULL OR char_length(idempotency_key) BETWEEN 1 AND 256");
+
+                            t.HasCheckConstraint("ck_audit_events_idempotency_key_prefix", "idempotency_key IS NULL OR idempotency_key LIKE action_type || ':%'");
+
+                            t.HasCheckConstraint("ck_audit_events_idempotency_key_required_for_source", "source NOT IN ('OfflineSync', 'Import', 'SystemJob') OR idempotency_key IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_audit_events_reason_valid", "reason IS NULL OR (char_length(reason) <= 1000 AND reason ~ '^\\S(.*\\S)?$')");
+
+                            t.HasCheckConstraint("ck_audit_events_schema_version_positive", "schema_version >= 1");
+
+                            t.HasCheckConstraint("ck_audit_events_snapshot_valid", "snapshot IS NULL OR (jsonb_typeof(snapshot) = 'object' AND octet_length(snapshot::text) <= 8192)");
+
+                            t.HasCheckConstraint("ck_audit_events_source_valid_values", "source IN ('Web', 'EmployeeApp', 'OfflineSync', 'Import', 'SystemJob')");
+
+                            t.HasCheckConstraint("ck_audit_events_status_changed", "previous_status IS NULL OR previous_status <> new_status");
+
+                            t.HasCheckConstraint("ck_audit_events_status_pair", "(previous_status IS NULL) = (new_status IS NULL)");
+
+                            t.HasCheckConstraint("ck_audit_events_status_valid", "previous_status IS NULL OR (previous_status ~ '^\\S(.*\\S)?$' AND new_status ~ '^\\S(.*\\S)?$')");
+
+                            t.HasCheckConstraint("ck_audit_events_system_actor_source", "actor_type <> 'System' OR source = 'SystemJob'");
+                        });
+                });
+
             modelBuilder.Entity("Contractra.Domain.Identity.AuthSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -621,6 +781,21 @@ namespace Contractra.Infrastructure.Migrations
 
                             t.HasCheckConstraint("ck_auth_throttle_counters_scope_valid_values", "scope IN ('login_pair', 'identifier', 'change_password_user')");
                         });
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Audit.AuditEvent", b =>
+                {
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_audit_events_users_actor_user_id");
+
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_audit_events_users_approved_by_user_id");
                 });
 
             modelBuilder.Entity("Contractra.Domain.Identity.AuthSession", b =>

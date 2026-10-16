@@ -9,8 +9,8 @@
 > and engineering's (E1–E16), recorded in the plan; this file does not
 > re-derive them.
 
-Status: 🟡 Slices 1, 2 and 2B done and committed (see §A) · Slices 3–7 planned · baseline: **contract v1.5** (Draft; §22 proposals pending review), owner decisions R1–R45, engineering decisions E1–E25
-Date: 2026-09-26 · updated 2026-09-27 · 2026-10-01 · 2026-10-15
+Status: 🟡 Slices 1, 2 and 2B done and committed (see §A) · Slices 3–7 planned (Slice 3 design proposed in repository ADR 0006, pending owner review) · baseline: **contract v1.5** (Draft; §22 proposals pending review), owner decisions R1–R47, engineering decisions E1–E25 (E26–E44 proposed in ADR 0006)
+Date: 2026-09-26 · updated 2026-09-27 · 2026-10-01 · 2026-10-15 · 2026-10-16
 Scope: `Contractra_System` backend (.NET 10 / ASP.NET Core / EF Core / PostgreSQL, Clean Architecture)
 Source: `docs/implementation/backend/features/admin-user-creation-plan.md`
 
@@ -22,10 +22,11 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
 
 1. `docs/decisions/0003-user-identity-persistence.md` — the User/UserRole/UserPermission/UserPartyLink persistence this sprint builds on.
 2. `docs/decisions/0002-authorization-catalog-persistence.md` §6 — the `Payroll.View` role-grant guard triggers the seed must not bypass.
-3. `docs/implementation/backend/features/admin-user-creation-plan.md` — the plan. **§1D (R44–R45, E1–E16) and §1B (R1–R43) are binding and override §1 where they differ**; §1 (C1–C6) is binding except C4 (superseded) and C2 (amended); §4 Q6 is deferred and Q5 is a non-goal (R45); §5 Slices 2, 4, 6 and 7 are superseded.
+3. `docs/implementation/backend/features/admin-user-creation-plan.md` — the plan. **§1D (R44–R45, E1–E16) and §1B (R1–R43) are binding and override §1 where they differ**; §1 (C1–C6) is binding except C4 (superseded) and C2 (amended); §4 Q6 is deferred and Q5 is a non-goal (R45); §5 Slices 2, 3, 4, 6 and 7 are superseded (Slice 3 since 2026-10-16, by US-BE-009 below and repository ADR 0006).
 4. `docs/implementation/backend/features/auth-and-users-api-contract.md` (**v1.5**) — source of truth for the auth and user-management API. Its §19 lists the owner confirmations still open; none blocks Slice 2.
 5. `docs/decisions/0004-authorization-catalog-seed.md` — the Slice 1 seed.
 6. `docs/decisions/0005-auth-session-and-throttle-persistence.md` — the Slice 2B persistence design (E17–E25).
+7. `docs/decisions/0006-audit-events-persistence.md` — **repository ADR 0006** (not business ADR-006): the Slice 3 audit design (proposed E26–E44, pending owner review), owner decisions R46–R47, the Audit Completion slice and Gates A and B.
 
 **Two files are called `sprint-01.md`.** `docs/implementation/sprints/sprint-01.md` is the **frontend** Sprint 1 (Admin and Employee apps). `docs/implementation/backend/sprints/sprint-01.md` is the **backend** Sprint 1. This file only ever refers to the backend one as "Sprint 1".
 
@@ -63,6 +64,8 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
 | R35–R43 | 30-second refresh reuse grace; change-password consumes and reissues the refresh token; "never refresh" only for login/refresh/logout; `client_platform` stored on the session; server check order; `actor_type` + nullable `actor_user_id`, CSRF rejection Serilog-only; bootstrap seeder audits `RoleAssigned(Admin)` and `PayrollViewGranted`; protection checks the target; dummy hash on login; duplicate/deprecated role and disabled-reset rules | Slices 2B–7 |
 | **R44** | (2026-10-15) A password reset must never reveal a usable credential to the Admin | Slices 2, 2B, 4, 5, 6, 7 (contract §5.6, §9.6, §10A) |
 | **R45** | (2026-10-15) Brute-force protection required, without hard lockout | Slices 2B, 6 (contract §17) |
+| **R46** | (2026-10-16; owner decision recorded in repository ADR 0006 §3 and README §1, not in the plan) Permanent audit vocabulary: Employee application source **`EmployeeApp`**; user-disable event **`UserDisabled`**; role-ending event **`RoleEnded`** (repository ADR 0006 §3) | Slice 3 catalogs; contract §22 I1, I2; upstream corrections ADR 0006 §10 |
+| **R47** | (2026-10-16; owner decision recorded in repository ADR 0006 §3 and README §1, not in the plan) No production launch with real business or user data until the Audit Completion slice is implemented, tested, reviewed and approved; development and automated testing continue (repository ADR 0006 §3, §8.3) | Gate B (§C below) |
 | **E1–E16** | (2026-10-15) Engineering decisions, plan §1D: reset issue/complete flow; generic failure for unusable/expired passwords; initial-password re-issue and `credentialState`; temporary-password rules and expiry; five-layer throttling; app audience; security-version semantics and bootstrap defence in depth; Party validity; JWT validation and key ring; identifier matching; change-password token consumption; audit fields and fail-closed rules; input limits; operational security; idle-timeout bounds; migration and rollback policy | All slices from 2 |
 | Contract | `auth-and-users-api-contract.md` (v1.5) is the source of truth for the auth and user-management API (backend, Admin and Employee apps) | All auth/user slices |
 | C5 | Audit event names are `UserDisabled` / `RoleEnded` (Logical Data Model §1.8), not `UserDeactivated` / `RoleRevoked` — an owner decision (see plan §1D on its rationale) | Slice 3+ |
@@ -78,11 +81,17 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
 | 1 | US-BE-006 | Authorization catalog seed | Sprint 1 | ✅ Done (`1e10742`, `bc63d5f`) |
 | 2 | US-BE-007 | `users` credential and security state; aggregate-only security mutations; one account per Party; case-insensitive login lookup | Slice 1 | ✅ Done (see §A) |
 | 2B | US-BE-008 | Persistence for sessions, refresh tokens, reset tickets and the throttle store | Slice 2 | ✅ Done (see §A; ADR 0005) |
-| 3 | US-BE-009 | Minimal `audit_events` (contract §14) | Slice 2 | Planned |
+| 3 | US-BE-009 | `audit_events` with explicit event context in its snapshot field (contract §14, §22 I; repository ADR 0006) — the explicit business-event level only | Slice 2 | Planned (design proposed, pending owner review) |
 | 4 | US-BE-010 | Application layer: hashing, temporary passwords, clock, use cases | 2, 2B, 3 | Planned |
 | 5 | US-BE-011 | Bootstrap seeder; operator commands | 4 | Planned |
 | 6 | US-BE-012 | Auth endpoints, JWT, app audience, throttling, HTTP pipeline | 4 (5 for end-to-end tests) | Planned |
 | 7 | US-BE-013 | Users endpoints | 6 | Planned |
+| AC | — (story written when scheduled) | **Audit Completion** (mandatory): generic change capture into `audit_event_changes` (genuine field changes only), masking before writing, `audit_event_links`, further snapshots where required, idempotency construction, retention and archival per ح-190 with `audit_retention_policies` (repository ADR 0006 §8.2) | 3 | Not scheduled in Sprint 2; **Gate A and Gate B depend on it** |
+
+**Release gates (repository ADR 0006 §8.3).** Slice 3 alone does not satisfy the generic data-change level of ح-185 / FR-AUD-003.
+- **Gate A — financial-module gate:** no migration introducing a financial table or financial module may be merged until Audit Completion is implemented, tested, reviewed and approved (ح-185, FR-AUD-003, FR-AUD-005, IMM-02).
+- **Gate B — production-data gate (owner decision R47):** no production deployment may manage real business or user data until Audit Completion is complete and its acceptance criteria have passed — including the ح-190 retention criterion (ADR 0006 §8.2).
+- Neither gate stops Slices 4–7, other development or automated testing.
 
 Why 2B exists (audit finding F5): disabling, resetting and changing a password must revoke sessions (contract §3.3), and the use cases that do it (Slice 4) come before the endpoints (Slice 6). The session store therefore has to exist before Slice 4, not be created by Slice 6.
 
@@ -466,20 +475,71 @@ Layer: Infrastructure / Tests
 Layer: Tests / Docs
 ```
 
-### US-BE-009 — Minimal `audit_events` (Slice 3)
+### US-BE-009 — `audit_events` with explicit event context (Slice 3)
+
+> *Re-specified 2026-10-16* after the read-only Slice 3 review: design in **repository ADR 0006** (proposed E26–E44, pending owner review; not business ADR-006), owner decisions R46–R47, contract wording proposed in contract §22 I (pending review). The earlier text of this story, kept below for history, said "exactly as contract §14.1" and "UPDATE and DELETE"; it is superseded by the text after it.
+>
+> *Corrected 2026-10-16 (documentation correction pass, ADR 0006 revision note):* event context moved from `audit_event_changes` rows to the logical model's snapshot field, so Slice 3 creates only `audit_events`; idempotency keys required on `SystemJob`, `OfflineSync` and `Import` events; reason required for operator-command events (seeder: fixed reason), not for every `System` event; the self-check covers `TRIGGER`; retention (ح-190) added to Audit Completion.
+>
+> *Superseded text (2026-10-15):* "audit_events exactly as contract §14.1 (every logical-model §15.4 field plus actor_type), CHECKs linking actor_type/actor_user_id/actor_role_code, an append-only trigger rejecting UPDATE and DELETE, and the Application IAuditWriter with its Infrastructure implementation writing in the caller's transaction."
 
 ```
-Delivers: audit_events exactly as contract §14.1 (every logical-model §15.4
-field plus actor_type), CHECKs linking actor_type/actor_user_id/
-actor_role_code, an append-only trigger rejecting UPDATE and DELETE, and the
-Application IAuditWriter with its Infrastructure implementation writing in
-the caller's transaction.
+Delivers (repository ADR 0006 §4, §5):
+- Domain: AuditEvent (immutable, UUIDv7) with ForUser / ForSystem factories,
+  AuditActorType, AuditSource, the action-type catalog, the snapshot key
+  lists per action type (ADR 0006 §5.2).
+- Application: IAuditWriter (stages only, no EF Core reference).
+- Infrastructure: scoped writer adding to the caller's ContractraDbContext
+  (never SaveChanges), configuration, one additive migration after
+  AddAuthThrottleCounters creating audit_events, the privilege self-check
+  query.
+- Catalogs: the 15 contract §14 action codes, with UserDisabled and RoleEnded
+  (R46); sources Web, EmployeeApp (R46), OfflineSync, Import, SystemJob.
+- Not columns: client_event_id, ip_address, user_agent, payload.
+- Not tables in this slice: audit_event_changes, audit_event_links,
+  audit_retention_policies (Audit Completion).
 Depends on: Slice 2.
-Key acceptance: a forced audit-write failure rolls back the paired change
-(BR-186); UPDATE/DELETE rejected by the database; System events have no user,
-no role and source SystemJob; correlation_id NOT NULL.
-Verify: PostgreSQL integration tests.
-Must not change: Slice 2 schema.
+Key acceptance:
+- A forced audit-write failure rolls back the paired change, including a bulk
+  ExecuteUpdate run inside the caller's explicit transaction (ح-186).
+- UPDATE, DELETE, a zero-row UPDATE, TRUNCATE, TRUNCATE ... CASCADE and
+  INSERT ... ON CONFLICT DO UPDATE are rejected on audit_events (SQLSTATE
+  42501, trigger name); INSERT succeeds.
+- System events have no user, no role and source SystemJob; operator-command
+  events carry the operator's reason and seeder events a fixed reason;
+  correlation_id NOT NULL and in the contract §13 format.
+- SystemJob, OfflineSync and Import events cannot be written without an
+  idempotency_key (database CHECK); the key is always
+  <action_type>:<operation key>[:<sub-identifier>] and starts with the row's
+  action type (database CHECK); seeder and command keys follow ADR 0006 §5.3.
+- Every CHECK, the RESTRICT foreign keys (23001 or 23503) and the global
+  partial unique index on idempotency_key are tested by name; the catalog
+  CHECKs equal the C# catalogs.
+- Snapshots record the affected assignment, grant or ticket (ids, codes and
+  timestamps) at the time of the event, only on the listed action types and
+  only with their keys; no password, hash, reset code, token, token hash or
+  login identifier can be written.
+- The self-check query reports UPDATE, DELETE, TRUNCATE and TRIGGER
+  privileges, ownership and superuser.
+- Down refuses to drop a non-empty audit_events; per-migration and whole-chain
+  down-and-up tests pass; existing down-migrating tests still pass;
+  ModelConsistencyTests passes.
+Verify: Domain tests and PostgreSQL 18 integration tests (repository ADR 0006 §9).
+Must not change: Slice 2 / 2B schema; contract §1–§21 (proposals stay in §22).
+Not in this slice (Audit Completion, ADR 0006 §8.2): generic change capture
+into audit_event_changes, masking before writing, audit_event_links, further
+snapshots, replay key construction for sync and import, retention and
+archival (ح-190).
+Slice 3 alone does NOT satisfy the generic level of ح-185 / FR-AUD-003;
+Gates A and B (§C) apply.
+Obligations handed on (ADR 0006 §12): Slice 4 - unit of work with a single
+save-and-commit exit, transaction opened before the first write,
+RevokeAllActiveAsync and IssuePasswordResetTicketAsync refuse to run without
+an open transaction; Slice 5 - privilege self-check at startup before the
+seeder (fails closed in Production), correlation id per run, reasons and
+idempotency keys on seeder and command events; Slice 6 -
+correlation id at the HTTP boundary, AccessDenied in its own scope and its
+target.
 ```
 
 ### US-BE-010 — Application layer and use cases (Slice 4)

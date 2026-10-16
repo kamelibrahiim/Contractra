@@ -2,12 +2,12 @@
 
 > Planning document. It records decisions and their history; it is not itself an implementation record. What is actually built is tracked in `docs/implementation/backend/sprints/sprint-02.md` §A and in Git.
 
-Status: 🟡 Re-baselined on contract **v1.5** — §1D (R44–R45, E1–E16, 2026-10-15) and §1B (R1–R43) supersede parts of §1; §5 Slices 2, 4, 6 and 7 are superseded by the contract and `sprint-02.md`
+Status: 🟡 Re-baselined on contract **v1.5** — §1D (R44–R45, E1–E16, 2026-10-15) and §1B (R1–R43) supersede parts of §1; §5 Slices 2, 3, 4, 6 and 7 are superseded by the contract and `sprint-02.md` (Slice 3 also by repository ADR 0006)
 Date: 2026-09-26 (revised after owner review) · 2026-09-27 (reconciliation decisions R1–R25) · 2026-10-01 (R26–R43, re-baseline) · 2026-10-15 (R44–R45, E1–E16, audit resolution)
 Source task: `claude-code-prompt-01-backend.md`
 Scope: `Contractra.Domain`, `Contractra.Application`, `Contractra.Infrastructure`, `Contractra.Api`, both test projects, `docs/`. `apps/` is out of scope.
 
-> ⚠️ **Read §1D, then §1B.** The owner's decisions after the cross-project reconciliation and the contract audits are recorded in §1B as R1–R43; the owner instructions of 2026-10-15 and the engineering decisions that resolve the documentation-consistency audit are in §1D. Where §1D or §1B and anything below them disagree, **the later section wins**; for the auth and user-management API, `auth-and-users-api-contract.md` (**v1.5**) is the source of truth. In particular: **C4 is superseded by R1** (forced password change is back), **C2 is amended by R13** (two app-access permissions added), and **the reset part of R3 is superseded by R44** (a reset no longer hands a temporary password to the Admin). §5 Slices 2, 4, 6 and 7 describe the pre-reconciliation design and are marked superseded; they are kept as written so the history of the decision is visible.
+> ⚠️ **Read §1D, then §1B.** The owner's decisions after the cross-project reconciliation and the contract audits are recorded in §1B as R1–R43; the owner instructions of 2026-10-15 and the engineering decisions that resolve the documentation-consistency audit are in §1D. Where §1D or §1B and anything below them disagree, **the later section wins**; for the auth and user-management API, `auth-and-users-api-contract.md` (**v1.5**) is the source of truth. In particular: **C4 is superseded by R1** (forced password change is back), **C2 is amended by R13** (two app-access permissions added), and **the reset part of R3 is superseded by R44** (a reset no longer hands a temporary password to the Admin). §5 Slices 2, 3, 4, 6 and 7 describe the pre-reconciliation design and are marked superseded (Slice 3 on 2026-10-16); they are kept as written so the history of the decision is visible.
 >
 > *Correction (2026-10-15):* the first line of this document used to say no code or migration had been made "while producing this document". That was true of the 2026-09-26 draft only. Slice 1 is implemented and committed (`1e10742`, fixtures `bc63d5f`).
 
@@ -66,6 +66,8 @@ The bootstrap admin (D2) receives `Payroll.View` as a **direct `UserPermission` 
 
 (`PasswordChanged`/`PasswordReset` are not in §1.8's list, which does not cover password events at all — they remain as named in the source task's D6, since no document defines them differently or forbids them; only the two names §1.8 *does* define, `UserDeactivated→UserDisabled` and `RoleRevoked→RoleEnded`, are corrected.)
 
+> ⚠️ **Historical list — not the current audit catalog (note added 2026-10-16).** `PasswordReset` above is withdrawn: contract v1.5 replaced it with `PasswordResetIssued` and `PasswordResetCompleted` (R44, E1), and the current catalog of 15 codes is in contract §14 and repository ADR 0006 §5.3 (proposed, pending owner review). The names `UserDisabled` and `RoleEnded` are confirmed by owner decision R46 (2026-10-16, ADR 0006 §3). C5's text is kept as recorded.
+
 ### C6 — This document itself
 This plan is updated in place (not re-created) to record C1–C6 as confirmed, and to separate confirmed decisions (§1), proposed design not yet acted on (§2), from genuinely unresolved/open items (§4), per the owner's explicit instruction. No code, migration, seed, or `apps/` change is made as part of this update.
 
@@ -96,7 +98,7 @@ This plan is updated in place (not re-created) to record C1–C6 as confirmed, a
 
 | # | Decision |
 |---|---|
-| **R15** | **Password reset requires `Users.Manage`.** No separate reset permission. `Users.Manage` covers create, disable, reactivate and reset. Reset writes the `PasswordReset` audit event. |
+| **R15** | **Password reset requires `Users.Manage`.** No separate reset permission. `Users.Manage` covers create, disable, reactivate and reset. Reset writes the `PasswordReset` audit event. *(Note added 2026-10-16: the permission rule stands; the event name does not. Since contract v1.5 (R44, E1) a reset writes `PasswordResetIssued` and its completion `PasswordResetCompleted`; see contract §14 and repository ADR 0006 §5.3.)* |
 | **R16** | **New-password rules:** minimum **8 characters**, and the new password **must differ from the user's current password**. The old "must differ from the default" rule is removed completely. There is **no shared default password** and **no default-password configuration setting**; `12345678` must not appear anywhere in the production authentication contract or implementation. |
 | **R17** | **Idle timeout adopted (NFR-SEC-007):** Engineer **8 hours**; Accountant, Admin and OfficeStaff **60 minutes**. The 7-day refresh lifetime is the **maximum** session lifetime and does **not** replace the idle timeout; a session expires when its applicable idle timeout is exceeded. Full session policy: access token 30 minutes · refresh/session maximum 7 days · rotation on · idle timeout per role. |
 | **R18** | **Mobile refresh token:** access token in memory; refresh token returned in the authentication response body and stored with secure device storage (`flutter_secure_storage`); never logged. **Web** keeps R6 (access token in memory, refresh token in an HttpOnly + Secure + SameSite cookie). The cookie strategy is **not** applied to mobile. On both, the backend stores only a cryptographic hash of the refresh token, never the token. |
@@ -299,6 +301,8 @@ Slice 1 from the task file's suggested order is removed (already done, see §0).
 
 ### Slice 3 — Minimal `audit_events` (D6, corrected naming per C5)
 
+> ⛔ **SUPERSEDED (2026-10-16) by US-BE-009 in `sprint-02.md` and repository ADR 0006 (`docs/decisions/0006-audit-events-persistence.md`, proposed, pending owner review; not business ADR-006).** Withdrawn below: the `payload` field (field values go to `audit_event_changes`), the `PasswordReset` event (replaced in contract v1.5 by `PasswordResetIssued` / `PasswordResetCompleted`), the ADR number `0005-minimal-audit-events.md` (0005 is the Slice 2B ADR; the audit ADR is repository ADR 0006), and protection against `UPDATE`/`DELETE` only (`TRUNCATE` is also rejected). The event names `UserDisabled` and `RoleEnded` stand, confirmed by owner decision R46 (2026-10-16). Kept as history only; do not implement it.
+
 - **Files:**
   - `Contractra.Domain/Audit/AuditEvent.cs` (or under a new `Contractra.Domain.Audit` namespace) — append-only, matching `logical-data-model-ar.md` §15's documented shape as closely as this minimal slice needs (event type, actor, entity type/id, timestamp, payload — exact field list drawn from §15.4 at implementation time).
   - `Contractra.Application/Audit/IAuditWriter.cs` (interface, e.g. `WriteAsync(AuditEvent)` called inside the same `DbContext`/transaction as the mutation).
@@ -320,6 +324,8 @@ Slice 1 from the task file's suggested order is removed (already done, see §0).
 - **Tests:** Application-layer unit tests for every guard (duplicate login identifier, zero roles rejected, illegal disable/reactivate, weak/default password rejected on change).
 
 ### Slice 5 — First-admin seeder (D2, plus C3's direct `Payroll.View` grant)
+
+> ⚠️ **Audit guidance below SUPERSEDED (2026-10-16); the rest is history.** Do not implement the actor `"system/bootstrap"` or the event list in this section. Current rules: the seeder writes `UserCreated`, `RoleAssigned` (Admin) and `PayrollViewGranted` with `actor_type = System`, no `actor_user_id`, no `actor_role_code`, source `SystemJob`, a reason and a per-run correlation id, in the seeding transaction (owner decision R41; contract §11, §13, §14.1; `sprint-02.md` US-BE-011; repository ADR 0006 §5.3, §12, proposed, pending owner review). The current Slice 5 scope is US-BE-011 in `sprint-02.md`.
 
 - **Files:** `Contractra.Infrastructure/Identity/BootstrapAdminSeeder.cs`, invoked from `Program.cs` at startup (idempotent — checks "no active user holding `Admin` role exists" before doing anything).
 - Reads `Bootstrap:AdminLoginIdentifier`/`Bootstrap:AdminPassword` from configuration; missing config ⇒ warn and skip, no crash, no invented credentials (D2).

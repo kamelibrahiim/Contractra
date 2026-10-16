@@ -1,4 +1,5 @@
-﻿using Contractra.Domain.Identity;
+﻿using Contractra.Domain.Audit;
+using Contractra.Domain.Identity;
 using Contractra.Domain.Parties;
 using Contractra.Infrastructure.Persistence.Throttling;
 using Microsoft.EntityFrameworkCore;
@@ -42,6 +43,8 @@ public sealed class ContractraDbContext : DbContext
     public DbSet<PasswordResetTicket> PasswordResetTickets => Set<PasswordResetTicket>();
 
     public DbSet<AuthThrottleCounter> AuthThrottleCounters => Set<AuthThrottleCounter>();
+
+    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -1,4 +1,6 @@
+using Contractra.Application.Audit;
 using Contractra.Infrastructure.Persistence;
+using Contractra.Infrastructure.Persistence.Audit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +21,9 @@ public static class DependencyInjection
 
 		services.AddDbContext<ContractraDbContext>(options =>
 			options.UseNpgsql(connectionString));
+
+		// Scoped: it stages into the same ContractraDbContext as the use case.
+		services.AddScoped<IAuditWriter, AuditWriter>();
 
 		return services;
 	}

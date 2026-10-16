@@ -219,6 +219,8 @@ public class AuditPrivilegeSelfCheckTests : IClassFixture<PostgresTestDatabaseFi
 
         Assert.Equal("audit_events", report.Table);
         Assert.True(report.IsOwner);
+        // The owner is not also reported as a non-owning member of itself.
+        Assert.False(report.HasOwnerRoleMembership);
         Assert.True(report.CanUpdate);
         Assert.True(report.CanDelete);
         Assert.True(report.CanTruncate);
@@ -255,17 +257,18 @@ public class AuditPrivilegeSelfCheckTests : IClassFixture<PostgresTestDatabaseFi
     }
 
     [Theory]
-    [InlineData(true, false, false, false, false, false)]
-    [InlineData(false, true, false, false, false, false)]
-    [InlineData(false, false, true, false, false, false)]
-    [InlineData(false, false, false, true, false, false)]
-    [InlineData(false, false, false, false, true, false)]
-    [InlineData(false, false, false, false, false, true)]
-    public void AnySinglePrivilegeOwnershipOrSuperuser_IsUnsafe(
-        bool update, bool delete, bool truncate, bool trigger, bool owner, bool superuser) =>
-        Assert.True(new AuditPrivilegeReport("audit_events", update, delete, truncate, trigger, owner, superuser).IsUnsafe);
+    [InlineData(true, false, false, false, false, false, false)]
+    [InlineData(false, true, false, false, false, false, false)]
+    [InlineData(false, false, true, false, false, false, false)]
+    [InlineData(false, false, false, true, false, false, false)]
+    [InlineData(false, false, false, false, true, false, false)]
+    [InlineData(false, false, false, false, false, true, false)]
+    [InlineData(false, false, false, false, false, false, true)]
+    public void AnySinglePrivilegeOwnershipMembershipOrSuperuser_IsUnsafe(
+        bool update, bool delete, bool truncate, bool trigger, bool owner, bool hasOwnerRoleMembership, bool superuser) =>
+        Assert.True(new AuditPrivilegeReport("audit_events", update, delete, truncate, trigger, owner, hasOwnerRoleMembership, superuser).IsUnsafe);
 
     [Fact]
-    public void NoPrivilegeNoOwnershipNoSuperuser_IsSafe() =>
-        Assert.False(new AuditPrivilegeReport("audit_events", false, false, false, false, false, false).IsUnsafe);
+    public void NoPrivilegeNoOwnershipNoMembershipNoSuperuser_IsSafe() =>
+        Assert.False(new AuditPrivilegeReport("audit_events", false, false, false, false, false, false, false).IsUnsafe);
 }

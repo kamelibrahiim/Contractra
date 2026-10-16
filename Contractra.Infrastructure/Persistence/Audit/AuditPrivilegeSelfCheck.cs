@@ -15,10 +15,21 @@ public sealed record AuditPrivilegeReport(
     bool CanTruncate,
     bool CanTrigger,
     bool IsOwner,
+    bool HasOwnerRoleMembership,
     bool IsSuperuser)
 {
-    /// <summary>True when the role could change or remove audit rows, or attach a trigger.</summary>
-    public bool IsUnsafe => CanUpdate || CanDelete || CanTruncate || CanTrigger || IsOwner || IsSuperuser;
+    /// <summary>
+    /// True when the role could change or remove audit rows, or attach a trigger:
+    /// directly (the four privileges, which PostgreSQL resolves through inherited
+    /// membership on its own), by being the owner, or by holding any non-owner
+    /// membership in the owner role. Membership is treated as unsafe deliberately,
+    /// whether or not it is currently usable (<c>INHERIT</c> or an active
+    /// <c>SET ROLE</c>): a <c>NOINHERIT</c> member can still reach the owner's
+    /// privileges with <c>SET ROLE</c> at any time, which the four direct checks
+    /// would not catch, so <see cref="HasOwnerRoleMembership"/> is conservative on
+    /// purpose rather than narrowed to only currently-usable membership.
+    /// </summary>
+    public bool IsUnsafe => CanUpdate || CanDelete || CanTruncate || CanTrigger || IsOwner || HasOwnerRoleMembership || IsSuperuser;
 }
 
 /// <summary>
@@ -35,7 +46,8 @@ public static class AuditPrivilegeSelfCheck
                has_table_privilege(current_user, c.oid, 'DELETE'),
                has_table_privilege(current_user, c.oid, 'TRUNCATE'),
                has_table_privilege(current_user, c.oid, 'TRIGGER'),
-               pg_has_role(current_user, c.relowner, 'USAGE') AND c.relowner = (SELECT oid FROM pg_roles WHERE rolname = current_user),
+               c.relowner = (SELECT oid FROM pg_roles WHERE rolname = current_user),
+               pg_has_role(current_user, c.relowner, 'MEMBER') AND c.relowner <> (SELECT oid FROM pg_roles WHERE rolname = current_user),
                (SELECT rolsuper FROM pg_roles WHERE rolname = current_user)
         FROM pg_class c
         WHERE c.oid = to_regclass(@table);
@@ -79,7 +91,8 @@ public static class AuditPrivilegeSelfCheck
                     reader.GetBoolean(2),
                     reader.GetBoolean(3),
                     reader.GetBoolean(4),
-                    reader.GetBoolean(5)));
+                    reader.GetBoolean(5),
+                    reader.GetBoolean(6)));
             }
 
             return reports;

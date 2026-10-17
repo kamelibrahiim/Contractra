@@ -9,7 +9,7 @@
 > and engineering's (E1–E16), recorded in the plan; this file does not
 > re-derive them.
 
-Status: 🟡 Slices 1, 2, 2B, 3 and 4 done and committed (see §A) · Slices 5–7 planned (Slice 3's design, repository ADR 0006, is proposed and pending owner review) · baseline: **contract v1.5** (Draft; §22 proposals pending review), owner decisions R1–R47, engineering decisions E1–E25 (E26–E44 proposed in ADR 0006)
+Status: 🟡 Slices 1, 2, 2B, 3, 4 and 5 done and committed (see §A) · Slices 6–7 planned (Slice 3's design, repository ADR 0006, is proposed and pending owner review) · baseline: **contract v1.5** (Draft; §22 proposals pending review), owner decisions R1–R47, engineering decisions E1–E25 (E26–E44 proposed in ADR 0006)
 Date: 2026-09-26 · updated 2026-09-27 · 2026-10-01 · 2026-10-15 · 2026-10-16
 Scope: `Contractra_System` backend (.NET 10 / ASP.NET Core / EF Core / PostgreSQL, Clean Architecture)
 Source: `docs/implementation/backend/features/admin-user-creation-plan.md`
@@ -51,7 +51,16 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
   4. **ADR 0006 and contract §22** remain proposed; Slice 4 depends on the Slice 3 design but does not approve it.
   5. **Slice 6 concern** — `ChangePassword` commits and leaves the current session active so Slice 6 can rotate its refresh token afterwards; Slice 6 must either rotate in the same transaction or treat a post-commit rotation failure as recoverable (documented on `ChangePasswordUseCase`).
   6. **Follow-ups** — concurrent CreateUser/CompletePasswordReset races surface as raw database exceptions rather than the contract's 409 / generic error (map in Slice 6/7); `ChangePassword` does not check temporary-password expiry (login blocks an expired one, §10); `CompletePasswordReset` validates the new password before the code (contract §5.6 orders it last).
-- **Not done:** no authentication endpoints, JWT, throttle policy, bootstrap seeder or operator commands. `Contractra.Api/Program.cs` still has the `/weatherforecast` template.
+- **Slice 5 (US-BE-011) — done and committed; owner-approved 2026-10-17 including the generated-password design of `reset-bootstrap-password`.** `SeedBootstrapAdminUseCase` (no-op when an Active user holds `Admin`; never overwrites; creates the bootstrap admin with its direct `Payroll.View` grant and writes `UserCreated`, `RoleAssigned`, `PayrollViewGranted` — System actor, source `SystemJob`, fixed reason, one correlation id per run, keys `<action>:bootstrap:<user id>` — in one transaction, and fails startup if the audit save fails); `StartupInitializer` running the audit privilege self-check (order 0) before the seeder (order 100); the operator commands `issue-password-reset --login --reason` and `reset-bootstrap-password --reason` (`OperatorCommandRunner`, entered from `Program.cs`, no web host; System actor, reason, key `<action>:command:<run correlation id>`; the secret is printed once and never logged or audited). Tests on **PostgreSQL 18**, working tree: build 0 warnings / 0 errors; Application **111/111**; Domain **359/359**; Integration **552/552** (37 added: seeder create / repeat / missing configuration / audit-failure rollback / concurrent start, self-check policy and real-database ordering, command end-to-end, rollback, refusals, usage). Total 1022. Not run: a real `dotnet run` of the web host (needs a database; only the command usage path was smoke-tested).
+- **Slice 5 open items (recorded):**
+  1. **`reset-bootstrap-password` design (R32, contract §11 delegate it to Slice 5) — approved by the owner 2026-10-17:** the new password is *generated* (contract §10 generator) and printed once on the terminal, like the §10A reset code; the bootstrap admin stays exempt from the forced change (R19). Session revocation reuses reason `PasswordChanged` because the nine reasons are fixed by a database CHECK.
+  2. **Privilege self-check scope:** per ADR 0006 §7.3 it fails closed only in Production and warns elsewhere (development and tests connect as the table owner). The compliant-role case cannot be produced by the tests (roles are cluster-wide; ADR 0006 §7.3), so compliance is covered by policy unit tests on hand-built reports; the non-compliant case is covered against the real database.
+  3. **Commands also run the self-check first** (they write audit events); the contract does not say so — a safety choice.
+  4. **A database that is unreachable or not migrated now stops application startup** (the self-check and seeder need it). Operators of a bare `dotnet run` without a database see a startup failure.
+  5. **Operator-account restriction** (§18 "run only on the server, by an operator account") and the "do not redirect the output" rule are operational: the code documents them in the usage text and cannot enforce them.
+  6. **Concurrent starts:** the loser's insert is refused by the database and, when an Active Admin then exists, treated as a no-op; no audit idempotency is relied on for this (the keys contain the new user id).
+  7. OC-6, OC-2, the reset-delivery-failure HTTP outcome, ADR 0006 and contract §22 remain as listed under Slice 4.
+- **Not done:** no authentication endpoints, JWT or throttle policy (Slice 6) and no users endpoints (Slice 7). `Contractra.Api/Program.cs` still has the `/weatherforecast` template.
 - **Baseline on PostgreSQL 18.6 (worktree `backend/auth-slice-3` at `fb45c1d`, 2026-10-15):** build 0 warnings / 0 errors; Domain 215/215; Integration **215/215** — the 9 `ON DELETE RESTRICT` tests below pass on PostgreSQL 18, confirming their failures on 16.15 were version-specific. 28 ephemeral `contractra_test_<guid>` databases were created and all dropped.
 - **Test baseline (clean clone of `bc63d5f`, PostgreSQL 16.15, 2026-10-15):** Domain 157/157 passed; Integration 168/177 passed. The 9 failures are environment-specific and pre-existing (identical at `78de706`, before the seed): they assert SQLSTATE `23001` for `ON DELETE RESTRICT`, which the project's PostgreSQL 18 (ADR 0001 §14) reports and PostgreSQL 16 reports as `23503`. The owner reported 177/177 on PostgreSQL 18 for the working tree that became `bc63d5f` (not re-run here, because no PostgreSQL 18 was available).
 
@@ -92,7 +101,7 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
 | 2B | US-BE-008 | Persistence for sessions, refresh tokens, reset tickets and the throttle store | Slice 2 | ✅ Done (see §A; ADR 0005) |
 | 3 | US-BE-009 | `audit_events` with explicit event context in its snapshot field (contract §14, §22 I; repository ADR 0006) — the explicit business-event level only | Slice 2 | ✅ Done (`50832d1`, `d5c4c26`); design (ADR 0006) still proposed, pending owner review |
 | 4 | US-BE-010 | Application layer: hashing, temporary passwords, clock, use cases | 2, 2B, 3 | ✅ Done (see §A; open items listed there) |
-| 5 | US-BE-011 | Bootstrap seeder; operator commands | 4 | Planned |
+| 5 | US-BE-011 | Bootstrap seeder; operator commands | 4 | ✅ Done (owner-approved 2026-10-17; open items in §A) |
 | 6 | US-BE-012 | Auth endpoints, JWT, app audience, throttling, HTTP pipeline | 4 (5 for end-to-end tests) | Planned |
 | 7 | US-BE-013 | Users endpoints | 6 | Planned |
 | AC | — (story written when scheduled) | **Audit Completion** (mandatory): generic change capture into `audit_event_changes` (genuine field changes only), masking before writing, `audit_event_links`, further snapshots where required, idempotency construction, retention and archival per ح-190 with `audit_retention_policies` (repository ADR 0006 §8.2) | 3 | Not scheduled in Sprint 2; **Gate A and Gate B depend on it** |
@@ -571,7 +580,7 @@ in this slice.
 Must not change: contract semantics; the apps.
 ```
 
-### US-BE-011 — Bootstrap seeder and operator commands (Slice 5)
+### US-BE-011 — Bootstrap seeder and operator commands (Slice 5) — ✅ done (owner-approved 2026-10-17; details and open items in §A)
 
 ```
 Delivers: the startup seeder (contract §11) and the operator commands

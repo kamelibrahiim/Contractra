@@ -18,4 +18,13 @@ public interface IUserRepository
     Task<bool> ExistsWithLoginIdentifierAsync(string loginIdentifier, CancellationToken cancellationToken = default);
 
     void Add(User user);
+
+    /// <summary>
+    /// True when any Active user holds the role (an assignment active at
+    /// <paramref name="asOf"/>) - the bootstrap seeder's precondition (contract §11).
+    /// </summary>
+    Task<bool> AnyActiveUserWithRoleAsync(string roleCode, DateTimeOffset asOf, CancellationToken cancellationToken = default);
+
+    /// <summary>The account flagged <c>is_bootstrap_admin</c>, or null when none exists.</summary>
+    Task<User?> FindBootstrapAdminAsync(CancellationToken cancellationToken = default);
 }

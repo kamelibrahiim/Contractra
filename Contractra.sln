@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contractra.Domain.Tests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contractra.Infrastructure.IntegrationTests", "Contractra.Infrastructure.IntegrationTests\Contractra.Infrastructure.IntegrationTests.csproj", "{E39766D7-6B03-4B1F-8ADC-C33301C5EFDD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contractra.Application.Tests", "Contractra.Application.Tests\Contractra.Application.Tests.csproj", "{6174E8C4-ED30-4AE7-A8BB-56AE74337186}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{E39766D7-6B03-4B1F-8ADC-C33301C5EFDD}.Release|x64.Build.0 = Release|Any CPU
 		{E39766D7-6B03-4B1F-8ADC-C33301C5EFDD}.Release|x86.ActiveCfg = Release|Any CPU
 		{E39766D7-6B03-4B1F-8ADC-C33301C5EFDD}.Release|x86.Build.0 = Release|Any CPU
+		{6174E8C4-ED30-4AE7-A8BB-56AE74337186}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6174E8C4-ED30-4AE7-A8BB-56AE74337186}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6174E8C4-ED30-4AE7-A8BB-56AE74337186}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6174E8C4-ED30-4AE7-A8BB-56AE74337186}.Debug|x64.Build.0 = Debug|Any CPU
+		{6174E8C4-ED30-4AE7-A8BB-56AE74337186}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6174E8C4-ED30-4AE7-A8BB-56AE74337186}.Debug|x86.Build.0 = Debug|Any CPU
+		{6174E8C4-ED30-4AE7-A8BB-56AE74337186}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6174E8C4-ED30-4AE7-A8BB-56AE74337186}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6174E8C4-ED30-4AE7-A8BB-56AE74337186}.Release|x64.ActiveCfg = Release|Any CPU
+		{6174E8C4-ED30-4AE7-A8BB-56AE74337186}.Release|x64.Build.0 = Release|Any CPU
+		{6174E8C4-ED30-4AE7-A8BB-56AE74337186}.Release|x86.ActiveCfg = Release|Any CPU
+		{6174E8C4-ED30-4AE7-A8BB-56AE74337186}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

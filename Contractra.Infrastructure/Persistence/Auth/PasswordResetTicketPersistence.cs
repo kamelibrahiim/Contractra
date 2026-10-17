@@ -26,13 +26,15 @@ public static class PasswordResetTicketPersistence
 
     /// <summary>
     /// Supersedes every open ticket of the user at the new ticket's issue time
-    /// (expired ones included) and saves the new ticket, atomically: in the
-    /// caller's transaction when there is one - which the caller must not
-    /// commit if this throws (ADR 0005 E25) - otherwise in a transaction of its
-    /// own. SaveChanges also saves the context's other pending changes (in Slice
-    /// 4, the user's BeginPasswordReset). A concurrent issue for the same user
-    /// loses on users.security_version or on the deferred one-open-ticket
-    /// constraint at commit. Returns the number of tickets superseded.
+    /// (expired ones included) and saves the new ticket, in the caller's open
+    /// transaction - which the caller must not commit if this throws (ADR 0005
+    /// E25). SaveChanges also saves the context's other pending changes (in
+    /// Slice 4, the user's BeginPasswordReset). A concurrent issue for the same
+    /// user loses on users.security_version or on the deferred one-open-ticket
+    /// constraint at commit. Returns the number of tickets superseded. Throws
+    /// <see cref="InvalidOperationException"/> if no transaction is open
+    /// (ADR 0006 §6: this writes alongside the rest of its use case's changes,
+    /// so it must never run standalone).
     /// </summary>
     public static async Task<int> IssuePasswordResetTicketAsync(
         this ContractraDbContext dbContext,
@@ -47,15 +49,13 @@ public static class PasswordResetTicketPersistence
             throw new ArgumentException("Only an open ticket can be issued.", nameof(ticket));
         }
 
-        if (dbContext.Database.CurrentTransaction is not null)
+        if (dbContext.Database.CurrentTransaction is null)
         {
-            return await SupersedeAndInsertAsync(dbContext, ticket, cancellationToken);
+            throw new InvalidOperationException(
+                "IssuePasswordResetTicketAsync writes alongside the rest of its use case's changes; the caller must open a transaction first (ADR 0006 §6).");
         }
 
-        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-        var superseded = await SupersedeAndInsertAsync(dbContext, ticket, cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return superseded;
+        return await SupersedeAndInsertAsync(dbContext, ticket, cancellationToken);
     }
 
     private static async Task<int> SupersedeAndInsertAsync(

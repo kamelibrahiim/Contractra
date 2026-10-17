@@ -172,25 +172,18 @@ public class AuditEventsAtomicityTests : IClassFixture<PostgresTestDatabaseFixtu
     }
 
     [Fact]
-    public async Task WithoutATransaction_ABulkRevocationSurvivesAFailedAuditWrite_WhichIsWhyUseCasesOpenOneFirst()
+    public async Task WithoutATransaction_ABulkRevocationNowThrows_InsteadOfSilentlyRiskingTheAdr0006HazardItOnceCharacterized()
     {
-        // Characterization of the hazard in ADR 0006 §6: ExecuteUpdate runs and commits at
-        // once when no transaction is open, so a later audit failure cannot undo it.
+        // Slice 4 closed the hazard this test used to characterize (ExecuteUpdate
+        // running standalone and committing before a later audit failure could
+        // undo it): RevokeAllActiveAsync now refuses to run without an open
+        // transaction, so the unsafe sequence below can no longer happen at all.
         var userId = await SaveUserAsync();
-        var sessionId = await SaveSessionAsync(userId);
-        var bad = BadActorEvent();
+        await SaveSessionAsync(userId);
 
-        await using (var dbContext = _fixture.CreateDbContext())
-        {
-            await dbContext.AuthSessions.RevokeAllActiveAsync(userId, SessionRevokeReason.UserDisabled, T0);
-            new AuditWriter(dbContext).Stage(bad);
-
-            await AuditSql.FailsAsync(() => dbContext.SaveChangesAsync(), "23503");
-        }
-
-        await using var read = _fixture.CreateDbContext();
-        Assert.NotNull((await read.AuthSessions.SingleAsync(s => s.Id == sessionId)).RevokedAt);
-        Assert.False(await read.AuditEvents.AnyAsync(e => e.Id == bad.Id));
+        await using var dbContext = _fixture.CreateDbContext();
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => dbContext.AuthSessions.RevokeAllActiveAsync(userId, SessionRevokeReason.UserDisabled, T0));
     }
 
     [Fact]
@@ -221,8 +214,10 @@ public class AuditEventsAtomicityTests : IClassFixture<PostgresTestDatabaseFixtu
         var userId = await SaveUserAsync();
         var earlier = NewTicket(userId);
         await using (var seed = _fixture.CreateDbContext())
+        await using (var seedTransaction = await seed.Database.BeginTransactionAsync())
         {
             await seed.IssuePasswordResetTicketAsync(earlier);
+            await seedTransaction.CommitAsync();
         }
 
         var replacement = NewTicket(userId);

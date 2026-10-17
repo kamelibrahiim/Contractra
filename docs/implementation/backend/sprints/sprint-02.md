@@ -9,7 +9,7 @@
 > and engineering's (E1–E16), recorded in the plan; this file does not
 > re-derive them.
 
-Status: 🟡 Slices 1, 2 and 2B done and committed (see §A) · Slices 3–7 planned (Slice 3 design proposed in repository ADR 0006, pending owner review) · baseline: **contract v1.5** (Draft; §22 proposals pending review), owner decisions R1–R47, engineering decisions E1–E25 (E26–E44 proposed in ADR 0006)
+Status: 🟡 Slices 1, 2, 2B, 3 and 4 done and committed (see §A) · Slices 5–7 planned (Slice 3's design, repository ADR 0006, is proposed and pending owner review) · baseline: **contract v1.5** (Draft; §22 proposals pending review), owner decisions R1–R47, engineering decisions E1–E25 (E26–E44 proposed in ADR 0006)
 Date: 2026-09-26 · updated 2026-09-27 · 2026-10-01 · 2026-10-15 · 2026-10-16
 Scope: `Contractra_System` backend (.NET 10 / ASP.NET Core / EF Core / PostgreSQL, Clean Architecture)
 Source: `docs/implementation/backend/features/admin-user-creation-plan.md`
@@ -42,7 +42,16 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
 - **Slice 1 (US-BE-006) — done and committed.** `1e10742 feat(auth-slice-1): seed authorization catalog` (migration `SeedAuthorizationCatalog`, `AuthorizationCatalogSeedTests`, ADR 0004) and `bc63d5f test(auth-slice-1): keep catalog fixtures clear of the seeded codes` (the three existing test classes the seed required; without them a clean checkout of `1e10742` fails 12 integration tests). 4 roles, 6 permissions, 7 role grants, `Payroll.View` granted to no role.
 - **Slice 2 (US-BE-007) — done and committed** in `feat(auth-slice-2): user credential and security state` (the commit after `3307bd0`): credential and security-state columns with their constraints, bootstrap index and trigger, backfill of existing rows, aggregate-only security mutations (R34) with security-version semantics (E7), one account per Party (R30), case-insensitive login lookup (E10), seed-rollback safety test. Details: ADR 0003 §11. Tests on PostgreSQL 16.15: Domain 215/215; Integration 206/215 — the same 9 environment-specific RESTRICT tests as below fail; every other test passes, including the 38 new integration test cases (177 → 215) and the 58 new Domain test cases (157 → 215).
 - **Slice 2B (US-BE-008) — done and committed** in `feat(auth-slice-2b): session, refresh-token, reset-ticket and throttle persistence` (the commit after the design commit `b59d4c9`). Four additive migrations (`AddAuthSessions`, `AddRefreshTokens`, `AddPasswordResetTickets`, `AddAuthThrottleCounters`); Domain `AuthSession`/`RefreshToken`, `PasswordResetTicket`, `ClientApp`, `ClientPlatform`, `SessionRevokeReason`; Infrastructure session lookup and revoke-all, atomic ticket issue, and the policy-free throttle store with batched cleanup. Spike results and implementation notes: ADR 0005 §7, §7A. Tests on **PostgreSQL 18.6**: build 0 warnings / 0 errors; Domain **267/267** (+52: `AuthSessionTests` 31, `PasswordResetTicketTests` 21); Integration **341/341** (+126: spikes 10, schema 82, per-migration down-and-up 4, slice down-and-up 1, sessions 9, tickets 9, throttle store 11), stable over 6 consecutive full runs; `ModelConsistencyTests` passing; no leftover `contractra_test_*` database. The throttle **policy** is not implemented (contract §22, pending review).
-- **Not done:** `Contractra.Application` has no files beyond the template. No authentication, JWT, password hashing, throttle policy or `audit_events`. `Contractra.Api/Program.cs` still has the `/weatherforecast` template.
+- **Slice 3 (US-BE-009) — done and committed** in `50832d1` and `d5c4c26` (`audit_events`, append-only triggers and privileges, `IAuditWriter`, privilege self-check). Its design, repository ADR 0006 (E26–E44), is still **proposed, pending owner review**.
+- **Slice 4 (US-BE-010) — implemented; owner-approved 2026-10-17 with open items below.** The seven use cases (CreateUser, ChangePassword, DisableUser, ReactivateUser, IssuePasswordReset, CompletePasswordReset, ReissueInitialPassword), their Application ports, the Infrastructure implementations (`UnitOfWork` with a single save-and-commit exit, user/role/party repositories, session and reset-ticket stores, password hasher over `PasswordHasher<TUser>`, temporary-password and Crockford reset-code generators, clock, business date) and the new `Contractra.Application.Tests` project. `RevokeAllActiveAsync` and `IssuePasswordResetTicketAsync` now throw without an open transaction (ADR 0006 §6, §12). Tests on **PostgreSQL 18**, final working tree: build 0 warnings / 0 errors; Application **70/70**; Domain **359/359**; Integration **515/515** (the 7 added in the acceptance fixes prove that a failing audit save rolls back IssuePasswordReset, CompletePasswordReset and ChangePassword completely, and that the reset code is sent only after the commit). Total 944.
+- **Slice 4 open items (recorded, not resolved):**
+  1. **OC-6** — `actor_role_code` is written as null on every Slice 4 audit event; contract §14.1's rule awaits owner confirmation. Tests pin this interim state in one place (`AuditAssert.ActorRoleCodeIsUnresolvedPendingOc6`). Audit rows are append-only, so it must be decided before real events are written.
+  2. **Delivery-failure outcome** — contract §9.6 step 6 says a failed delivery is logged and leaves the committed ticket valid, but not which HTTP status the caller gets. `IssuePasswordResetResult.DeliveryFailed` carries the fact; Slice 6/7 maps it once the owner decides.
+  3. **OC-2** — no delivery channel exists; every reset returns `users.reset_delivery_unavailable` (503).
+  4. **ADR 0006 and contract §22** remain proposed; Slice 4 depends on the Slice 3 design but does not approve it.
+  5. **Slice 6 concern** — `ChangePassword` commits and leaves the current session active so Slice 6 can rotate its refresh token afterwards; Slice 6 must either rotate in the same transaction or treat a post-commit rotation failure as recoverable (documented on `ChangePasswordUseCase`).
+  6. **Follow-ups** — concurrent CreateUser/CompletePasswordReset races surface as raw database exceptions rather than the contract's 409 / generic error (map in Slice 6/7); `ChangePassword` does not check temporary-password expiry (login blocks an expired one, §10); `CompletePasswordReset` validates the new password before the code (contract §5.6 orders it last).
+- **Not done:** no authentication endpoints, JWT, throttle policy, bootstrap seeder or operator commands. `Contractra.Api/Program.cs` still has the `/weatherforecast` template.
 - **Baseline on PostgreSQL 18.6 (worktree `backend/auth-slice-3` at `fb45c1d`, 2026-10-15):** build 0 warnings / 0 errors; Domain 215/215; Integration **215/215** — the 9 `ON DELETE RESTRICT` tests below pass on PostgreSQL 18, confirming their failures on 16.15 were version-specific. 28 ephemeral `contractra_test_<guid>` databases were created and all dropped.
 - **Test baseline (clean clone of `bc63d5f`, PostgreSQL 16.15, 2026-10-15):** Domain 157/157 passed; Integration 168/177 passed. The 9 failures are environment-specific and pre-existing (identical at `78de706`, before the seed): they assert SQLSTATE `23001` for `ON DELETE RESTRICT`, which the project's PostgreSQL 18 (ADR 0001 §14) reports and PostgreSQL 16 reports as `23503`. The owner reported 177/177 on PostgreSQL 18 for the working tree that became `bc63d5f` (not re-run here, because no PostgreSQL 18 was available).
 
@@ -81,8 +90,8 @@ Same authority order as Sprint 1 (`docs/documentation-index-ar.md`), then the wo
 | 1 | US-BE-006 | Authorization catalog seed | Sprint 1 | ✅ Done (`1e10742`, `bc63d5f`) |
 | 2 | US-BE-007 | `users` credential and security state; aggregate-only security mutations; one account per Party; case-insensitive login lookup | Slice 1 | ✅ Done (see §A) |
 | 2B | US-BE-008 | Persistence for sessions, refresh tokens, reset tickets and the throttle store | Slice 2 | ✅ Done (see §A; ADR 0005) |
-| 3 | US-BE-009 | `audit_events` with explicit event context in its snapshot field (contract §14, §22 I; repository ADR 0006) — the explicit business-event level only | Slice 2 | Planned (design proposed, pending owner review) |
-| 4 | US-BE-010 | Application layer: hashing, temporary passwords, clock, use cases | 2, 2B, 3 | Planned |
+| 3 | US-BE-009 | `audit_events` with explicit event context in its snapshot field (contract §14, §22 I; repository ADR 0006) — the explicit business-event level only | Slice 2 | ✅ Done (`50832d1`, `d5c4c26`); design (ADR 0006) still proposed, pending owner review |
+| 4 | US-BE-010 | Application layer: hashing, temporary passwords, clock, use cases | 2, 2B, 3 | ✅ Done (see §A; open items listed there) |
 | 5 | US-BE-011 | Bootstrap seeder; operator commands | 4 | Planned |
 | 6 | US-BE-012 | Auth endpoints, JWT, app audience, throttling, HTTP pipeline | 4 (5 for end-to-end tests) | Planned |
 | 7 | US-BE-013 | Users endpoints | 6 | Planned |
@@ -542,7 +551,7 @@ correlation id at the HTTP boundary, AccessDenied in its own scope and its
 target.
 ```
 
-### US-BE-010 — Application layer and use cases (Slice 4)
+### US-BE-010 — Application layer and use cases (Slice 4) — ✅ done (owner-approved 2026-10-17; open items in §A)
 
 ```
 Delivers: IPasswordHasher over ASP.NET Core PasswordHasher<User> (shared

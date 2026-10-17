@@ -158,8 +158,10 @@ public class AuthSessionPersistenceTests : IClassFixture<PostgresTestDatabaseFix
         var loaded = await rotating.AuthSessions.FindByRefreshTokenHashAsync(hashes[0]);
 
         await using (var revoking = _fixture.CreateDbContext())
+        await using (var revokeTransaction = await revoking.Database.BeginTransactionAsync())
         {
             Assert.Equal(1, await revoking.AuthSessions.RevokeAllActiveAsync(loaded!.UserId, SessionRevokeReason.UserDisabled, T0.AddMinutes(10)));
+            await revokeTransaction.CommitAsync();
         }
 
         loaded!.Rotate(hashes[0], NewHash(), T0.AddMinutes(30));
@@ -185,12 +187,14 @@ public class AuthSessionPersistenceTests : IClassFixture<PostgresTestDatabaseFix
 
         // The rotation holds the session row lock; the revocation must wait for it.
         await using var revoking = _fixture.CreateDbContext();
+        await using var revokeTransaction = await revoking.Database.BeginTransactionAsync();
         var revocation = revoking.AuthSessions.RevokeAllActiveAsync(userId, SessionRevokeReason.PasswordChanged, T0.AddMinutes(31));
         await WaitUntilAWriterIsBlockedAsync();
         Assert.False(revocation.IsCompleted);
 
         await transaction.CommitAsync();
         Assert.Equal(1, await revocation);
+        await revokeTransaction.CommitAsync();
 
         await using var connection = await OpenAsync();
         Assert.Equal(1, await CountAsync(connection, "SELECT COUNT(*) FROM auth_sessions WHERE id = @id AND revoke_reason = 'password_changed';", ("id", session)));
@@ -215,8 +219,10 @@ public class AuthSessionPersistenceTests : IClassFixture<PostgresTestDatabaseFix
         }
 
         await using (var context = _fixture.CreateDbContext())
+        await using (var transaction = await context.Database.BeginTransactionAsync())
         {
             Assert.Equal(2, await context.AuthSessions.RevokeAllActiveAsync(user, SessionRevokeReason.PasswordChanged, T0.AddHours(1), exceptSessionId: kept));
+            await transaction.CommitAsync();
         }
 
         await using var connection = await OpenAsync();
@@ -234,6 +240,20 @@ public class AuthSessionPersistenceTests : IClassFixture<PostgresTestDatabaseFix
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => context.AuthSessions.RevokeAllActiveAsync(Guid.CreateVersion7(), (SessionRevokeReason)99, T0));
         await Assert.ThrowsAsync<ArgumentException>(() => context.AuthSessions.RevokeAllActiveAsync(Guid.CreateVersion7(), SessionRevokeReason.Logout, T0.ToOffset(TimeSpan.FromHours(2))));
+    }
+
+    [Fact]
+    public async Task RevokeAllActive_WithoutAnOpenTransaction_ThrowsAndChangesNothing()
+    {
+        var user = await SaveUserAsync();
+        await SaveSessionAsync(user);
+
+        await using var context = _fixture.CreateDbContext();
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => context.AuthSessions.RevokeAllActiveAsync(user, SessionRevokeReason.UserDisabled, T0));
+
+        await using var connection = await OpenAsync();
+        Assert.Equal(0, await CountAsync(connection, "SELECT COUNT(*) FROM auth_sessions WHERE user_id = @id AND revoked_at IS NOT NULL;", ("id", user)));
     }
 
     private async Task<Guid> SaveUserAsync()

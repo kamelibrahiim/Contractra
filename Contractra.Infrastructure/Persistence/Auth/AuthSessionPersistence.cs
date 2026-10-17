@@ -1,5 +1,6 @@
 using Contractra.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace Contractra.Infrastructure.Persistence.Auth;
 
@@ -31,13 +32,33 @@ public static class AuthSessionPersistence
     }
 
     /// <summary>
+    /// The session with this id, loading only its unconsumed refresh token -
+    /// not the whole token history. Null when no session has this id. The
+    /// result is tracked, ready for Rotate or Revoke.
+    /// </summary>
+    public static Task<AuthSession?> FindByIdAsync(
+        this DbSet<AuthSession> sessions,
+        Guid sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sessions);
+
+        return sessions
+            .Include(s => s.RefreshTokens.Where(t => t.ConsumedAt == null))
+            .SingleOrDefaultAsync(s => s.Id == sessionId, cancellationToken);
+    }
+
+    /// <summary>
     /// Revokes every active session of the user, except
     /// <paramref name="exceptSessionId"/> when given (change-password keeps the
     /// current session, §3.3). Already revoked sessions keep their first
-    /// revocation. Runs immediately as one UPDATE, in the caller's transaction
-    /// when there is one; sessions already tracked by the context are not
-    /// refreshed. Changing the rows changes their xmin, so a rotation that read
-    /// one of them earlier fails. Returns the number of sessions revoked.
+    /// revocation. Runs immediately as one UPDATE, in the caller's open
+    /// transaction (ADR 0006 §6: this is one of the writes a Slice 4 use case
+    /// makes alongside its audit event, so it must never run standalone);
+    /// sessions already tracked by the context are not refreshed. Changing
+    /// the rows changes their xmin, so a rotation that read one of them
+    /// earlier fails. Returns the number of sessions revoked. Throws
+    /// <see cref="InvalidOperationException"/> if no transaction is open.
     /// </summary>
     public static async Task<int> RevokeAllActiveAsync(
         this DbSet<AuthSession> sessions,
@@ -57,6 +78,13 @@ public static class AuthSessionPersistence
         if (revokedAt.Offset != TimeSpan.Zero)
         {
             throw new ArgumentException("Timestamp must be in UTC (offset 00:00).", nameof(revokedAt));
+        }
+
+        var dbContext = sessions.GetService<ICurrentDbContext>().Context;
+        if (dbContext.Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException(
+                "RevokeAllActiveAsync writes alongside the rest of its use case's changes; the caller must open a transaction first (ADR 0006 §6).");
         }
 
         var active = sessions.Where(s => s.UserId == userId && s.RevokedAt == null);

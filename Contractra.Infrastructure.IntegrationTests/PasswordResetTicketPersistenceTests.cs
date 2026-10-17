@@ -32,8 +32,10 @@ public class PasswordResetTicketPersistenceTests : IClassFixture<PostgresTestDat
         var ticket = PasswordResetTicket.Issue(user, hash, T0, T0.AddHours(24), issuedByUserId: null, "operator");
 
         await using (var context = _fixture.CreateDbContext())
+        await using (var transaction = await context.Database.BeginTransactionAsync())
         {
             Assert.Equal(0, await context.IssuePasswordResetTicketAsync(ticket));
+            await transaction.CommitAsync();
         }
 
         await using var read = _fixture.CreateDbContext();
@@ -58,8 +60,10 @@ public class PasswordResetTicketPersistenceTests : IClassFixture<PostgresTestDat
         var issuedAt = T0.AddHours(30);
         var second = PasswordResetTicket.Issue(user, NewHash(), issuedAt, issuedAt.AddHours(24), admin, "operator");
         await using (var context = _fixture.CreateDbContext())
+        await using (var transaction = await context.Database.BeginTransactionAsync())
         {
             Assert.Equal(1, await context.IssuePasswordResetTicketAsync(second));
+            await transaction.CommitAsync();
         }
 
         await using var connection = await OpenAsync();
@@ -92,8 +96,10 @@ public class PasswordResetTicketPersistenceTests : IClassFixture<PostgresTestDat
         var errors = await Concurrently.RunAsync(Issues, async _ =>
         {
             await using var context = _fixture.CreateDbContext();
+            await using var transaction = await context.Database.BeginTransactionAsync();
             await context.IssuePasswordResetTicketAsync(
                 PasswordResetTicket.Issue(user, NewHash(), T0.AddMinutes(10), T0.AddHours(24), null, "operator"));
+            await transaction.CommitAsync();
         });
 
         Assert.True(errors.Count(e => e is null) >= 1);
@@ -194,11 +200,26 @@ public class PasswordResetTicketPersistenceTests : IClassFixture<PostgresTestDat
         Assert.Null(await context.PasswordResetTickets.FindOpenAsync(user));
     }
 
+    [Fact]
+    public async Task Issue_WithoutAnOpenTransaction_ThrowsAndChangesNothing()
+    {
+        var user = await SaveUserAsync();
+        var ticket = PasswordResetTicket.Issue(user, NewHash(), T0, T0.AddHours(24), null, "operator");
+
+        await using var context = _fixture.CreateDbContext();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => context.IssuePasswordResetTicketAsync(ticket));
+
+        await using var connection = await OpenAsync();
+        Assert.Equal(0, await CountAsync(connection, "SELECT COUNT(*) FROM password_reset_tickets WHERE user_id = @user;", ("user", user)));
+    }
+
     private async Task<Guid> IssueAsync(Guid user, DateTimeOffset issuedAt)
     {
         var ticket = PasswordResetTicket.Issue(user, NewHash(), issuedAt, issuedAt.AddHours(24), null, "operator");
         await using var context = _fixture.CreateDbContext();
+        await using var transaction = await context.Database.BeginTransactionAsync();
         await context.IssuePasswordResetTicketAsync(ticket);
+        await transaction.CommitAsync();
         return ticket.Id;
     }
 

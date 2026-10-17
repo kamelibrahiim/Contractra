@@ -1,3 +1,5 @@
+using Contractra.Api;
+using Contractra.Api.Auth;
 using Contractra.Infrastructure;
 using Contractra.Infrastructure.Startup;
 
@@ -17,9 +19,12 @@ if (OperatorCommandRunner.IsOperatorCommand(args))
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddContractraSerilog();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddStartupInitialization(failClosedOnUnsafeAuditPrivileges: builder.Environment.IsProduction());
-// Add services to the container.
+// Slice 6: auth endpoints and the HTTP security pipeline (contract §3-§8, §12, §13, §17, §18).
+// Invalid security configuration (signing keys, idle timeouts, CORS, proxies, throttle) stops startup.
+builder.AddContractraAuthHttpPipeline();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -29,37 +34,17 @@ var app = builder.Build();
 // A failure here stops startup (contract §11, §14.2; repository ADR 0006 E42).
 await app.Services.GetRequiredService<StartupInitializer>().RunAsync();
 
-// Configure the HTTP request pipeline.
+app.UseContractraAuthHttpPipeline();
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi().WithAudience(AuthAudience.Public);
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapAuthEndpoints();
 
 app.Run();
 return 0;
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+/// <summary>Exposed to the WebApplicationFactory tests.</summary>
+public partial class Program;

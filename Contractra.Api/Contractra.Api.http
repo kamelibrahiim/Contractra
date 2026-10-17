@@ -1,6 +1,14 @@
 @Contractra.Api_HostAddress = http://localhost:5213
 
-GET {{Contractra.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+# Placeholders only - never put a real password or token in this file.
+POST {{Contractra.Api_HostAddress}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "loginIdentifier": "<login>", "password": "<password>", "clientApp": "admin" }
+
+###
+
+GET {{Contractra.Api_HostAddress}}/api/v1/auth/me
+Authorization: Bearer <access-token>
 
 ###

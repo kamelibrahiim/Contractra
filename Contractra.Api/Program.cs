@@ -1,5 +1,6 @@
 using Contractra.Api;
 using Contractra.Api.Auth;
+using Contractra.Api.Users;
 using Contractra.Infrastructure;
 using Contractra.Infrastructure.Startup;
 
@@ -42,6 +43,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapAuthEndpoints();
+app.MapUsersEndpoints();
 
 app.Run();
 return 0;

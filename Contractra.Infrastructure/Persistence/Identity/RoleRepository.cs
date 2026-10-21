@@ -23,4 +23,13 @@ public sealed class RoleRepository : IRoleRepository
         _dbContext.Roles
             .FromSqlInterpolated($"SELECT * FROM roles WHERE lower(code) = lower({code})")
             .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<string>> ListActiveCodesAsync(CancellationToken cancellationToken = default)
+    {
+        var codes = await _dbContext.Roles.AsNoTracking()
+            .Where(r => r.Status == RoleStatus.Active)
+            .Select(r => r.Code)
+            .ToListAsync(cancellationToken);
+        return codes.Select(c => c.Value).ToList();
+    }
 }

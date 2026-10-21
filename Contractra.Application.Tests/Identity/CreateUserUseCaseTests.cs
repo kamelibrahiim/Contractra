@@ -92,6 +92,21 @@ public class CreateUserUseCaseTests
     }
 
     [Fact]
+    public async Task CreateUser_WithANulCharacterInTheLoginIdentifierOrARoleCode_FailsWithoutTouchingTheStore()
+    {
+        var useCase = CreateUseCase();
+
+        var login = await useCase.ExecuteAsync(new CreateUserRequest(
+            "office\0sara", new[] { "OfficeStaff" }, PartyId: null, ActorId, "corr-1", AuditSource.Web));
+        var role = await useCase.ExecuteAsync(new CreateUserRequest(
+            "office.sara", new[] { "Office\0Staff" }, PartyId: null, ActorId, "corr-1", AuditSource.Web));
+
+        Assert.Equal("users.login_identifier_invalid", login.Error!.Code);
+        Assert.Equal("users.role_unknown", role.Error!.Code);
+        Assert.False(_unitOfWork.Committed);
+    }
+
+    [Fact]
     public async Task CreateUser_WithDuplicateRoleCodes_Fails()
     {
         var useCase = CreateUseCase();

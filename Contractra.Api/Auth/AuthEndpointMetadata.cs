@@ -9,7 +9,7 @@ public enum AuthAudience
     /// <summary>A valid token of either app (logout, me, change-password).</summary>
     AnySession,
 
-    /// <summary><c>app = admin</c> and <c>perm</c> contains <c>Apps.Admin.Access</c> (every /users endpoint, GET /roles - Slice 7).</summary>
+    /// <summary><c>app = admin</c> and <c>perm</c> contains <c>Apps.Admin.Access</c> (every /users endpoint and GET /roles).</summary>
     Admin,
 
     /// <summary><c>app = employee</c> and <c>perm</c> contains <c>Apps.Employee.Access</c> (future Employee-app endpoints).</summary>
@@ -25,7 +25,7 @@ public sealed class AllowedWhilePasswordChangeRequiredMetadata
     public static readonly AllowedWhilePasswordChangeRequiredMetadata Instance = new();
 }
 
-/// <summary>The permission an endpoint requires (contract §9; checked by Slice 7). Read here for AccessDenied's actor_role_code (§14.1).</summary>
+/// <summary>The permission an endpoint requires (contract §9 check-order step 4, enforced by <see cref="AudienceGateMiddleware"/>). Also read for AccessDenied's actor_role_code (§14.1).</summary>
 public sealed record RequiredPermissionMetadata(string Permission);
 
 /// <summary>Which in-memory rate-limit layers of contract §17 apply: 1 (all public auth endpoints) and 5 (refresh).</summary>
@@ -36,6 +36,11 @@ public static class AuthEndpointConventions
     public static TBuilder WithAudience<TBuilder>(this TBuilder builder, AuthAudience audience)
         where TBuilder : IEndpointConventionBuilder =>
         builder.WithMetadata(new AuthAudienceMetadata(audience));
+
+    /// <summary>Declares the permission the endpoint requires; a caller without it gets 403 <c>auth.forbidden</c> + <c>AccessDenied</c> (contract §9 step 4).</summary>
+    public static TBuilder RequiresPermission<TBuilder>(this TBuilder builder, string permission)
+        where TBuilder : IEndpointConventionBuilder =>
+        builder.WithMetadata(new RequiredPermissionMetadata(permission));
 
     public static TBuilder AllowedWhilePasswordChangeRequired<TBuilder>(this TBuilder builder)
         where TBuilder : IEndpointConventionBuilder =>

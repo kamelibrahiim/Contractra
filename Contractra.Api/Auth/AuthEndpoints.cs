@@ -331,7 +331,7 @@ public static class AuthEndpoints
         });
 
     /// <summary>Runs once; on a lost concurrent write (ADR 0005) runs once more in a fresh scope.</summary>
-    private static async Task<T> WithConcurrencyRetryAsync<T>(HttpContext context, Func<IServiceProvider, Task<T>> run, IServiceProvider? services = null)
+    internal static async Task<T> WithConcurrencyRetryAsync<T>(HttpContext context, Func<IServiceProvider, Task<T>> run, IServiceProvider? services = null)
     {
         try
         {

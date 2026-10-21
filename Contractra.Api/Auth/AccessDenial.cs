@@ -51,7 +51,8 @@ public static class AccessDenial
 /// <summary>
 /// Runs after authentication (contract §4.1 order): token validation and the
 /// security-version lookup have already happened (<see cref="JwtValidation"/>); this
-/// applies the password-change gate (§7), then the endpoint's app audience. An
+/// applies the password-change gate (§7), then the endpoint's app audience, then the
+/// permission it declares (§9 steps 2-4). An
 /// endpoint that declares no audience is refused (fail closed, §4.1).
 /// <c>X-Client-Platform</c> is never consulted here.
 /// </summary>
@@ -116,6 +117,13 @@ public sealed class AudienceGateMiddleware
         if (required.App is { } app && (caller.App != app || !caller.HasPermission(required.Permission!)))
         {
             await AccessDenial.DenyAsync(context, AuthErrorCodes.AppAccessDenied, caller.UserId, source, required.Permission);
+            return;
+        }
+
+        // Contract §9 step 4: the endpoint's own permission (Users.Manage on every users endpoint).
+        if (endpointPermission is not null && !caller.HasPermission(endpointPermission))
+        {
+            await AccessDenial.DenyAsync(context, AuthErrorCodes.Forbidden, caller.UserId, source, endpointPermission);
             return;
         }
 

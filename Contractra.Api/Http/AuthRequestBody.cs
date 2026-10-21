@@ -20,7 +20,7 @@ public sealed class AuthRequestBody
     public const int MaxBytes = 16 * 1024;
 
     private readonly JsonElement _root;
-    private readonly HashSet<string> _typeErrors = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _typeErrors = new(StringComparer.Ordinal);
 
     private AuthRequestBody(BodyStatus status, JsonElement root)
     {
@@ -30,8 +30,8 @@ public sealed class AuthRequestBody
 
     public BodyStatus Status { get; }
 
-    /// <summary>Fields that were present with a non-string value.</summary>
-    public IReadOnlyCollection<string> TypeErrors => _typeErrors;
+    /// <summary>Fields that were present with a value of the wrong type.</summary>
+    public IReadOnlyCollection<string> TypeErrors => _typeErrors.Keys;
 
     public static async Task<AuthRequestBody> ReadAsync(HttpRequest request)
     {
@@ -96,7 +96,7 @@ public sealed class AuthRequestBody
                 case JsonValueKind.Null:
                     return null;
                 default:
-                    _typeErrors.Add(name);
+                    _typeErrors[name] = StringMessage;
                     return null;
             }
         }
@@ -104,6 +104,58 @@ public sealed class AuthRequestBody
         return null;
     }
 
+    /// <summary>
+    /// The string items of an array field; null when absent or JSON null. A value that is
+    /// not an array, or an array holding a non-string item, is recorded as a type error
+    /// (and yields null) - no partial list is ever returned.
+    /// </summary>
+    public IReadOnlyList<string>? GetStringArray(string name)
+    {
+        if (Status != BodyStatus.Ok)
+        {
+            return null;
+        }
+
+        foreach (var property in _root.EnumerateObject())
+        {
+            if (!string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            switch (property.Value.ValueKind)
+            {
+                case JsonValueKind.Null:
+                    return null;
+                case JsonValueKind.Array:
+                    var items = new List<string>();
+                    foreach (var item in property.Value.EnumerateArray())
+                    {
+                        if (item.ValueKind != JsonValueKind.String)
+                        {
+                            _typeErrors[name] = StringArrayMessage;
+                            return null;
+                        }
+
+                        items.Add(item.GetString()!);
+                    }
+
+                    return items;
+                default:
+                    _typeErrors[name] = StringArrayMessage;
+                    return null;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Records a field-level error for a value that cannot be used (for example a malformed identifier).</summary>
+    public void AddFieldError(string name, string message) => _typeErrors[name] = message;
+
     public Dictionary<string, string[]> TypeErrorMessages() =>
-        _typeErrors.ToDictionary(field => field, _ => new[] { "The value must be a string." });
+        _typeErrors.ToDictionary(entry => entry.Key, entry => new[] { entry.Value });
+
+    private const string StringMessage = "The value must be a string.";
+    private const string StringArrayMessage = "The value must be an array of strings.";
 }

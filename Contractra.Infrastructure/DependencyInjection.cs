@@ -4,6 +4,7 @@ using Contractra.Application.Identity;
 using Contractra.Application.Identity.Auth;
 using Contractra.Application.Identity.Operations;
 using Contractra.Application.Identity.UseCases;
+using Contractra.Application.Identity.Users;
 using Contractra.Infrastructure.Startup;
 using Contractra.Application.Parties;
 using Contractra.Infrastructure.Common;
@@ -48,6 +49,7 @@ public static class DependencyInjection
 		services.AddScoped<IPartyRepository, PartyRepository>();
 		services.AddScoped<ISessionStore, SessionStore>();
 		services.AddScoped<IPasswordResetTicketStore, PasswordResetTicketStore>();
+		services.AddScoped<IUserDirectory, UserDirectory>();
 
 		services.AddSingleton<IClock, SystemClock>();
 		services.AddSingleton<IBusinessDateProvider, ConfiguredBusinessDateProvider>();
@@ -62,6 +64,11 @@ public static class DependencyInjection
 		services.AddScoped<IssuePasswordResetUseCase>();
 		services.AddScoped<CompletePasswordResetUseCase>();
 		services.AddScoped<ReissueInitialPasswordUseCase>();
+
+		// Slice 7: read side of the Admin users endpoints (contract §9.2, §9.3, §9.7).
+		services.AddScoped<GetUserQuery>();
+		services.AddScoped<ListUsersQuery>();
+		services.AddScoped<ListRolesQuery>();
 
 		// Slice 5: bootstrap seeder and the two operator commands (contract §10A, §11).
 		services.AddScoped<IPermissionRepository, PermissionRepository>();

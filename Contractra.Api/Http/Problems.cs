@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Contractra.Application.Identity;
 using Contractra.Application.Identity.Auth;
 
 namespace Contractra.Api.Http;
@@ -21,7 +22,8 @@ public static class Problems
         string code,
         string title,
         IReadOnlyDictionary<string, string[]>? errors = null,
-        TimeSpan? retryAfter = null)
+        TimeSpan? retryAfter = null,
+        string? reason = null)
     {
         var response = context.Response;
         response.StatusCode = status;
@@ -45,6 +47,12 @@ public static class Problems
             body["errors"] = errors;
         }
 
+        if (reason is not null)
+        {
+            // users.party_invalid only (contract §9.1): not_found, not_active or no_active_engineer_role.
+            body["reason"] = reason;
+        }
+
         await JsonSerializer.SerializeAsync(response.Body, body, Json, context.RequestAborted);
     }
 
@@ -55,6 +63,11 @@ public static class Problems
         AuthErrorCodes.Forbidden or AuthErrorCodes.PasswordChangeRequired or AuthErrorCodes.AppAccessDenied => StatusCodes.Status403Forbidden,
         AuthErrorCodes.TooManyAttempts => StatusCodes.Status429TooManyRequests,
         AuthErrorCodes.ServerError => StatusCodes.Status500InternalServerError,
+        UserErrorCodes.NotFound => StatusCodes.Status404NotFound,
+        UserErrorCodes.LoginIdentifierTaken or UserErrorCodes.PartyAlreadyLinked or UserErrorCodes.AlreadyDisabled
+            or UserErrorCodes.AlreadyActive or UserErrorCodes.InitialPasswordPending
+            or UserErrorCodes.InitialPasswordNotReissuable or UserErrorCodes.BootstrapAccountProtected => StatusCodes.Status409Conflict,
+        UserErrorCodes.ResetDeliveryUnavailable => StatusCodes.Status503ServiceUnavailable,
         _ => StatusCodes.Status400BadRequest,
     };
 
@@ -74,11 +87,26 @@ public static class Problems
         AuthErrorCodes.PasswordSameAsCurrent => "Password same as current",
         AuthErrorCodes.ResetCodeInvalid => "Reset code invalid",
         AuthErrorCodes.TooManyAttempts => "Too many attempts",
+        UserErrorCodes.NotFound => "User not found",
+        UserErrorCodes.LoginIdentifierInvalid => "Login identifier invalid",
+        UserErrorCodes.LoginIdentifierTaken => "Login identifier already taken",
+        UserErrorCodes.RoleRequired => "Role required",
+        UserErrorCodes.RoleUnknown => "Role unknown",
+        UserErrorCodes.PartyRequired => "Party required",
+        UserErrorCodes.PartyInvalid => "Party invalid",
+        UserErrorCodes.PartyAlreadyLinked => "Party already linked",
+        UserErrorCodes.AlreadyDisabled => "User already disabled",
+        UserErrorCodes.AlreadyActive => "User already active",
+        UserErrorCodes.InitialPasswordPending => "Initial password pending",
+        UserErrorCodes.InitialPasswordNotReissuable => "Initial password not reissuable",
+        UserErrorCodes.ResetDeliveryUnavailable => "Password reset delivery unavailable",
+        UserErrorCodes.BootstrapAccountProtected => "Bootstrap account protected",
         _ => "Server error",
     };
 
-    public static Task WriteCodeAsync(HttpContext context, string code, IReadOnlyDictionary<string, string[]>? errors = null, TimeSpan? retryAfter = null) =>
-        WriteAsync(context, StatusFor(code), code, TitleFor(code), errors, retryAfter);
+    public static Task WriteCodeAsync(
+        HttpContext context, string code, IReadOnlyDictionary<string, string[]>? errors = null, TimeSpan? retryAfter = null, string? reason = null) =>
+        WriteAsync(context, StatusFor(code), code, TitleFor(code), errors, retryAfter, reason);
 
     public static Task ServerErrorAsync(HttpContext context) =>
         WriteAsync(context, StatusCodes.Status500InternalServerError, AuthErrorCodes.ServerError, TitleFor(AuthErrorCodes.ServerError));

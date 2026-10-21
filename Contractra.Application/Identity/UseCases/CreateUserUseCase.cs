@@ -62,7 +62,8 @@ public sealed class CreateUserUseCase
     {
         if (string.IsNullOrWhiteSpace(request.LoginIdentifier)
             || request.LoginIdentifier != request.LoginIdentifier.Trim()
-            || request.LoginIdentifier.Length > MaxLoginIdentifierLength)
+            || request.LoginIdentifier.Length > MaxLoginIdentifierLength
+            || request.LoginIdentifier.Contains('\0')) // PostgreSQL text cannot hold NUL
         {
             return Fail("users.login_identifier_invalid", "The login identifier is invalid.");
         }
@@ -92,7 +93,7 @@ public sealed class CreateUserUseCase
         var roles = new List<Role>();
         foreach (var code in request.RoleCodes)
         {
-            var role = await _roles.FindByCodeAsync(code, cancellationToken);
+            var role = code.Contains('\0') ? null : await _roles.FindByCodeAsync(code, cancellationToken);
             if (role is null)
             {
                 return Fail("users.role_unknown", $"Role '{code}' does not exist.");

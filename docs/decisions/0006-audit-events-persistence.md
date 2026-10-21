@@ -1,6 +1,6 @@
 # ADR 0006: Persistence for the financial audit trail — `audit_events` with explicit event context
 
-**Status:** Proposed — pending owner review of this document. **Not implemented.** Backend Sprint 2, Slice 3 (US-BE-009). Records the owner decisions R46 and R47 of 2026-10-16 (§3) and proposes engineering decisions E26–E44 (§4), which are not approved until the owner accepts this ADR. The contract wording they need is proposed in `docs/implementation/backend/features/auth-and-users-api-contract.md` §22 I (pending review, not applied).
+**Status:** Proposed — pending owner review of this document. ~~**Not implemented.**~~ *Implementation note (2026-10-19): the Slice 3 design is implemented — commits `50832d1` and `d5c4c26`, recorded in `docs/implementation/backend/sprints/sprint-02.md` §A. Implemented does not mean accepted: this ADR's status is unchanged.* Backend Sprint 2, Slice 3 (US-BE-009). Records the owner decisions R46 and R47 of 2026-10-16 and the unnumbered owner decisions of 2026-10-19 on `ThrottleCleared` (§3; the E33/E36 target deviation recorded there stays open), and proposes engineering decisions E26–E44 (§4), which are not approved until the owner accepts this ADR. The contract wording they need is proposed in `docs/implementation/backend/features/auth-and-users-api-contract.md` §22 I (pending review, not applied).
 
 *Revised 2026-10-16 (documentation correction pass): precedence of R46/R47 stated (§3); E30 reconciled with ح-188, business ADR-018 and PRV-08; ح-190 retention added to Audit Completion and Gate B (§8); E34 corrected to follow the contract's reason rule; the privilege self-check covers `TRIGGER` (§7.3); explicit Identity detail moved from `audit_event_changes` to the logical model's optional snapshot field, so that `audit_event_changes` holds only genuine field changes (E37, §5.2). All still proposed.*
 
@@ -45,6 +45,8 @@ These are owner decisions in the sense of `docs/implementation/README.md` §1 it
 
 **Precedence of R46 and R47.** Both are explicit owner decisions and govern the implementation's behaviour: the stored codes are `EmployeeApp`, `UserDisabled` and `RoleEnded`, and Gate B applies, even where older text says otherwise. They outrank the Draft contract's v1.5 wording (`docs/implementation/README.md` §1 ranks owner decisions above the contract), so they apply before the §22 I revision is accepted; the contract's status (Draft v1.5) and the proposal status of every other §22 I item are unchanged. Against the protected authoritative documents the position is different: `docs/implementation/README.md` §1 ranks those documents above owner decisions, so R46 is recorded here as an **explicit owner-directed exception** for the terminology it names, not as a precedence result. For `PWA` the exception exercises a deferral that the approved business ADR-033 itself made ("وتسميتها قرار مؤجَّل إلى تصميم التدقيق (W1-C)"); for `UserDeactivated`/`RoleChanged` it overrides spec UC-002, which ranks above the logical model's `UserDisabled`/`RoleEnded`. The protected documents keep their current text until their owner applies the corrections in §10 (U1, U2); until then the discrepancy stays recorded, not resolved. R47 conflicts with no source: it adds a release gate.
 
+**Owner decisions of 2026-10-19 (Slice 6 acceptance review D1, D4; no number assigned).** (1) `ThrottleCleared` is the 16th audit action type, written by the operator command `clear-throttle` (contract §22 M5). (2) Its audit event records the actor, time and reason; the event, the command's output and its Serilog messages must not carry the cleared login identifier or its unsalted hash. The event targets the operation, not the cleared identifier: `entity_type = "OperatorCommandRun"`, `entity_id` = the run's UUID (the per-run GUID the operator-command runner generates; also the run's correlation id). No schema change and no nullable `entity_id`; this replaces the nullable-`entity_id` option considered earlier the same day, which was not implemented. It deviates from E36 (Identity events target the aggregate root) and from E33's placement of operation ids in `causation_id`, because `entity_id` is NOT NULL and the only other identity available is the identifier's hash, which the decision forbids storing. These decisions do not accept this ADR.
+
 **Why the vocabulary had to be decided now.** `audit_events` is append-only: a code written into a production row stays there. A later rename can only add a new value; every historical value must remain valid and keep its documented meaning. A compatibility change of that kind is a migration that widens a CHECK — never an `UPDATE` of history.
 
 ## 4. Decisions
@@ -72,6 +74,11 @@ Basis: **[C]** confirmed requirement · **[O]** owner decision · **[D]** draft 
 | E42 | The privilege self-check query is delivered in Slice 3 with its test; it runs at startup from Slice 5 (the first slice with startup work, before the seeder writes) and fails closed in Production. It checks exactly the privileges the migration revokes — `UPDATE`, `DELETE`, `TRUNCATE` and `TRIGGER` — plus ownership and superuser (§7.3). | [C] NFR-SEC-009 · [D] §18 · [E] placement |
 | E43 | Deployment uses a migration role and a separate application role; the application never runs migrations (§7). | [C] NFR-SEC-009 · [D] §18 |
 | E44 | `id` is UUIDv7 set by the Domain. No column has a database default; every row states every value. All timestamps are `timestamp with time zone`. Names follow ADRs 0001–0005. | [E] (repository convention) |
+
+*Dated notes (2026-10-19), added after the Slice 6 acceptance review; the decisions above are unchanged and still proposed:*
+- *E27:* the first migration to add an event, `AddThrottleClearedAuditAction` (`ThrottleCleared`), drops and re-adds the CHECK in one step instead of `NOT VALID` then `VALIDATE`. This is an open deviation. Whether that migration has been applied to any database is not known, so it has not been edited; resolving it (rewrite before first application, or a follow-up migration) needs that fact first.
+- *E34:* `clear-throttle` is a third operator command. The Domain now requires a reason for `ThrottleCleared` exactly as for `PasswordResetIssued` and `BootstrapPasswordReset`.
+- *E33 / E36:* `ThrottleCleared` deviates from both: its target is `OperatorCommandRun` + the run's UUID rather than an aggregate root, and the operation id sits in `entity_id` (it is also the correlation id and the idempotency key's operation part), not in `causation_id`. See the owner decisions of 2026-10-19 in §3 for the reason.
 
 ## 5. Schema
 
@@ -140,6 +147,8 @@ Recording context as a "change" would misstate history: on `RoleEnded` the role 
 `UserCreated` · **`UserDisabled`** (R46) · `UserReactivated` · `RoleAssigned` · **`RoleEnded`** (R46) · `PermissionGranted` · `PermissionRevoked` · `PayrollViewGranted` · `PayrollViewRevoked` · `PasswordChanged` · `PasswordResetIssued` · `PasswordResetCompleted` · `InitialPasswordReissued` · `BootstrapPasswordReset` · `AccessDenied`
 
 Not included: `PasswordReset` (replaced in contract v1.5 by `PasswordResetIssued` and `PasswordResetCompleted`), `LoginFailed` (Serilog only, LM §1.8).
+
+*Added 2026-10-19 (owner decision, §3):* · **`ThrottleCleared`** — operator `clear-throttle` (contract §22 M5); `System` actor, source `SystemJob`, operation key `command:<the run's correlation id>`, target `OperatorCommandRun` + the run's UUID, a reason required, no snapshot. The catalog now has 16 codes.
 
 **Sources:**
 

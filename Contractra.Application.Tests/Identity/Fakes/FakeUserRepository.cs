@@ -7,13 +7,19 @@ internal sealed class FakeUserRepository : IUserRepository
 {
     private readonly Dictionary<Guid, User> _users = new();
 
+    /// <summary>Counts calls to <see cref="FindByLoginIdentifierAsync"/>, so a test can prove a pre-lookup guard really ran before any lookup, not just that no matching user exists.</summary>
+    public int FindByLoginIdentifierCallCount { get; private set; }
+
     public void Seed(User user) => _users[user.Id] = user;
 
     public IReadOnlyList<User> AllUsers() => _users.Values.ToList();
 
-    public Task<User?> FindByLoginIdentifierAsync(string loginIdentifier, CancellationToken cancellationToken = default) =>
-        Task.FromResult(_users.Values.SingleOrDefault(u =>
+    public Task<User?> FindByLoginIdentifierAsync(string loginIdentifier, CancellationToken cancellationToken = default)
+    {
+        FindByLoginIdentifierCallCount++;
+        return Task.FromResult(_users.Values.SingleOrDefault(u =>
             string.Equals(u.LoginIdentifier.Value, loginIdentifier, StringComparison.OrdinalIgnoreCase)));
+    }
 
     public Task<User?> FindByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(_users.GetValueOrDefault(id));

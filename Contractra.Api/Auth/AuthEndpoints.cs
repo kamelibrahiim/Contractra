@@ -83,7 +83,7 @@ public static class AuthEndpoints
             body.GetString("password"),
             body.GetString("clientApp"),
             platformHeader,
-            ClientSource.Of(context),
+            ClientSource.ThrottleGroupOf(context),
             body.TypeErrorMessages());
 
         var outcome = await context.RequestServices.GetRequiredService<LoginUseCase>().ExecuteAsync(request, context.RequestAborted);
@@ -256,7 +256,7 @@ public static class AuthEndpoints
             body.GetString("loginIdentifier"),
             body.GetString("resetCode"),
             body.GetString("newPassword"),
-            ClientSource.Of(context),
+            ClientSource.ThrottleGroupOf(context),
             CorrelationIdMiddleware.Get(context),
             PasswordResetCompletionAuditSource,
             body.TypeErrorMessages());

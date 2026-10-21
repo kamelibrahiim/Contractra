@@ -1,5 +1,6 @@
 using Contractra.Application.Audit;
 using Contractra.Application.Common;
+using Contractra.Application.Identity.Auth;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
 
@@ -18,15 +19,18 @@ public sealed class DisableUserUseCase
     private readonly IAuditWriter _auditWriter;
     private readonly IClock _clock;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IUserAccessReader _accessReader;
 
     public DisableUserUseCase(
-        IUserRepository users, ISessionStore sessions, IAuditWriter auditWriter, IClock clock, IUnitOfWork unitOfWork)
+        IUserRepository users, ISessionStore sessions, IAuditWriter auditWriter, IClock clock, IUnitOfWork unitOfWork,
+        IUserAccessReader accessReader)
     {
         _users = users;
         _sessions = sessions;
         _auditWriter = auditWriter;
         _clock = clock;
         _unitOfWork = unitOfWork;
+        _accessReader = accessReader;
     }
 
     public async Task<UseCaseResult> ExecuteAsync(DisableUserRequest request, CancellationToken cancellationToken = default)
@@ -49,19 +53,21 @@ public sealed class DisableUserUseCase
 
         var now = _clock.UtcNow;
 
+        // actor_role_code (contract §14.1, owner decision OC-6, confirmed): this
+        // action requires Users.Manage, so the rule resolves to the active role
+        // through which the actor held it (several → first by ordinal code order).
+        var access = await _accessReader.GetAsync(request.ActorUserId, now, cancellationToken);
+        var actorRoleCode = ActorRoleCodeRule.Resolve(access, "Users.Manage");
+
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
         user.Disable();
         await _sessions.RevokeAllActiveAsync(user.Id, SessionRevokeReason.UserDisabled, now, cancellationToken: cancellationToken);
 
-        // actor_role_code: contract §14.1 would resolve this to the role
-        // through which the actor held Users.Manage, but §19 OC-6 lists that
-        // rule as still needing owner confirmation, and no permission-to-role
-        // resolution exists anywhere in the codebase yet.
         _auditWriter.Stage(AuditEvent.ForUser(
             AuditActionType.UserDisabled,
             actorUserId: request.ActorUserId,
-            actorRoleCode: null,
+            actorRoleCode: actorRoleCode,
             entityType: "User",
             entityId: user.Id,
             occurredAtUtc: now,

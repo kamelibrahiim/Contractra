@@ -1,4 +1,5 @@
 using Contractra.Application.Identity.UseCases;
+using Contractra.Application.Tests.Identity.Auth;
 using Contractra.Application.Tests.Identity.Fakes;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
@@ -14,8 +15,9 @@ public class ReactivateUserUseCaseTests
     private readonly FakeAuditWriter _auditWriter = new();
     private readonly FakeClock _clock = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeUserAccessReader _accessReader = new();
 
-    private ReactivateUserUseCase CreateUseCase() => new(_users, _auditWriter, _clock, _unitOfWork);
+    private ReactivateUserUseCase CreateUseCase() => new(_users, _auditWriter, _clock, _unitOfWork, _accessReader);
 
     [Fact]
     public async Task Reactivate_ADisabledUser_SetsStatusAndAudits()
@@ -88,9 +90,47 @@ public class ReactivateUserUseCaseTests
         await useCase.ExecuteAsync(new ReactivateUserRequest(user.Id, ActorId, "corr-react", AuditSource.Web));
 
         var auditEvent = Assert.Single(_auditWriter.Staged);
+        // OC-6 resolved: ActorId has no active role in this fake, so the
+        // confirmed rule itself (not an unresolved OC-6) is what yields null here.
         AuditAssert.Event(
             auditEvent, AuditActionType.UserReactivated, ActorId, user.Id, "corr-react", AuditSource.Web, _clock.UtcNow,
-            previousStatus: "Disabled", newStatus: "Active");
+            previousStatus: "Disabled", newStatus: "Active",
+            actorRoleCodeStillPendingOc6: false, expectedActorRoleCode: null);
         Assert.Null(auditEvent.Snapshot);
+    }
+
+    // Contract §14.1, owner decision OC-6: reactivating a user requires
+    // Users.Manage, so the rule resolves to the active role through which the
+    // actor held it (several → first by ordinal code order).
+    [Fact]
+    public async Task Reactivate_AuditEvent_ActorRoleCode_IsTheRoleGrantingUsersManage()
+    {
+        var user = new User(new LoginIdentifier("eng.ahmed"), UserStatus.Disabled, "hash", mustChangePassword: false);
+        _users.Seed(user);
+        _accessReader.Set(
+            ActorId, ["Admin", "Accountant"],
+            new() { ["Admin"] = ["Users.Manage"], ["Accountant"] = ["Users.Manage"] });
+        var useCase = CreateUseCase();
+
+        await useCase.ExecuteAsync(new ReactivateUserRequest(user.Id, ActorId, "corr-react", AuditSource.Web));
+
+        var auditEvent = Assert.Single(_auditWriter.Staged);
+        Assert.Equal("Accountant", auditEvent.ActorRoleCode);
+    }
+
+    // No role grants Users.Manage directly: the rule falls back to the
+    // actor's first active role.
+    [Fact]
+    public async Task Reactivate_AuditEvent_ActorRoleCode_FallsBackToTheFirstActiveRole_WhenNoRoleGrantsUsersManage()
+    {
+        var user = new User(new LoginIdentifier("eng.ahmed"), UserStatus.Disabled, "hash", mustChangePassword: false);
+        _users.Seed(user);
+        _accessReader.Set(ActorId, ["OfficeStaff", "Engineer"], direct: ["Users.Manage"]);
+        var useCase = CreateUseCase();
+
+        await useCase.ExecuteAsync(new ReactivateUserRequest(user.Id, ActorId, "corr-react", AuditSource.Web));
+
+        var auditEvent = Assert.Single(_auditWriter.Staged);
+        Assert.Equal("Engineer", auditEvent.ActorRoleCode);
     }
 }

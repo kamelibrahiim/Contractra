@@ -1,5 +1,6 @@
 using Contractra.Application.Identity;
 using Contractra.Application.Identity.UseCases;
+using Contractra.Application.Tests.Identity.Auth;
 using Contractra.Application.Tests.Identity.Fakes;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
@@ -19,13 +20,14 @@ public class IssuePasswordResetUseCaseTests
     private readonly FakeAuditWriter _auditWriter = new();
     private readonly FakeClock _clock = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeUserAccessReader _accessReader = new();
 
     private IssuePasswordResetUseCase CreateUseCase(params IPasswordResetDelivery[] channels) => new(
-        _users, _sessions, _tickets, _codes, _auditWriter, _clock, _unitOfWork, channels);
+        _users, _sessions, _tickets, _codes, _auditWriter, _clock, _unitOfWork, channels, _accessReader);
 
     private IssuePasswordResetUseCase CreateUseCaseWithLogger(
         ListLogger<IssuePasswordResetUseCase> logger, params IPasswordResetDelivery[] channels) => new(
-        _users, _sessions, _tickets, _codes, _auditWriter, _clock, _unitOfWork, channels, codeLifetime: null, logger);
+        _users, _sessions, _tickets, _codes, _auditWriter, _clock, _unitOfWork, channels, _accessReader, codeLifetime: null, logger);
 
     private User SeedUserWithChosenPassword(string login = "eng.ahmed")
     {
@@ -161,7 +163,11 @@ public class IssuePasswordResetUseCaseTests
 
         var ticket = await _tickets.FindOpenAsync(user.Id);
         var auditEvent = Assert.Single(_auditWriter.Staged);
-        AuditAssert.Event(auditEvent, AuditActionType.PasswordResetIssued, ActorId, user.Id, "corr-issue", AuditSource.Web, _clock.UtcNow);
+        // OC-6 resolved: ActorId has no active role in this fake, so the
+        // confirmed rule itself (not an unresolved OC-6) is what yields null here.
+        AuditAssert.Event(
+            auditEvent, AuditActionType.PasswordResetIssued, ActorId, user.Id, "corr-issue", AuditSource.Web, _clock.UtcNow,
+            actorRoleCodeStillPendingOc6: false, expectedActorRoleCode: null);
         AuditAssert.SnapshotKeys(auditEvent, "password_reset_ticket_id", "issued_by_user_id", "channel", "issued_at", "expires_at", "consumed_at");
         var snapshot = AuditAssert.SnapshotOf(auditEvent);
         Assert.Equal(ticket!.Id.ToString(), snapshot["password_reset_ticket_id"]);
@@ -171,6 +177,39 @@ public class IssuePasswordResetUseCaseTests
         AuditAssert.SnapshotTime(snapshot, "expires_at", result.Value!.ExpiresAt);
         Assert.Null(snapshot["consumed_at"]);
         AuditAssert.ContainsNone(auditEvent, channel.Sent.Single().Code, Convert.ToHexString(ticket.CodeHash), user.PasswordHash);
+    }
+
+    // Contract §14.1, owner decision OC-6: issuing a reset requires
+    // Users.Manage, so the rule resolves to the active role through which the
+    // actor held it (several → first by ordinal code order).
+    [Fact]
+    public async Task IssueReset_AuditEvent_ActorRoleCode_IsTheRoleGrantingUsersManage()
+    {
+        var user = SeedUserWithChosenPassword();
+        _accessReader.Set(
+            ActorId, ["Admin", "Accountant"],
+            new() { ["Admin"] = ["Users.Manage"], ["Accountant"] = ["Users.Manage"] });
+        var useCase = CreateUseCase(new FakePasswordResetDelivery("operator"));
+
+        await useCase.ExecuteAsync(new IssuePasswordResetRequest(user.Id, ActorId, "corr-issue", AuditSource.Web));
+
+        var auditEvent = Assert.Single(_auditWriter.Staged);
+        Assert.Equal("Accountant", auditEvent.ActorRoleCode);
+    }
+
+    // No role grants Users.Manage directly: the rule falls back to the
+    // actor's first active role.
+    [Fact]
+    public async Task IssueReset_AuditEvent_ActorRoleCode_FallsBackToTheFirstActiveRole_WhenNoRoleGrantsUsersManage()
+    {
+        var user = SeedUserWithChosenPassword();
+        _accessReader.Set(ActorId, ["OfficeStaff", "Engineer"], direct: ["Users.Manage"]);
+        var useCase = CreateUseCase(new FakePasswordResetDelivery("operator"));
+
+        await useCase.ExecuteAsync(new IssuePasswordResetRequest(user.Id, ActorId, "corr-issue", AuditSource.Web));
+
+        var auditEvent = Assert.Single(_auditWriter.Staged);
+        Assert.Equal("Engineer", auditEvent.ActorRoleCode);
     }
 
     [Fact]

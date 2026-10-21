@@ -1,5 +1,6 @@
 using Contractra.Application.Audit;
 using Contractra.Application.Common;
+using Contractra.Application.Identity.Auth;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
 
@@ -21,6 +22,7 @@ public sealed class ReissueInitialPasswordUseCase
     private readonly IClock _clock;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeSpan _temporaryPasswordLifetime;
+    private readonly IUserAccessReader _accessReader;
 
     public ReissueInitialPasswordUseCase(
         IUserRepository users,
@@ -30,6 +32,7 @@ public sealed class ReissueInitialPasswordUseCase
         IAuditWriter auditWriter,
         IClock clock,
         IUnitOfWork unitOfWork,
+        IUserAccessReader accessReader,
         TimeSpan? temporaryPasswordLifetime = null)
     {
         _users = users;
@@ -39,6 +42,7 @@ public sealed class ReissueInitialPasswordUseCase
         _auditWriter = auditWriter;
         _clock = clock;
         _unitOfWork = unitOfWork;
+        _accessReader = accessReader;
         _temporaryPasswordLifetime = temporaryPasswordLifetime ?? TimeSpan.FromHours(72);
     }
 
@@ -71,19 +75,21 @@ public sealed class ReissueInitialPasswordUseCase
         var temporaryPasswordHash = _hasher.Hash(temporaryPassword);
         var expiresAt = now.Add(_temporaryPasswordLifetime);
 
+        // actor_role_code (contract §14.1, owner decision OC-6, confirmed): this
+        // action requires Users.Manage, so the rule resolves to the active role
+        // through which the actor held it (several → first by ordinal code order).
+        var access = await _accessReader.GetAsync(request.ActorUserId, now, cancellationToken);
+        var actorRoleCode = ActorRoleCodeRule.Resolve(access, "Users.Manage");
+
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
         user.ReissueTemporaryPassword(temporaryPasswordHash, expiresAt, now);
         await _sessions.RevokeAllActiveAsync(user.Id, SessionRevokeReason.InitialPasswordReissued, now, cancellationToken: cancellationToken);
 
-        // actor_role_code: contract §14.1 would resolve this to the role
-        // through which the actor held Users.Manage, but §19 OC-6 lists that
-        // rule as still needing owner confirmation, and no permission-to-role
-        // resolution exists anywhere in the codebase yet.
         _auditWriter.Stage(AuditEvent.ForUser(
             AuditActionType.InitialPasswordReissued,
             actorUserId: request.ActorUserId,
-            actorRoleCode: null,
+            actorRoleCode: actorRoleCode,
             entityType: "User",
             entityId: user.Id,
             occurredAtUtc: now,

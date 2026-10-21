@@ -1,5 +1,6 @@
 using Contractra.Application.Audit;
 using Contractra.Application.Common;
+using Contractra.Application.Identity.Auth;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
 using Microsoft.Extensions.Logging;
@@ -34,6 +35,7 @@ public sealed class IssuePasswordResetUseCase
     private readonly IReadOnlyList<IPasswordResetDelivery> _deliveryChannels;
     private readonly TimeSpan _codeLifetime;
     private readonly ILogger<IssuePasswordResetUseCase> _logger;
+    private readonly IUserAccessReader _accessReader;
 
     public IssuePasswordResetUseCase(
         IUserRepository users,
@@ -44,6 +46,7 @@ public sealed class IssuePasswordResetUseCase
         IClock clock,
         IUnitOfWork unitOfWork,
         IEnumerable<IPasswordResetDelivery> deliveryChannels,
+        IUserAccessReader accessReader,
         TimeSpan? codeLifetime = null,
         ILogger<IssuePasswordResetUseCase>? logger = null)
     {
@@ -55,6 +58,7 @@ public sealed class IssuePasswordResetUseCase
         _clock = clock;
         _unitOfWork = unitOfWork;
         _deliveryChannels = deliveryChannels.ToList();
+        _accessReader = accessReader;
         _codeLifetime = codeLifetime ?? TimeSpan.FromHours(24);
         _logger = logger ?? NullLogger<IssuePasswordResetUseCase>.Instance;
     }
@@ -94,20 +98,22 @@ public sealed class IssuePasswordResetUseCase
         var expiresAt = now.Add(_codeLifetime);
         var ticket = PasswordResetTicket.Issue(user.Id, generatedCode.Hash, now, expiresAt, request.ActorUserId, channel.Channel);
 
+        // actor_role_code (contract §14.1, owner decision OC-6, confirmed): this
+        // action requires Users.Manage, so the rule resolves to the active role
+        // through which the actor held it (several → first by ordinal code order).
+        var access = await _accessReader.GetAsync(request.ActorUserId, now, cancellationToken);
+        var actorRoleCode = ActorRoleCodeRule.Resolve(access, "Users.Manage");
+
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
         user.BeginPasswordReset();
         await _tickets.IssueAsync(ticket, cancellationToken);
         await _sessions.RevokeAllActiveAsync(user.Id, SessionRevokeReason.PasswordResetIssued, now, cancellationToken: cancellationToken);
 
-        // actor_role_code: contract §14.1 would resolve this to the role
-        // through which the actor held Users.Manage, but §19 OC-6 lists that
-        // rule as still needing owner confirmation, and no permission-to-role
-        // resolution exists anywhere in the codebase yet.
         _auditWriter.Stage(AuditEvent.ForUser(
             AuditActionType.PasswordResetIssued,
             actorUserId: request.ActorUserId,
-            actorRoleCode: null,
+            actorRoleCode: actorRoleCode,
             entityType: "User",
             entityId: user.Id,
             occurredAtUtc: now,

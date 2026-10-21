@@ -8,7 +8,8 @@ namespace Contractra.Infrastructure.IntegrationTests;
 
 /// <summary>
 /// The AddAuditEvents migration (US-BE-009; repository ADR 0006 E39, E40, §7.1, §9):
-/// it sits right after AddAuthThrottleCounters, migrates down and up leaving
+/// it sits right after AddAuthThrottleCounters (and is followed only by
+/// AddThrottleClearedAuditAction), migrates down and up leaving
 /// users and catalog data intact, and revokes UPDATE, DELETE, TRUNCATE and TRIGGER from
 /// every non-owner grantee — including PUBLIC and privileges granted automatically by
 /// ALTER DEFAULT PRIVILEGES — without naming any role. Own database: migrates down.
@@ -17,6 +18,7 @@ public class AddAuditEventsMigrationTests : IClassFixture<PostgresTestDatabaseFi
 {
     private const string PreviousMigration = "AddAuthThrottleCounters";
     private const string ThisMigration = "AddAuditEvents";
+    private const string NextMigration = "AddThrottleClearedAuditAction";
 
     private readonly PostgresTestDatabaseFixture _fixture;
 
@@ -26,13 +28,16 @@ public class AddAuditEventsMigrationTests : IClassFixture<PostgresTestDatabaseFi
     }
 
     [Fact]
-    public async Task Migration_IsTheNewestOne_RightAfterTheThrottleCounters()
+    public async Task Migration_SitsRightAfterTheThrottleCounters_AndOnlyTheThrottleClearedActionFollowsIt()
     {
         await using var dbContext = _fixture.CreateDbContext();
         var ids = dbContext.GetService<IMigrationsAssembly>().Migrations.Keys.Order(StringComparer.Ordinal).ToArray();
 
-        Assert.EndsWith("_" + ThisMigration, ids[^1]);
-        Assert.EndsWith("_" + PreviousMigration, ids[^2]);
+        // AddAuditEvents was the newest migration when written; AddThrottleClearedAuditAction
+        // (contract §22 M5) is now the only one after it.
+        Assert.EndsWith("_" + NextMigration, ids[^1]);
+        Assert.EndsWith("_" + ThisMigration, ids[^2]);
+        Assert.EndsWith("_" + PreviousMigration, ids[^3]);
     }
 
     [Fact]
@@ -157,8 +162,10 @@ public class AddAuditEventsMigrationTests : IClassFixture<PostgresTestDatabaseFi
 
 /// <summary>
 /// Rolling back AddAuditEvents refuses to drop a non-empty audit table, so a rollback
-/// cannot silently destroy audit history (plan E16; ADR 0006 E40). Own database: it keeps
-/// an audit row that can never be deleted.
+/// cannot silently destroy audit history (plan E16; ADR 0006 E40). The test first rolls the
+/// empty database back to AddAuditEvents (undoing the later AddThrottleClearedAuditAction), so
+/// the single rollback it attempts is AddAuditEvents' own. Own database: it keeps an audit row
+/// that can never be deleted.
 /// </summary>
 public class AddAuditEventsDownGuardTests : IClassFixture<PostgresTestDatabaseFixture>
 {
@@ -169,25 +176,43 @@ public class AddAuditEventsDownGuardTests : IClassFixture<PostgresTestDatabaseFi
         _fixture = fixture;
     }
 
+    private const string PreviousMigration = "AddAuthThrottleCounters";
+    private const string ThisMigration = "AddAuditEvents";
+    private const string NextMigration = "AddThrottleClearedAuditAction";
+
     [Fact]
     public async Task Down_Refuses_WhenTheTableHoldsRows_AndNothingIsLost()
     {
+        await using var dbContext = _fixture.CreateDbContext();
+        var migrator = dbContext.GetService<IMigrator>();
+        var thisMigrationId = AuthPersistenceMigrationTestBase.FullName(dbContext, ThisMigration);
+        var nextMigrationId = AuthPersistenceMigrationTestBase.FullName(dbContext, NextMigration);
+
+        // The fixture migrates to the latest schema. Roll back only the later, unrelated
+        // migration first - while the table is still empty, so its Down cannot be affected
+        // by the audit row - so that the one Down attempted below is AddAuditEvents' own.
+        // EF Core 10 runs each migration in its own transaction, so a two-migration rollback
+        // would commit the later Down before this guard refuses, leaving the history changed.
+        await migrator.MigrateAsync(thisMigrationId);
+        Assert.Equal(thisMigrationId, (await dbContext.Database.GetAppliedMigrationsAsync()).Last());
+        Assert.Equal([nextMigrationId], await dbContext.Database.GetPendingMigrationsAsync());
+
         await using var connection = new NpgsqlConnection(_fixture.ConnectionString);
         await connection.OpenAsync();
         var row = AuditSql.SystemRow();
         await AuditSql.InsertAsync(connection, row);
 
-        await using var dbContext = _fixture.CreateDbContext();
-        var migrator = dbContext.GetService<IMigrator>();
         var exception = await Record.ExceptionAsync(() => migrator.MigrateAsync(
-            AuthPersistenceMigrationTestBase.FullName(dbContext, "AddAuthThrottleCounters")));
+            AuthPersistenceMigrationTestBase.FullName(dbContext, PreviousMigration)));
 
         var postgres = Assert.IsType<PostgresException>(exception);
         Assert.Equal("23001", postgres.SqlState);
         Assert.Contains("audit history", postgres.MessageText);
 
-        // The failed migration was rolled back: the table, its row, its triggers and the history entry remain.
-        Assert.Empty(await dbContext.Database.GetPendingMigrationsAsync());
+        // The failed migration was rolled back: the history still ends at AddAuditEvents (the later
+        // migration stays unapplied, as set up above), and the table, its row and its triggers remain.
+        Assert.Equal(thisMigrationId, (await dbContext.Database.GetAppliedMigrationsAsync()).Last());
+        Assert.Equal([nextMigrationId], await dbContext.Database.GetPendingMigrationsAsync());
         Assert.True(await AuthPersistenceMigrationTestBase.TableExistsAsync(connection, "audit_events"));
         Assert.Equal(1, await PostgresAssert.CountAsync(connection, null,
             "SELECT COUNT(*) FROM audit_events WHERE id = @id;", ("id", row["id"]!)));

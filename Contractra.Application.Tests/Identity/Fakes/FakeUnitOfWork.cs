@@ -9,6 +9,9 @@ internal sealed class FakeUnitOfWork : IUnitOfWork
 
     public bool Committed { get; private set; }
 
+    /// <summary>When set, <see cref="SaveChangesAndCommitAsync"/> throws instead of committing - simulates a real audit-write failure.</summary>
+    public bool ThrowOnSave { get; set; }
+
     /// <summary>Starts a fresh unit of work, as a new DI scope would.</summary>
     public void Reset()
     {
@@ -32,6 +35,12 @@ internal sealed class FakeUnitOfWork : IUnitOfWork
         if (!TransactionOpen)
         {
             throw new InvalidOperationException("No transaction is open.");
+        }
+
+        if (ThrowOnSave)
+        {
+            TransactionOpen = false;
+            throw new InvalidOperationException("Simulated audit-write failure.");
         }
 
         Committed = true;

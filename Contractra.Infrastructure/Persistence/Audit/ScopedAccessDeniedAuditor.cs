@@ -17,7 +17,8 @@ namespace Contractra.Infrastructure.Persistence.Audit;
 ///
 /// Target (decided in Slice 6, ADR 0006 E36, §11): <c>entity_type = User</c>,
 /// <c>entity_id</c> = the actor's own user id - the account whose access was refused.
-/// actor_role_code follows contract §14.1 (<see cref="ActorRoleCodeRule"/>; OC-6).
+/// actor_role_code follows contract §14.1, confirmed by owner decision OC-6
+/// (<see cref="ActorRoleCodeRule"/>).
 /// </summary>
 public sealed class ScopedAccessDeniedAuditor : IAccessDeniedAuditor
 {

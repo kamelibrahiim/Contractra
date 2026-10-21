@@ -1,8 +1,10 @@
 using System.Security.Cryptography;
 using Contractra.Application.Identity;
+using Contractra.Application.Identity.Auth;
 using Contractra.Application.Identity.UseCases;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
+using Contractra.Infrastructure.Persistence.Throttling;
 using Contractra.Infrastructure.Startup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -363,5 +365,157 @@ public class OperatorResetBootstrapPasswordFailureIntegrationTests : IClassFixtu
         Assert.Equal(admin.SecurityVersion, user.SecurityVersion);
         Assert.All(await after.AuthSessions.Where(s => s.UserId == admin.UserId).ToListAsync(), s => Assert.Null(s.RevokedAt));
         Assert.False(await after.AuditEvents.AnyAsync());
+    }
+}
+
+/// <summary>
+/// clear-throttle against PostgreSQL 18 (contract §22 M5, pending review with
+/// OC-8): the throttle-row delete (<see cref="IThrottleIdentifierEraser"/>) and
+/// the ThrottleCleared audit event now run in one transaction (ADR 0006 §6),
+/// so they must be proved to commit or roll back together - not merely that
+/// the use case reports a consistent result, which the fake-based
+/// Application.Tests already cover.
+///
+/// PENDING: not executed in the 2026-10-19 remediation pass (requires
+/// CONTRACTRA_TEST_POSTGRES against an ephemeral PostgreSQL 18 database). To
+/// run safely: set CONTRACTRA_TEST_POSTGRES to a disposable connection string
+/// and run `dotnet test Contractra.Infrastructure.IntegrationTests` in
+/// isolation, with nothing else connected to that instance.
+/// </summary>
+public class ClearThrottleIntegrationTests : IClassFixture<PostgresTestDatabaseFixture>
+{
+    private const string Reason = "Legitimate user starved by a coordinated distributed attack.";
+
+    private static readonly DateTimeOffset T0 = AuthThrottle.ToStoredPrecision(new DateTimeOffset(2026, 10, 19, 8, 0, 0, TimeSpan.Zero));
+
+    private readonly PostgresTestDatabaseFixture _fixture;
+
+    public ClearThrottleIntegrationTests(PostgresTestDatabaseFixture fixture) => _fixture = fixture;
+
+    private static byte[] NewIdentifierKey() => ThrottleKeys.IdentifierKey($"eng.{Guid.NewGuid():N}");
+
+    /// <summary>Puts the identifier into layer 3 slow mode, so its row exists before the command runs.</summary>
+    private static async Task EnterSlowModeAsync(ServiceProvider provider, byte[] identifierKey)
+    {
+        var throttle = provider.GetRequiredService<IAuthThrottle>();
+        for (var i = 0; i < 11; i++)
+        {
+            await throttle.AdmitCredentialAttemptAsync(identifierKey, $"203.0.113.{i}", T0.AddSeconds(i));
+        }
+    }
+
+    [Fact]
+    public async Task ClearThrottleCommand_DeletesTheIdentifierRow_AndAuditsInOneCommit()
+    {
+        var logs = new CapturingLoggerProvider();
+        await using var provider = Slice5Support.BuildProvider(_fixture, logs: logs, withAuthThrottle: true);
+        var identifier = $"eng.{Guid.NewGuid():N}";
+        var identifierKey = ThrottleKeys.IdentifierKey(identifier);
+        await EnterSlowModeAsync(provider, identifierKey);
+
+        // Seeding goes through the login-path throttle, whose §17 logging carries
+        // the identifier key; only what the command itself emits is checked below.
+        logs.Entries.Clear();
+
+        var (exit, output, error) = await Slice5Support.RunCommandAsync(
+            provider, "clear-throttle", "--identifier", identifier, "--reason", Reason);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, error);
+        Assert.Contains("Throttle cleared", output);
+        var correlationId = Slice5Support.CorrelationIdIn(output);
+        Assert.NotEmpty(correlationId);
+
+        var keyHex = ThrottleKeys.ToHex(identifierKey);
+        Assert.DoesNotContain(keyHex, output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(identifier, output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(logs.Entries, e => e.Text.Contains(keyHex, StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(logs.Entries, e => e.Text.Contains(identifier, StringComparison.OrdinalIgnoreCase));
+
+        await using var scope = provider.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<AuthThrottleStore>();
+        Assert.Null(await store.GetAsync(new AuthThrottleKey(AuthThrottleScopes.Identifier, identifierKey)));
+
+        await using var read = _fixture.CreateDbContext();
+        var expectedEntityId = Guid.Parse(Slice5Support.CorrelationIdIn(output));
+        var auditEvent = await read.AuditEvents.SingleAsync(e => e.EntityId == expectedEntityId);
+        Assert.Equal("OperatorCommandRun", auditEvent.EntityType);
+        Assert.Equal(AuditActionType.ThrottleCleared, auditEvent.ActionType);
+        Assert.Equal(AuditActorType.System, auditEvent.ActorType);
+        Assert.Null(auditEvent.ActorUserId);
+        Assert.Null(auditEvent.ActorRoleCode);
+        Assert.Equal(AuditSource.SystemJob, auditEvent.Source);
+        Assert.Equal(Reason, auditEvent.Reason);
+        Assert.Equal(correlationId, auditEvent.CorrelationId);
+        Assert.Equal($"ThrottleCleared:command:{correlationId}", auditEvent.IdempotencyKey);
+        Assert.DoesNotContain(identifier, auditEvent.Reason!);
+    }
+
+    [Fact]
+    public async Task ClearThrottleCommand_WhenTheAuditSaveFails_RollsBackTheDelete_LeavingTheRowIntact()
+    {
+        // The core atomicity proof (ADR 0006 §6): before this redesign, the
+        // delete ran in AuthThrottleStore's own short transaction and would
+        // have already committed by the time the audit write below fails. Now
+        // both share the use case's transaction, so the row must still exist
+        // after the command reports failure.
+        await using var provider = Slice5Support.BuildProvider(_fixture, failingAuditWriter: true, withAuthThrottle: true);
+        var identifier = $"eng.{Guid.NewGuid():N}";
+        var identifierKey = ThrottleKeys.IdentifierKey(identifier);
+        await EnterSlowModeAsync(provider, identifierKey);
+
+        var (exit, output, error) = await Slice5Support.RunCommandAsync(
+            provider, "clear-throttle", "--identifier", identifier, "--reason", Reason);
+
+        Assert.Equal(1, exit);
+        Assert.DoesNotContain("Throttle cleared", output);
+        Assert.Contains("Nothing was changed", error);
+
+        await using var scope = provider.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<AuthThrottleStore>();
+        var row = await store.GetAsync(new AuthThrottleKey(AuthThrottleScopes.Identifier, identifierKey));
+        Assert.NotNull(row);
+
+        await using var read = _fixture.CreateDbContext();
+        var expectedEntityId = Guid.Parse(Slice5Support.CorrelationIdIn(output));
+        Assert.False(await read.AuditEvents.AnyAsync(e => e.EntityId == expectedEntityId));
+    }
+
+    [Fact]
+    public async Task ClearThrottleCommand_WhenNoRowExists_StillSucceedsAndAudits()
+    {
+        await using var provider = Slice5Support.BuildProvider(_fixture);
+        var identifier = $"eng.{Guid.NewGuid():N}";
+        var identifierKey = ThrottleKeys.IdentifierKey(identifier);
+
+        var (exit, output, error) = await Slice5Support.RunCommandAsync(
+            provider, "clear-throttle", "--identifier", identifier, "--reason", Reason);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(string.Empty, error);
+        Assert.Contains("Throttle cleared", output);
+
+        await using var read = _fixture.CreateDbContext();
+        var expectedEntityId = Guid.Parse(Slice5Support.CorrelationIdIn(output));
+        Assert.True(await read.AuditEvents.AnyAsync(e => e.EntityId == expectedEntityId));
+    }
+
+    [Fact]
+    public async Task ClearThrottleCommand_DoesNotTouchLayer2PairsOrOtherIdentifiers()
+    {
+        await using var provider = Slice5Support.BuildProvider(_fixture, withAuthThrottle: true);
+        var throttle = provider.GetRequiredService<IAuthThrottle>();
+        var cleared = $"eng.{Guid.NewGuid():N}";
+        var clearedKey = ThrottleKeys.IdentifierKey(cleared);
+        var otherKey = NewIdentifierKey();
+        await EnterSlowModeAsync(provider, clearedKey);
+        await throttle.AdmitCredentialAttemptAsync(otherKey, "203.0.113.200", T0);
+
+        await Slice5Support.RunCommandAsync(provider, "clear-throttle", "--identifier", cleared, "--reason", Reason);
+
+        await using var scope = provider.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<AuthThrottleStore>();
+        Assert.NotNull(await store.GetAsync(new AuthThrottleKey(AuthThrottleScopes.LoginPair, AuthThrottle.PairKey(clearedKey, "203.0.113.0"))));
+        Assert.NotNull(await store.GetAsync(new AuthThrottleKey(AuthThrottleScopes.Identifier, otherKey)));
     }
 }

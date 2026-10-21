@@ -6,7 +6,7 @@ using Contractra.Domain.Identity;
 
 namespace Contractra.Application.Tests.Identity.Auth;
 
-/// <summary>Contract v1.5 §14.1 actor_role_code (as written; OC-6 still open).</summary>
+/// <summary>Contract v1.5 §14.1 actor_role_code, confirmed by owner decision OC-6.</summary>
 public class ActorRoleCodeRuleTests
 {
     private static UserAccess Access(Dictionary<string, string[]> byRole, string[]? direct = null) =>
@@ -110,6 +110,7 @@ public class ThrottledFlowsTests
     private readonly FakeAuditWriter _audit = new();
     private readonly FakeClock _clock = new();
     private readonly FakeAuthThrottle _throttle = new();
+    private readonly FakeUserAccessReader _accessReader = new();
 
     private (User User, AuthSession Session) Seed()
     {
@@ -121,7 +122,7 @@ public class ThrottledFlowsTests
     }
 
     private ThrottledChangePassword ChangePassword() =>
-        new(new ChangePasswordUseCase(_users, _sessions, _hasher, _audit, _clock, new FakeUnitOfWork()), _sessions, _throttle, _clock);
+        new(new ChangePasswordUseCase(_users, _sessions, _hasher, _audit, _clock, new FakeUnitOfWork(), _accessReader), _sessions, _throttle, _clock);
 
     private ChangePasswordAttempt Attempt(User user, AuthSession session, string current, string next) =>
         new(user.Id, session.Id, current, next, "corr-1", AuditSource.EmployeeApp);
@@ -170,7 +171,7 @@ public class ThrottledFlowsTests
         var tickets = new FakePasswordResetTicketStore();
         var codes = new FakeResetCodeGenerator();
         var completion = new ThrottledPasswordResetCompletion(
-            new CompletePasswordResetUseCase(_users, _sessions, tickets, codes, _hasher, _audit, _clock, new FakeUnitOfWork()), _throttle, _clock);
+            new CompletePasswordResetUseCase(_users, _sessions, tickets, codes, _hasher, _audit, _clock, new FakeUnitOfWork(), _accessReader), _throttle, _clock);
 
         var failed = await completion.ExecuteAsync(new PasswordResetCompletionAttempt("nobody", "AAAA", "Chosen-Passw0rd", "203.0.113.1", "corr-1", AuditSource.Web));
         Assert.Equal(AuthErrorCodes.ResetCodeInvalid, failed.Failure!.Code);
@@ -179,5 +180,37 @@ public class ThrottledFlowsTests
         _throttle.NextStatus = ThrottleStatus.Throttled;
         var throttled = await completion.ExecuteAsync(new PasswordResetCompletionAttempt("nobody", null, null, "203.0.113.1", "corr-1", AuditSource.Web));
         Assert.Equal(AuthFailureKind.Throttled, throttled.Failure!.Kind);
+    }
+
+    // Contract §1: an over-128-character newPassword is a transport limit,
+    // checked here (alongside loginIdentifier/resetCode) before the use case -
+    // and therefore before any lookup or hashing - is ever called. Proven by
+    // call counts on the same fakes the use case itself would use, with a real
+    // seeded user and ticket available, so a pass here cannot be explained by
+    // "there was nothing to find".
+    [Fact]
+    public async Task ResetCompletion_TooLongNewPassword_IsRejectedAsValidation_BeforeTheUseCaseRunsAtAll()
+    {
+        var (user, _) = Seed();
+        var tickets = new FakePasswordResetTicketStore();
+        var codes = new FakeResetCodeGenerator();
+        var generated = codes.Generate();
+        tickets.Seed(PasswordResetTicket.Issue(user.Id, generated.Hash, _clock.UtcNow, _clock.UtcNow.AddHours(24), null, "operator"));
+        var completion = new ThrottledPasswordResetCompletion(
+            new CompletePasswordResetUseCase(_users, _sessions, tickets, codes, _hasher, _audit, _clock, new FakeUnitOfWork(), _accessReader), _throttle, _clock);
+
+        // Baselined after setup: Seed() above already hashed the user's seeded
+        // password once, so the proof is "no further calls happened", not "zero
+        // calls ever happened".
+        var hashCallsBefore = _hasher.HashCallCount;
+
+        var outcome = await completion.ExecuteAsync(new PasswordResetCompletionAttempt(
+            user.LoginIdentifier.Value, generated.Code, new string('a', 129), "203.0.113.1", "corr-1", AuditSource.Web));
+
+        Assert.Equal(AuthErrorCodes.ValidationFailed, outcome.Failure!.Code);
+        Assert.True(outcome.Failure.FieldErrors!.ContainsKey("newPassword"));
+        Assert.Equal(0, _users.FindByLoginIdentifierCallCount);
+        Assert.Equal(0, codes.HashCallCount);
+        Assert.Equal(hashCallsBefore, _hasher.HashCallCount);
     }
 }

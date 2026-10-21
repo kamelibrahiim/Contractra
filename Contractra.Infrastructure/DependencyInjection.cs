@@ -1,6 +1,7 @@
 using Contractra.Application.Audit;
 using Contractra.Application.Common;
 using Contractra.Application.Identity;
+using Contractra.Application.Identity.Auth;
 using Contractra.Application.Identity.Operations;
 using Contractra.Application.Identity.UseCases;
 using Contractra.Infrastructure.Startup;
@@ -12,6 +13,7 @@ using Contractra.Infrastructure.Persistence.Audit;
 using Contractra.Infrastructure.Persistence.Auth;
 using Contractra.Infrastructure.Persistence.Identity;
 using Contractra.Infrastructure.Persistence.Parties;
+using Contractra.Infrastructure.Persistence.Throttling;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +42,7 @@ public static class DependencyInjection
 		services.AddLogging();
 
 		services.AddScoped<IUnitOfWork, UnitOfWork>();
+		services.AddScoped<IThrottleIdentifierEraser, ThrottleIdentifierEraser>();
 		services.AddScoped<IUserRepository, UserRepository>();
 		services.AddScoped<IRoleRepository, RoleRepository>();
 		services.AddScoped<IPartyRepository, PartyRepository>();
@@ -65,6 +68,7 @@ public static class DependencyInjection
 		services.AddScoped<SeedBootstrapAdminUseCase>();
 		services.AddScoped<OperatorIssuePasswordResetUseCase>();
 		services.AddScoped<ResetBootstrapPasswordUseCase>();
+		services.AddScoped<ClearThrottleUseCase>();
 
 		return services;
 	}

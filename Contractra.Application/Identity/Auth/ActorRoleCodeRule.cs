@@ -1,12 +1,12 @@
 namespace Contractra.Application.Identity.Auth;
 
 /// <summary>
-/// The deterministic actor_role_code rule of contract §14.1, implemented as written:
-/// the active role through which the actor held the permission the action required
-/// (several - the first by ordinal code order); if that permission came only from a
-/// direct grant, or the action needs no permission, the actor's first active role code
-/// by the same order; null if the actor has no active role.
-/// The rule itself is still owner confirmation OC-6 (contract §19).
+/// The deterministic actor_role_code rule of contract §14.1, confirmed by owner
+/// decision OC-6 (contract §19): the active role through which the actor held the
+/// permission the action required (several - the first by ordinal code order); if
+/// that permission came only from a direct grant, or the action needs no permission,
+/// the actor's first active role code by the same order; null if the actor has no
+/// active role.
 /// </summary>
 public static class ActorRoleCodeRule
 {

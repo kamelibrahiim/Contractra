@@ -133,6 +133,27 @@ public interface IAuthThrottle
     Task RecordChangePasswordNotWrongAsync(ThrottleTicket ticket, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Operator relief for layer 3 (contract §22 M5), in the caller's own unit of
+/// work: clears the identifier-wide slow-mode state for one identifier, across
+/// every source. Does not touch layer 2's per-(identifier, source) pairs (not
+/// enumerable by identifier alone) or any other user's or source's state.
+/// Deliberately not part of <see cref="IAuthThrottle"/>: every
+/// <see cref="IAuthThrottle"/> member runs its own short transaction in its own
+/// DI scope (ADR 0005 §3.4) so admission checks are never held open behind a
+/// password hash; this port instead joins the caller's transaction (ADR 0006
+/// §6) so the clear and its audit event commit or roll back together - the
+/// same pattern as <see cref="Contractra.Application.Audit.IAuditWriter"/>. It
+/// only writes: it never saves and never opens or commits a transaction.
+/// </summary>
+public interface IThrottleIdentifierEraser
+{
+    /// <param name="identifierKey">SHA-256 of the lower-cased submitted identifier (<see cref="ThrottleKeys.IdentifierKey"/>).</param>
+    /// <returns>True if a row existed and was removed; false if there was nothing to clear (not an error - the operator's intent is already satisfied).</returns>
+    Task<bool> ClearIdentifierAsync(byte[] identifierKey, CancellationToken cancellationToken = default);
+}
+
+
 /// <summary>An AccessDenied audit event to write (contract §6, §14, §14.2).</summary>
 /// <param name="DeniedCode">The 403 code returned, e.g. auth.app_access_denied.</param>
 /// <param name="Action">What was refused, e.g. "POST /api/v1/auth/login". Never contains a secret.</param>

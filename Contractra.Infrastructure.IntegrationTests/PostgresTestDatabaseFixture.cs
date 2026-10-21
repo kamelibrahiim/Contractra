@@ -6,7 +6,8 @@ namespace Contractra.Infrastructure.IntegrationTests;
 
 /// <summary>
 /// Creates a uniquely named, throwaway PostgreSQL database for a single test class,
-/// applies the Contractra migration to it, and drops it on teardown.
+/// applies the Contractra migration to it, and - only if explicitly opted in - drops
+/// it on teardown.
 ///
 /// Safety rules (approved for this slice):
 /// - Reads ONLY the CONTRACTRA_TEST_POSTGRES environment variable - never falls back
@@ -14,8 +15,13 @@ namespace Contractra.Infrastructure.IntegrationTests;
 /// - Refuses to run if that variable is missing, or if it points at a database named
 ///   "contractra_dev".
 /// - Every created database is named "contractra_test_&lt;guid&gt;".
-/// - DROP DATABASE is only ever issued after verifying the target name starts with
-///   "contractra_test_".
+/// - By default, the created database is PRESERVED after the test run (teardown does
+///   not drop it), so a developer can inspect it afterward; this is deliberate, not a
+///   leak. Set CONTRACTRA_TEST_ALLOW_DATABASE_DROP=true to opt into automatic cleanup.
+/// - Even when that opt-in is set, DROP DATABASE is only ever issued after verifying
+///   the target name starts with "contractra_test_" - and only this instance's own
+///   database, which it created itself moments earlier and holds in a private field;
+///   it never accepts a database name from any external source.
 /// - Never logs or throws the connection string or password.
 /// </summary>
 public sealed class PostgresTestDatabaseFixture : IAsyncLifetime
@@ -23,6 +29,7 @@ public sealed class PostgresTestDatabaseFixture : IAsyncLifetime
     private const string TestDatabasePrefix = "contractra_test_";
     private const string ForbiddenDevDatabaseName = "contractra_dev";
     private const string EnvironmentVariableName = "CONTRACTRA_TEST_POSTGRES";
+    private const string AllowDropEnvironmentVariableName = "CONTRACTRA_TEST_ALLOW_DATABASE_DROP";
 
     private string? _adminConnectionString;
     private string? _testConnectionString;
@@ -96,7 +103,40 @@ public sealed class PostgresTestDatabaseFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
+        // Clears only this fixture's own pool - the one keyed by its own unique
+        // _testConnectionString (Database=contractra_test_<guid>), never the
+        // process-wide ClearAllPools(). Npgsql pools are looked up by the exact
+        // connection string (PoolManager), so this cannot touch another
+        // fixture's pool, which is keyed by its own, different database name.
+        // Runs before the preservation early-return below, and before the
+        // top guard's own early return, so it still happens even when
+        // InitializeAsync got far enough to build _testConnectionString but
+        // then failed later (e.g. during MigrateAsync) - idle connections this
+        // fixture opened against its own database are released promptly
+        // instead of waiting out Npgsql's default 300-second
+        // ConnectionIdleLifetime. If _testConnectionString was never set (a
+        // failure before that point), there is no pool for this fixture's test
+        // database to clear, so this is skipped.
+        if (_testConnectionString is not null)
+        {
+            using var testConnection = new NpgsqlConnection(_testConnectionString);
+            NpgsqlConnection.ClearPool(testConnection);
+        }
+
         if (_adminConnectionString is null || string.IsNullOrEmpty(DatabaseName))
+        {
+            return;
+        }
+
+        // Default-preserve: automatic deletion is an explicit opt-in, not the
+        // default, so a test database survives for inspection unless a developer
+        // or CI job asks for cleanup. This also covers the case where InitializeAsync
+        // created the database but a later step (e.g. migration) then threw - this
+        // method still runs, and still preserves that database by default.
+        if (!string.Equals(
+            Environment.GetEnvironmentVariable(AllowDropEnvironmentVariableName),
+            "true",
+            StringComparison.OrdinalIgnoreCase))
         {
             return;
         }

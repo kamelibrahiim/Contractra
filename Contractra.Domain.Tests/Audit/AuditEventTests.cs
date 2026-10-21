@@ -37,15 +37,19 @@ public class AuditEventTests
 
     // ---- catalogs --------------------------------------------------------
 
+    // Contract §22 I3: "a later rename adds a value and keeps the old one
+    // valid" - ThrottleCleared (§22 M5, migration AddThrottleClearedAuditAction)
+    // is exactly that sanctioned growth, the 16th code, appended after the
+    // original 15 rather than replacing or reordering any of them.
     [Fact]
-    public void ActionCatalog_IsTheFifteenContractCodes_WithTheOwnerSelectedNames()
+    public void ActionCatalog_IsTheSixteenContractCodes_WithTheOwnerSelectedNames()
     {
         Assert.Equal(
             [
                 "UserCreated", "UserDisabled", "UserReactivated", "RoleAssigned", "RoleEnded",
                 "PermissionGranted", "PermissionRevoked", "PayrollViewGranted", "PayrollViewRevoked",
                 "PasswordChanged", "PasswordResetIssued", "PasswordResetCompleted",
-                "InitialPasswordReissued", "BootstrapPasswordReset", "AccessDenied",
+                "InitialPasswordReissued", "BootstrapPasswordReset", "AccessDenied", "ThrottleCleared",
             ],
             Enum.GetNames<AuditActionType>());
     }
@@ -145,6 +149,7 @@ public class AuditEventTests
     [Theory]
     [InlineData(AuditActionType.PasswordResetIssued)]
     [InlineData(AuditActionType.BootstrapPasswordReset)]
+    [InlineData(AuditActionType.ThrottleCleared)]
     public void ForSystem_RequiresAReason_ForOperatorCommandEvents(AuditActionType action)
     {
         Assert.Throws<ArgumentException>(() => SystemEvent(action));

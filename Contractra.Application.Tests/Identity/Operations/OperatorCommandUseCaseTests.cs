@@ -1,5 +1,7 @@
 using Contractra.Application.Identity;
+using Contractra.Application.Identity.Auth;
 using Contractra.Application.Identity.Operations;
+using Contractra.Application.Tests.Identity.Auth;
 using Contractra.Application.Tests.Identity.Fakes;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
@@ -15,6 +17,9 @@ namespace Contractra.Application.Tests.Identity.Operations;
 public class OperatorCommandUseCaseTests
 {
     private const string Reason = "User lost the device holding the password manager.";
+    private const string Run1 = "0193a5c2-7d1e-7000-8000-000000000001";
+    private const string Run2 = "0193a5c2-7d1e-7000-8000-000000000002";
+    private const string Run7 = "0193a5c2-7d1e-7000-8000-000000000007";
 
     private readonly FakeUserRepository _users = new();
     private readonly FakeSessionStore _sessions = new();
@@ -27,12 +32,17 @@ public class OperatorCommandUseCaseTests
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly ListLogger<OperatorIssuePasswordResetUseCase> _issueLogger = new();
     private readonly ListLogger<ResetBootstrapPasswordUseCase> _resetLogger = new();
+    private readonly ListLogger<ClearThrottleUseCase> _clearThrottleLogger = new();
+    private readonly FakeThrottleIdentifierEraser _eraser = new();
 
     private OperatorIssuePasswordResetUseCase CreateIssue() =>
         new(_users, _sessions, _tickets, _codes, _auditWriter, _clock, _unitOfWork, logger: _issueLogger);
 
     private ResetBootstrapPasswordUseCase CreateResetBootstrap() =>
         new(_users, _sessions, _hasher, _passwords, _auditWriter, _clock, _unitOfWork, _resetLogger);
+
+    private ClearThrottleUseCase CreateClearThrottle() =>
+        new(_eraser, _auditWriter, _clock, _unitOfWork, _clearThrottleLogger);
 
     private User SeedUserWithChosenPassword(string login = "eng.ahmed")
     {
@@ -319,5 +329,185 @@ public class OperatorCommandUseCaseTests
         Assert.Empty(_sessions.RevokeAllCalls);
         Assert.False(_unitOfWork.TransactionOpen);
         Assert.False(_unitOfWork.Committed);
+    }
+
+    // ---- clear-throttle (contract §22 M5) ---------------------------------
+
+    [Fact]
+    public async Task ClearThrottle_ClearsOnlyTheNamedIdentifier_AndAudits()
+    {
+        var result = await CreateClearThrottle().ExecuteAsync(new ClearThrottleRequest("eng.ahmed", Reason, Run1));
+
+        Assert.True(result.IsSuccess);
+        var expectedKeyHex = ThrottleKeys.ToHex(ThrottleKeys.IdentifierKey("eng.ahmed"));
+
+        // Target isolation: exactly one identifier was cleared, and it is the right one.
+        var cleared = Assert.Single(_eraser.ClearedIdentifiers);
+        Assert.Equal(expectedKeyHex, cleared);
+
+        Assert.True(_unitOfWork.Committed);
+    }
+
+    [Fact]
+    public async Task ClearThrottle_IsCaseInsensitiveOnTheIdentifier_LikeTheThrottleKeyItself()
+    {
+        await CreateClearThrottle().ExecuteAsync(new ClearThrottleRequest("ENG.AHMED", Reason, Run1));
+
+        var cleared = Assert.Single(_eraser.ClearedIdentifiers);
+        Assert.Equal(ThrottleKeys.ToHex(ThrottleKeys.IdentifierKey("eng.ahmed")), cleared);
+    }
+
+    [Fact]
+    public async Task ClearThrottle_Audit_IsASystemSystemJobThrottleClearedEventWithTheReasonAndTheCommandKey_AndNeverTheRawIdentifier()
+    {
+        await CreateClearThrottle().ExecuteAsync(new ClearThrottleRequest("eng.ahmed", Reason, Run7));
+
+        var auditEvent = Assert.Single(_auditWriter.Staged);
+        Assert.Equal(AuditActionType.ThrottleCleared, auditEvent.ActionType);
+        Assert.Equal(AuditActorType.System, auditEvent.ActorType);
+        Assert.Null(auditEvent.ActorUserId);
+        Assert.Null(auditEvent.ActorRoleCode);
+        Assert.Equal(AuditSource.SystemJob, auditEvent.Source);
+        Assert.Equal("OperatorCommandRun", auditEvent.EntityType);
+        Assert.Equal(Guid.Parse(Run7), auditEvent.EntityId);
+        Assert.Equal(Run7, auditEvent.CorrelationId);
+        Assert.Equal(Reason, auditEvent.Reason);
+        Assert.Equal($"ThrottleCleared:command:{Run7}", auditEvent.IdempotencyKey);
+        Assert.Equal(_clock.UtcNow, auditEvent.OccurredAtUtc);
+        AuditAssert.ContainsNone(auditEvent, "eng.ahmed", ThrottleKeys.ToHex(ThrottleKeys.IdentifierKey("eng.ahmed")));
+    }
+
+    [Fact]
+    public async Task ClearThrottle_SameIdentifierTwice_LeavesNothingLinkingTheEventsToTheIdentifier_EachRunKeepsItsOwnTargetCorrelationAndKey()
+    {
+        var first = await CreateClearThrottle().ExecuteAsync(new ClearThrottleRequest("eng.ahmed", Reason, Run1));
+        _unitOfWork.Reset();
+        var second = await CreateClearThrottle().ExecuteAsync(new ClearThrottleRequest("eng.ahmed", Reason, Run2));
+
+        Assert.Equal(new[] { Guid.Parse(Run1), Guid.Parse(Run2) }, _auditWriter.Staged.Select(e => e.EntityId));
+        Assert.Equal(
+            new[] { $"ThrottleCleared:command:{Run1}", $"ThrottleCleared:command:{Run2}" },
+            _auditWriter.Staged.Select(e => e.IdempotencyKey));
+        Assert.True(first.IsSuccess);
+        Assert.True(second.IsSuccess);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" padded")]
+    [InlineData("padded ")]
+    public async Task ClearThrottle_RequiresAValidReason_AndNeverTouchesTheThrottleStore(string reason)
+    {
+        var result = await CreateClearThrottle().ExecuteAsync(new ClearThrottleRequest("eng.ahmed", reason, Run1));
+
+        Assert.Equal("validation.failed", result.Error!.Code);
+        Assert.Empty(_eraser.ClearedIdentifiers);
+        Assert.Empty(_auditWriter.Staged);
+        Assert.False(_unitOfWork.TransactionOpen);
+        Assert.False(_unitOfWork.Committed);
+    }
+
+    [Theory]
+    [InlineData("run-1")]
+    [InlineData("00000000-0000-0000-0000-000000000000")]
+    public async Task ClearThrottle_RequiresTheRunIdToBeANonEmptyUuid_AndNeverTouchesTheThrottleStore(string runId)
+    {
+        var result = await CreateClearThrottle().ExecuteAsync(new ClearThrottleRequest("eng.ahmed", Reason, runId));
+
+        Assert.Equal("validation.failed", result.Error!.Code);
+        Assert.Empty(_eraser.ClearedIdentifiers);
+        Assert.Empty(_auditWriter.Staged);
+        Assert.False(_unitOfWork.TransactionOpen);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task ClearThrottle_RequiresANonBlankIdentifier_AndNeverTouchesTheThrottleStore(string identifier)
+    {
+        var result = await CreateClearThrottle().ExecuteAsync(new ClearThrottleRequest(identifier, Reason, Run1));
+
+        Assert.Equal("validation.failed", result.Error!.Code);
+        Assert.Empty(_eraser.ClearedIdentifiers);
+        Assert.Empty(_auditWriter.Staged);
+    }
+
+    [Fact]
+    public async Task ClearThrottle_WhenTheAuditWriteFails_ReportsTheOrdinaryRefusalCode_NeverAPartialSuccess()
+    {
+        // The delete and the audit event share one transaction
+        // (IThrottleIdentifierEraser, ADR 0006 §6): a failed save/commit rolls
+        // both back, so there is no longer a distinct partial-success code -
+        // ThrottleStoreUnavailableCode covers every failure, because every
+        // failure means nothing changed.
+        _unitOfWork.ThrowOnSave = true;
+
+        var result = await CreateClearThrottle().ExecuteAsync(new ClearThrottleRequest("eng.ahmed", Reason, Run1));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ClearThrottleUseCase.ThrottleStoreUnavailableCode, result.Error!.Code);
+        Assert.Contains("nothing was changed", result.Error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.False(_unitOfWork.Committed);
+        Assert.False(_unitOfWork.TransactionOpen);
+    }
+
+    [Fact]
+    public async Task ClearThrottle_WhenTheAuditWriteFails_LogsAWarning_WithTheCorrelationId_NeverTheIdentifierOrItsHash()
+    {
+        _unitOfWork.ThrowOnSave = true;
+
+        await CreateClearThrottle().ExecuteAsync(new ClearThrottleRequest("eng.ahmed", Reason, Run1));
+
+        var entry = Assert.Single(_clearThrottleLogger.Entries);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.NotNull(entry.Exception);
+        Assert.DoesNotContain(ThrottleKeys.ToHex(ThrottleKeys.IdentifierKey("eng.ahmed")), entry.Message);
+        Assert.Contains(Run1, entry.Message);
+        Assert.DoesNotContain("eng.ahmed", entry.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ClearThrottle_OnSuccess_LogsInformation_OnlyAfterTheAuditWriteCommits()
+    {
+        await CreateClearThrottle().ExecuteAsync(new ClearThrottleRequest("eng.ahmed", Reason, Run1));
+
+        Assert.True(_unitOfWork.Committed);
+        var entry = Assert.Single(_clearThrottleLogger.Entries);
+        Assert.Equal(LogLevel.Information, entry.Level);
+        Assert.DoesNotContain(ThrottleKeys.ToHex(ThrottleKeys.IdentifierKey("eng.ahmed")), entry.Message);
+        Assert.Contains(Run1, entry.Message);
+        Assert.DoesNotContain("eng.ahmed", entry.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ClearThrottle_WhenTheEraserFails_ReportsTheOrdinaryRefusalCode_AndNeverCommits()
+    {
+        _eraser.FailOnClear = true;
+
+        var result = await CreateClearThrottle().ExecuteAsync(new ClearThrottleRequest("eng.ahmed", Reason, Run1));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ClearThrottleUseCase.ThrottleStoreUnavailableCode, result.Error!.Code);
+        Assert.Empty(_eraser.ClearedIdentifiers);
+        Assert.Empty(_auditWriter.Staged);
+        // The real UnitOfWork rolls back on disposal (DI scope teardown), which
+        // this fake does not model; what the use case itself guarantees, and
+        // what this asserts, is that it never reaches SaveChangesAndCommitAsync.
+        Assert.False(_unitOfWork.Committed);
+    }
+
+    [Fact]
+    public async Task ClearThrottle_WhenNoRowExisted_StillSucceedsAndAudits()
+    {
+        // The operator's intent (this identifier is not throttled) is already
+        // satisfied when there is nothing to delete; re-running the command is
+        // always safe.
+        _eraser.RowExisted = false;
+
+        var result = await CreateClearThrottle().ExecuteAsync(new ClearThrottleRequest("eng.ahmed", Reason, Run1));
+
+        Assert.True(result.IsSuccess);
+        Assert.True(_unitOfWork.Committed);
+        Assert.Single(_auditWriter.Staged);
     }
 }

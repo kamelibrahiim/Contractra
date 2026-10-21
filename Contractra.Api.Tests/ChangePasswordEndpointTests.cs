@@ -3,6 +3,7 @@ using Contractra.Api.Tests.Support;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
 using Contractra.Infrastructure.IntegrationTests;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Contractra.Api.Tests;
 
@@ -207,6 +208,63 @@ public sealed class ChangePasswordEndpointTests : IClassFixture<PostgresTestData
         var response = await Calls.SendAsync(_client, HttpMethod.Post, "/api/v1/auth/change-password", new { currentPassword = "a", newPassword = "Brand-New-Passw0rd" });
         Assert.Equal(HttpStatusCode.Unauthorized, response.Status);
         Assert.Equal("auth.unauthenticated", response.Code);
+    }
+
+    [Fact]
+    public async Task WhenTheAuditWriteFails_RollsBackAndReturns500_LeakingNothing()
+    {
+        // Regime A (contract §14, §14.2): PasswordChanged is staged in the same
+        // transaction as the change. A forced audit-write failure must roll
+        // back the whole request and leave no trace of having tried.
+        await using var factory = new ApiFactory(_database, configureServices: services =>
+        {
+            services.RemoveAll<Contractra.Application.Audit.IAuditWriter>();
+            services.AddScoped<Contractra.Application.Audit.IAuditWriter>(sp =>
+                new FailingAuditWriter(new Contractra.Infrastructure.Persistence.Audit.AuditWriter(
+                    sp.GetRequiredService<Contractra.Infrastructure.Persistence.ContractraDbContext>())));
+        });
+        var client = factory.CreateApiClient();
+        var user = await Seed.UserAsync(_database, factory.Clock.UtcNow, ["Engineer"]);
+        var session = await Calls.LoginAsync(client, user.Login, user.Password);
+        var accessToken = session.String("accessToken")!;
+        var refreshToken = session.String("refreshToken")!;
+        var hashBefore = (await Seed.UserByIdAsync(_database, user.Id)).PasswordHash;
+        var versionBefore = (await Seed.UserByIdAsync(_database, user.Id)).SecurityVersion;
+
+        var response = await Calls.ChangePasswordAsync(client, accessToken, user.Password, "Brand-New-Passw0rd");
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.Status);
+        Assert.Equal("server.error", response.Code);
+        Assert.True(Guid.TryParse(response.String("correlationId"), out _));
+        Assert.DoesNotContain(user.Password, response.Body, StringComparison.Ordinal);
+        Assert.DoesNotContain("Brand-New-Passw0rd", response.Body, StringComparison.Ordinal);
+        Assert.DoesNotContain("Exception", response.Body, StringComparison.Ordinal);
+
+        var stored = await Seed.UserByIdAsync(_database, user.Id);
+        Assert.Equal(hashBefore, stored.PasswordHash);
+        Assert.False(stored.MustChangePassword);
+        Assert.Equal(versionBefore, stored.SecurityVersion);
+        Assert.All(await Seed.SessionsOfAsync(_database, user.Id), s => Assert.Null(s.RevokedAt));
+        var storedSession = (await Seed.SessionsOfAsync(_database, user.Id)).Single();
+        Assert.Single(storedSession.RefreshTokens, t => t.ConsumedAt is null);
+        Assert.Empty(await Seed.AuditEventsAsync(_database, user.Id));
+
+        // The caller's own refresh token is untouched: a normal refresh still works.
+        Assert.Equal(HttpStatusCode.OK, (await Calls.RefreshMobileAsync(client, refreshToken)).Status);
+    }
+
+    [Fact]
+    public async Task WithoutTheInjectedAuditFailure_TheSameRequestSucceeds()
+    {
+        // Control for the test above: proves the 500 comes from the injected
+        // failure, not from an unrelated problem with the request itself.
+        var user = await Seed.UserAsync(_database, Now, ["Engineer"]);
+        var session = await Calls.LoginAsync(_client, user.Login, user.Password);
+
+        var response = await Calls.ChangePasswordAsync(_client, session.String("accessToken")!, user.Password, "Brand-New-Passw0rd");
+
+        Assert.Equal(HttpStatusCode.OK, response.Status);
+        Assert.Single(await Seed.AuditEventsAsync(_database, user.Id), e => e.ActionType == AuditActionType.PasswordChanged);
     }
 
     [Fact]

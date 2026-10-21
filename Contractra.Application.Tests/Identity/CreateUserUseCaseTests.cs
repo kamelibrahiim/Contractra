@@ -1,5 +1,6 @@
 using Contractra.Application.Common;
 using Contractra.Application.Identity.UseCases;
+using Contractra.Application.Tests.Identity.Auth;
 using Contractra.Application.Tests.Identity.Fakes;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
@@ -21,6 +22,7 @@ public class CreateUserUseCaseTests
     private readonly FakeAuditWriter _auditWriter = new();
     private readonly FakeClock _clock = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeUserAccessReader _accessReader = new();
     private readonly Role _engineerRole = new(new RoleCode("Engineer"), RoleStatus.Active);
     private readonly Role _officeStaffRole = new(new RoleCode("OfficeStaff"), RoleStatus.Active);
 
@@ -32,7 +34,7 @@ public class CreateUserUseCaseTests
 
     private CreateUserUseCase CreateUseCase() => new(
         _users, _roles, _parties, _hasher, _temporaryPasswords, _auditWriter, _clock,
-        new FixedBusinessDateProvider(BusinessToday), _unitOfWork);
+        new FixedBusinessDateProvider(BusinessToday), _unitOfWork, _accessReader);
 
     private Party SeedValidEngineerParty()
     {
@@ -300,12 +302,18 @@ public class CreateUserUseCaseTests
         var user = await _users.FindByIdAsync(userId);
         var assignment = Assert.Single(user!.Roles);
 
+        // OC-6 resolved: ActorId has no active role in this fake, so the
+        // confirmed rule itself (not an unresolved OC-6) is what yields null here.
         var created = Assert.Single(_auditWriter.Staged, e => e.ActionType == AuditActionType.UserCreated);
-        AuditAssert.Event(created, AuditActionType.UserCreated, ActorId, userId, "corr-create", AuditSource.Web, _clock.UtcNow);
+        AuditAssert.Event(
+            created, AuditActionType.UserCreated, ActorId, userId, "corr-create", AuditSource.Web, _clock.UtcNow,
+            actorRoleCodeStillPendingOc6: false, expectedActorRoleCode: null);
         Assert.Null(created.Snapshot);
 
         var assigned = Assert.Single(_auditWriter.Staged, e => e.ActionType == AuditActionType.RoleAssigned);
-        AuditAssert.Event(assigned, AuditActionType.RoleAssigned, ActorId, userId, "corr-create", AuditSource.Web, _clock.UtcNow);
+        AuditAssert.Event(
+            assigned, AuditActionType.RoleAssigned, ActorId, userId, "corr-create", AuditSource.Web, _clock.UtcNow,
+            actorRoleCodeStillPendingOc6: false, expectedActorRoleCode: null);
         AuditAssert.SnapshotKeys(assigned, "user_role_id", "role_id", "role_code", "assigned_at", "ended_at");
         var snapshot = AuditAssert.SnapshotOf(assigned);
         Assert.Equal(assignment.Id.ToString(), snapshot["user_role_id"]);
@@ -318,6 +326,42 @@ public class CreateUserUseCaseTests
         {
             AuditAssert.ContainsNone(auditEvent, result.Value.TemporaryPassword, user.PasswordHash, "office.sara");
         }
+    }
+
+    // Contract §14.1, owner decision OC-6: creating a user requires Users.Manage,
+    // so the rule resolves to the active role through which the actor held it
+    // (several → first by ordinal code order) - "Accountant" sorts before "Admin".
+    [Fact]
+    public async Task CreateUser_AuditEvents_ActorRoleCode_IsTheRoleGrantingUsersManage()
+    {
+        _accessReader.Set(
+            ActorId, ["Admin", "Accountant"],
+            new() { ["Admin"] = ["Users.Manage"], ["Accountant"] = ["Users.Manage"] });
+        var useCase = CreateUseCase();
+
+        var result = await useCase.ExecuteAsync(new CreateUserRequest(
+            "office.sara2", new[] { "OfficeStaff" }, PartyId: null, ActorId, "corr-create", AuditSource.Web));
+
+        var userId = result.Value!.UserId;
+        var created = Assert.Single(_auditWriter.Staged, e => e.ActionType == AuditActionType.UserCreated);
+        Assert.Equal("Accountant", created.ActorRoleCode);
+        var assigned = Assert.Single(_auditWriter.Staged, e => e.ActionType == AuditActionType.RoleAssigned);
+        Assert.Equal("Accountant", assigned.ActorRoleCode);
+    }
+
+    // No role grants Users.Manage directly (e.g. it came from a direct grant to
+    // the actor): the rule falls back to the actor's first active role.
+    [Fact]
+    public async Task CreateUser_AuditEvents_ActorRoleCode_FallsBackToTheFirstActiveRole_WhenNoRoleGrantsUsersManage()
+    {
+        _accessReader.Set(ActorId, ["OfficeStaff", "Engineer"], direct: ["Users.Manage"]);
+        var useCase = CreateUseCase();
+
+        var result = await useCase.ExecuteAsync(new CreateUserRequest(
+            "office.sara3", new[] { "OfficeStaff" }, PartyId: null, ActorId, "corr-create", AuditSource.Web));
+
+        var created = Assert.Single(_auditWriter.Staged, e => e.ActionType == AuditActionType.UserCreated);
+        Assert.Equal("Engineer", created.ActorRoleCode);
     }
 
     [Fact]
@@ -337,5 +381,9 @@ public class CreateUserUseCaseTests
             .ToList();
         Assert.Equal(new[] { "Engineer", "OfficeStaff" }, snapshots.Select(s => s["role_code"]).OrderBy(c => c));
         Assert.Equal(2, snapshots.Select(s => s["user_role_id"]).Distinct().Count());
+
+        // OC-6: the actor's role is resolved once and reused for every event of
+        // this request, not recomputed per RoleAssigned iteration.
+        Assert.Single(_auditWriter.Staged.Select(e => e.ActorRoleCode).Distinct());
     }
 }

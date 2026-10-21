@@ -1,8 +1,10 @@
 using System.Text.RegularExpressions;
 using Contractra.Application.Audit;
+using Contractra.Application.Identity.Auth;
 using Contractra.Domain.Audit;
 using Contractra.Infrastructure.Persistence;
 using Contractra.Infrastructure.Persistence.Audit;
+using Contractra.Infrastructure.Persistence.Throttling;
 using Contractra.Infrastructure.Startup;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +24,8 @@ internal static class Slice5Support
         bool failClosedOnUnsafeAuditPrivileges = false,
         IReadOnlyDictionary<string, string?>? settings = null,
         CapturingLoggerProvider? logs = null,
-        bool failingAuditWriter = false)
+        bool failingAuditWriter = false,
+        bool withAuthThrottle = false)
     {
         var values = new Dictionary<string, string?>
         {
@@ -39,6 +42,13 @@ internal static class Slice5Support
         services.AddSingleton<IConfiguration>(configuration);
         services.AddInfrastructure(configuration);
         services.AddStartupInitialization(failClosedOnUnsafeAuditPrivileges);
+        if (withAuthThrottle)
+        {
+            // Only for tests that seed or inspect throttle state themselves (IAuthThrottle,
+            // AuthThrottleStore); the operator-command host itself never registers these.
+            services.AddAuthInfrastructure(new AuthThrottleOptions { LockTimeout = TimeSpan.FromSeconds(2) }, AuthSessionPolicy.Default);
+        }
+
         if (logs is not null)
         {
             services.AddLogging(builder => builder.AddProvider(logs));

@@ -1,5 +1,6 @@
 using Contractra.Application.Audit;
 using Contractra.Application.Common;
+using Contractra.Application.Identity.Auth;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
 
@@ -42,6 +43,7 @@ public sealed class ChangePasswordUseCase
     private readonly IAuditWriter _auditWriter;
     private readonly IClock _clock;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IUserAccessReader _accessReader;
 
     public ChangePasswordUseCase(
         IUserRepository users,
@@ -49,7 +51,8 @@ public sealed class ChangePasswordUseCase
         IPasswordHasher hasher,
         IAuditWriter auditWriter,
         IClock clock,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IUserAccessReader accessReader)
     {
         _users = users;
         _sessions = sessions;
@@ -57,10 +60,35 @@ public sealed class ChangePasswordUseCase
         _auditWriter = auditWriter;
         _clock = clock;
         _unitOfWork = unitOfWork;
+        _accessReader = accessReader;
     }
 
     public async Task<UseCaseResult> ExecuteAsync(ChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
+        // Contract §5.5 lists currentPassword correctness first, then the
+        // newPassword length rules, then the differs-from-current rule - this
+        // method follows that order. Authentication and currentPassword
+        // verification happen before either length bound is considered.
+        var now = _clock.UtcNow;
+        var user = await _users.FindByIdAsync(request.UserId, cancellationToken)
+            ?? throw new InvalidOperationException("ChangePassword requires an authenticated caller; the user must exist.");
+
+        if (!user.HasUsablePassword
+            || _hasher.Verify(user.PasswordHash, request.CurrentPassword) == PasswordVerificationResult.Failed)
+        {
+            return UseCaseResult.Failure("auth.current_password_incorrect", "The current password is incorrect.");
+        }
+
+        // During a forced change the current password is the temporary one, which
+        // must not have expired (contract §5.5, §10). Checked after the hash
+        // verification above (which always runs, matching or not) so a correct hash
+        // on an expired temporary password takes the same path and the same generic
+        // code as a wrong hash, with no extra timing signal.
+        if (user.MustChangePassword && user.TemporaryPasswordExpiresAt is { } expiresAt && expiresAt <= now)
+        {
+            return UseCaseResult.Failure("auth.current_password_incorrect", "The current password is incorrect.");
+        }
+
         if (request.NewPassword.Length < MinPasswordLength)
         {
             return UseCaseResult.Failure("auth.password_too_short", "The new password must be at least 8 characters.");
@@ -71,22 +99,19 @@ public sealed class ChangePasswordUseCase
             return UseCaseResult.Failure("auth.password_too_long", "The new password must be at most 128 characters.");
         }
 
-        var user = await _users.FindByIdAsync(request.UserId, cancellationToken)
-            ?? throw new InvalidOperationException("ChangePassword requires an authenticated caller; the user must exist.");
-
-        if (!user.HasUsablePassword
-            || _hasher.Verify(user.PasswordHash, request.CurrentPassword) == PasswordVerificationResult.Failed)
-        {
-            return UseCaseResult.Failure("auth.current_password_incorrect", "The current password is incorrect.");
-        }
-
         if (request.NewPassword == request.CurrentPassword)
         {
             return UseCaseResult.Failure("auth.password_same_as_current", "The new password must differ from the current password.");
         }
 
-        var now = _clock.UtcNow;
         var newHash = _hasher.Hash(request.NewPassword);
+
+        // actor_role_code (contract §14.1, owner decision OC-6, confirmed): this
+        // action needs no permission (the caller changes their own password), so
+        // the rule resolves to the actor's first active role by ordinal code
+        // order - same rule and reader ScopedAccessDeniedAuditor uses for AccessDenied.
+        var access = await _accessReader.GetAsync(user.Id, now, cancellationToken);
+        var actorRoleCode = ActorRoleCodeRule.Resolve(access, requiredPermission: null);
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
@@ -97,12 +122,7 @@ public sealed class ChangePasswordUseCase
         _auditWriter.Stage(AuditEvent.ForUser(
             AuditActionType.PasswordChanged,
             actorUserId: user.Id,
-            // actor_role_code: contract §14.1 drafts a deterministic rule (the
-            // actor's first active role by ordinal code order when the action
-            // needs no permission, which is this case), but §19 OC-6 lists
-            // that rule as still needing owner confirmation. Left null rather
-            // than implementing an unconfirmed rule.
-            actorRoleCode: null,
+            actorRoleCode: actorRoleCode,
             entityType: "User",
             entityId: user.Id,
             occurredAtUtc: now,

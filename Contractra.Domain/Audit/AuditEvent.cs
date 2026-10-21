@@ -139,9 +139,9 @@ public sealed partial class AuditEvent
     /// An action performed by the system itself: no user, no role, source
     /// <see cref="AuditSource.SystemJob"/>. The operation key is always required
     /// (a SystemJob event is a job record under integrity rule PRV-08). The reason is
-    /// required for operator-command events (<see cref="AuditActionType.PasswordResetIssued"/>
-    /// and <see cref="AuditActionType.BootstrapPasswordReset"/>); the seeder passes a
-    /// fixed descriptive reason (ADR 0006 E34).
+    /// required for operator-command events (<see cref="AuditActionType.PasswordResetIssued"/>,
+    /// <see cref="AuditActionType.BootstrapPasswordReset"/> and <see cref="AuditActionType.ThrottleCleared"/>);
+    /// the seeder passes a fixed descriptive reason (ADR 0006 E34).
     /// </summary>
     public static AuditEvent ForSystem(
         AuditActionType actionType,
@@ -157,6 +157,7 @@ public sealed partial class AuditEvent
         string? idempotencySubIdentifier = null)
     {
         if (actionType is AuditActionType.PasswordResetIssued or AuditActionType.BootstrapPasswordReset
+                or AuditActionType.ThrottleCleared
             && reason is null)
         {
             throw new ArgumentException(

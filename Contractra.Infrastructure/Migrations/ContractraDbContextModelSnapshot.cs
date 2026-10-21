@@ -136,7 +136,7 @@ namespace Contractra.Infrastructure.Migrations
 
                     b.ToTable("audit_events", null, t =>
                         {
-                            t.HasCheckConstraint("ck_audit_events_action_type_valid_values", "action_type IN ('UserCreated', 'UserDisabled', 'UserReactivated', 'RoleAssigned', 'RoleEnded', 'PermissionGranted', 'PermissionRevoked', 'PayrollViewGranted', 'PayrollViewRevoked', 'PasswordChanged', 'PasswordResetIssued', 'PasswordResetCompleted', 'InitialPasswordReissued', 'BootstrapPasswordReset', 'AccessDenied')");
+                            t.HasCheckConstraint("ck_audit_events_action_type_valid_values", "action_type IN ('UserCreated', 'UserDisabled', 'UserReactivated', 'RoleAssigned', 'RoleEnded', 'PermissionGranted', 'PermissionRevoked', 'PayrollViewGranted', 'PayrollViewRevoked', 'PasswordChanged', 'PasswordResetIssued', 'PasswordResetCompleted', 'InitialPasswordReissued', 'BootstrapPasswordReset', 'AccessDenied', 'ThrottleCleared')");
 
                             t.HasCheckConstraint("ck_audit_events_actor_consistency", "(actor_type = 'User' AND actor_user_id IS NOT NULL) OR (actor_type = 'System' AND actor_user_id IS NULL AND actor_role_code IS NULL)");
 

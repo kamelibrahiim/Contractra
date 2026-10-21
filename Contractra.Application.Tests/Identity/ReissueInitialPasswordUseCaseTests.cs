@@ -1,4 +1,5 @@
 using Contractra.Application.Identity.UseCases;
+using Contractra.Application.Tests.Identity.Auth;
 using Contractra.Application.Tests.Identity.Fakes;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
@@ -17,9 +18,10 @@ public class ReissueInitialPasswordUseCaseTests
     private readonly FakeAuditWriter _auditWriter = new();
     private readonly FakeClock _clock = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeUserAccessReader _accessReader = new();
 
     private ReissueInitialPasswordUseCase CreateUseCase() =>
-        new(_users, _sessions, _hasher, _temporaryPasswords, _auditWriter, _clock, _unitOfWork);
+        new(_users, _sessions, _hasher, _temporaryPasswords, _auditWriter, _clock, _unitOfWork, _accessReader);
 
     private User SeedUserOnFirstTemporaryPassword(string login = "eng.ahmed") =>
         SeedUser(login, mustChangePassword: true, _clock.UtcNow.AddHours(1));
@@ -123,8 +125,45 @@ public class ReissueInitialPasswordUseCaseTests
         var result = await useCase.ExecuteAsync(new ReissueInitialPasswordRequest(user.Id, ActorId, "corr-reissue", AuditSource.Web));
 
         var auditEvent = Assert.Single(_auditWriter.Staged);
-        AuditAssert.Event(auditEvent, AuditActionType.InitialPasswordReissued, ActorId, user.Id, "corr-reissue", AuditSource.Web, _clock.UtcNow);
+        // OC-6 resolved: ActorId has no active role in this fake, so the
+        // confirmed rule itself (not an unresolved OC-6) is what yields null here.
+        AuditAssert.Event(
+            auditEvent, AuditActionType.InitialPasswordReissued, ActorId, user.Id, "corr-reissue", AuditSource.Web, _clock.UtcNow,
+            actorRoleCodeStillPendingOc6: false, expectedActorRoleCode: null);
         Assert.Null(auditEvent.Snapshot);
         AuditAssert.ContainsNone(auditEvent, result.Value!.TemporaryPassword, user.PasswordHash);
+    }
+
+    // Contract §14.1, owner decision OC-6: re-issuing an initial password
+    // requires Users.Manage, so the rule resolves to the active role through
+    // which the actor held it (several → first by ordinal code order).
+    [Fact]
+    public async Task Reissue_AuditEvent_ActorRoleCode_IsTheRoleGrantingUsersManage()
+    {
+        var user = SeedUserOnFirstTemporaryPassword();
+        _accessReader.Set(
+            ActorId, ["Admin", "Accountant"],
+            new() { ["Admin"] = ["Users.Manage"], ["Accountant"] = ["Users.Manage"] });
+        var useCase = CreateUseCase();
+
+        await useCase.ExecuteAsync(new ReissueInitialPasswordRequest(user.Id, ActorId, "corr-reissue", AuditSource.Web));
+
+        var auditEvent = Assert.Single(_auditWriter.Staged);
+        Assert.Equal("Accountant", auditEvent.ActorRoleCode);
+    }
+
+    // No role grants Users.Manage directly: the rule falls back to the
+    // actor's first active role.
+    [Fact]
+    public async Task Reissue_AuditEvent_ActorRoleCode_FallsBackToTheFirstActiveRole_WhenNoRoleGrantsUsersManage()
+    {
+        var user = SeedUserOnFirstTemporaryPassword();
+        _accessReader.Set(ActorId, ["OfficeStaff", "Engineer"], direct: ["Users.Manage"]);
+        var useCase = CreateUseCase();
+
+        await useCase.ExecuteAsync(new ReissueInitialPasswordRequest(user.Id, ActorId, "corr-reissue", AuditSource.Web));
+
+        var auditEvent = Assert.Single(_auditWriter.Staged);
+        Assert.Equal("Engineer", auditEvent.ActorRoleCode);
     }
 }

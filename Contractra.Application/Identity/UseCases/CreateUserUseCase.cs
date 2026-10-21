@@ -1,5 +1,6 @@
 using Contractra.Application.Audit;
 using Contractra.Application.Common;
+using Contractra.Application.Identity.Auth;
 using Contractra.Application.Parties;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
@@ -28,6 +29,7 @@ public sealed class CreateUserUseCase
     private readonly IBusinessDateProvider _businessDate;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeSpan _temporaryPasswordLifetime;
+    private readonly IUserAccessReader _accessReader;
 
     public CreateUserUseCase(
         IUserRepository users,
@@ -39,6 +41,7 @@ public sealed class CreateUserUseCase
         IClock clock,
         IBusinessDateProvider businessDate,
         IUnitOfWork unitOfWork,
+        IUserAccessReader accessReader,
         TimeSpan? temporaryPasswordLifetime = null)
     {
         _users = users;
@@ -50,6 +53,7 @@ public sealed class CreateUserUseCase
         _clock = clock;
         _businessDate = businessDate;
         _unitOfWork = unitOfWork;
+        _accessReader = accessReader;
         _temporaryPasswordLifetime = temporaryPasswordLifetime ?? TimeSpan.FromHours(72);
     }
 
@@ -161,19 +165,21 @@ public sealed class CreateUserUseCase
             user.LinkToParty(party);
         }
 
+        // actor_role_code (contract §14.1, owner decision OC-6, confirmed): this
+        // action requires Users.Manage, so the rule resolves to the active role
+        // through which the actor held it (several → first by ordinal code
+        // order); the same resolved value is used for every event below.
+        var access = await _accessReader.GetAsync(request.ActorUserId, now, cancellationToken);
+        var actorRoleCode = ActorRoleCodeRule.Resolve(access, "Users.Manage");
+
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
         _users.Add(user);
 
-        // actor_role_code: contract §14.1 would resolve this to the role
-        // through which the actor held Users.Manage, but §19 OC-6 lists that
-        // rule as still needing owner confirmation, and no permission-to-role
-        // resolution exists anywhere in the codebase yet. Left null on every
-        // event below rather than implementing an unconfirmed rule.
         _auditWriter.Stage(AuditEvent.ForUser(
             AuditActionType.UserCreated,
             actorUserId: request.ActorUserId,
-            actorRoleCode: null,
+            actorRoleCode: actorRoleCode,
             entityType: "User",
             entityId: user.Id,
             occurredAtUtc: now,
@@ -186,7 +192,7 @@ public sealed class CreateUserUseCase
             _auditWriter.Stage(AuditEvent.ForUser(
                 AuditActionType.RoleAssigned,
                 actorUserId: request.ActorUserId,
-                actorRoleCode: null,
+                actorRoleCode: actorRoleCode,
                 entityType: "User",
                 entityId: user.Id,
                 occurredAtUtc: now,

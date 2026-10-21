@@ -110,6 +110,37 @@ internal sealed class FakeAuthThrottle : IAuthThrottle
     };
 }
 
+/// <summary>
+/// Scripted identifier clears for <see cref="ClearThrottleUseCase"/>. Unlike a
+/// real <see cref="Contractra.Infrastructure.Persistence.Throttling.ThrottleIdentifierEraser"/>,
+/// this fake has no transaction of its own to roll back - it only records
+/// whether the use case called it before the surrounding
+/// <see cref="FakeUnitOfWork"/> committed, which is what the use case's own
+/// atomicity depends on; real rollback of the deleted row is an
+/// Infrastructure/Integration-level concern (ADR 0006 §6), not provable here.
+/// </summary>
+internal sealed class FakeThrottleIdentifierEraser : IThrottleIdentifierEraser
+{
+    public List<string> ClearedIdentifiers { get; } = new();
+
+    /// <summary>When set, <see cref="ClearIdentifierAsync"/> throws instead of clearing - simulates the store being unreachable.</summary>
+    public bool FailOnClear { get; set; }
+
+    /// <summary>Whether to report a row existed (true) or there was nothing to clear (false).</summary>
+    public bool RowExisted { get; set; } = true;
+
+    public Task<bool> ClearIdentifierAsync(byte[] identifierKey, CancellationToken cancellationToken = default)
+    {
+        if (FailOnClear)
+        {
+            throw new InvalidOperationException("Simulated throttle-store failure.");
+        }
+
+        ClearedIdentifiers.Add(ThrottleKeys.ToHex(identifierKey));
+        return Task.FromResult(RowExisted);
+    }
+}
+
 /// <summary>Counts hash verifications, so tests can prove the dummy-hash and no-hash rules.</summary>
 internal sealed class CountingPasswordHasher : IPasswordHasher
 {

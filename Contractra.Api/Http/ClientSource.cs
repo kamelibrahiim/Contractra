@@ -24,6 +24,35 @@ public static class ClientSource
         return (address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address).ToString();
     }
 
+    /// <summary>
+    /// The §22 E throttle source (layers 2-3 only, over the shared store): one
+    /// IPv4 address, or one IPv6 /64 network - computed from address bytes via
+    /// <see cref="IPNetwork"/>, never by string truncation, so a single /64 host
+    /// rotating addresses cannot bypass those layers (contract §22 E, OC-8).
+    /// Layer 1/5's in-memory limiter is unaffected: it keeps the exact address
+    /// from <see cref="Of"/>, consistent with §17's "never the only defence".
+    /// </summary>
+    public static string ThrottleGroupOf(HttpContext context)
+    {
+        var address = context.Connection.RemoteIpAddress;
+        if (address is null)
+        {
+            return Unknown;
+        }
+
+        if (address.IsIPv4MappedToIPv6)
+        {
+            address = address.MapToIPv4();
+        }
+
+        if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+        {
+            return new IPNetwork(address, 64).ToString();
+        }
+
+        return address.ToString();
+    }
+
     public static void ConfigureForwardedHeaders(Microsoft.AspNetCore.Builder.ForwardedHeadersOptions options, IConfiguration configuration)
     {
         options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor

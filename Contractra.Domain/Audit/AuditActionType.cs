@@ -39,5 +39,8 @@ public enum AuditActionType
 
     BootstrapPasswordReset,
 
-    AccessDenied
+    AccessDenied,
+
+    /// <summary>Operator command <c>clear-throttle</c> (contract §22 M5): manual relief of one identifier's throttle state.</summary>
+    ThrottleCleared
 }

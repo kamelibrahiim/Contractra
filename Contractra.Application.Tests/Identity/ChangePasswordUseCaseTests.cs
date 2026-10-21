@@ -1,5 +1,6 @@
 using Contractra.Application.Identity;
 using Contractra.Application.Identity.UseCases;
+using Contractra.Application.Tests.Identity.Auth;
 using Contractra.Application.Tests.Identity.Fakes;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
@@ -17,9 +18,10 @@ public class ChangePasswordUseCaseTests
     private readonly FakeAuditWriter _auditWriter = new();
     private readonly FakeClock _clock = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeUserAccessReader _accessReader = new();
 
     private ChangePasswordUseCase CreateUseCase() =>
-        new(_users, _sessions, _hasher, _auditWriter, _clock, _unitOfWork);
+        new(_users, _sessions, _hasher, _auditWriter, _clock, _unitOfWork, _accessReader);
 
     private User SeedActiveUser(string currentPassword = "OldPassw0rd")
     {
@@ -84,7 +86,7 @@ public class ChangePasswordUseCaseTests
         var session = AuthSession.Start(
             user.Id, ClientApp.Admin, ClientPlatform.Web, firstTokenHash, _clock.UtcNow.AddMinutes(-5), _clock.UtcNow.AddDays(7));
         _sessions.Seed(session);
-        var useCase = new ChangePasswordUseCase(_users, _sessions, _hasher, _auditWriter, _clock, _unitOfWork);
+        var useCase = new ChangePasswordUseCase(_users, _sessions, _hasher, _auditWriter, _clock, _unitOfWork, _accessReader);
 
         var result = await useCase.ExecuteAsync(new ChangePasswordRequest(
             user.Id, session.Id, "OldPassw0rd", "NewPassw0rd", "corr-1", AuditSource.Web));
@@ -192,6 +194,121 @@ public class ChangePasswordUseCaseTests
     }
 
     [Fact]
+    public async Task ChangePassword_WithAnExpiredTemporaryPassword_FailsAndChangesNothing()
+    {
+        // Contract §5.5/§10: during a forced change the current password is the
+        // temporary one, which must not have expired. The same expiry rule and
+        // clock as login (§5.1), checked after the hash matches so the response
+        // and the timing are the same as a wrong hash.
+        var temporaryHash = _hasher.Hash("TempPassw0rd1");
+        var user = new User(
+            new LoginIdentifier("eng.ahmed"), UserStatus.Active, temporaryHash, mustChangePassword: true, _clock.UtcNow.AddHours(72));
+        _users.Seed(user);
+        _clock.UtcNow = user.TemporaryPasswordExpiresAt!.Value; // exactly at expiry: the same "<=" boundary as login
+        var useCase = CreateUseCase();
+
+        var result = await useCase.ExecuteAsync(new ChangePasswordRequest(
+            user.Id, SessionId, "TempPassw0rd1", "NewPassw0rd", "corr-1", AuditSource.Web));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("auth.current_password_incorrect", result.Error!.Code);
+        Assert.Equal(temporaryHash, user.PasswordHash);
+        Assert.True(user.MustChangePassword);
+        Assert.Equal(1, user.SecurityVersion);
+        Assert.False(_unitOfWork.TransactionOpen);
+        Assert.False(_unitOfWork.Committed);
+        Assert.Empty(_auditWriter.Staged);
+        Assert.Empty(_sessions.RevokeAllCalls);
+    }
+
+    [Fact]
+    public async Task ChangePassword_WithATemporaryPasswordNotYetExpired_Succeeds()
+    {
+        var temporaryHash = _hasher.Hash("TempPassw0rd1");
+        var user = new User(
+            new LoginIdentifier("eng.ahmed"), UserStatus.Active, temporaryHash, mustChangePassword: true, _clock.UtcNow.AddHours(72));
+        _users.Seed(user);
+        _clock.UtcNow = user.TemporaryPasswordExpiresAt!.Value.AddSeconds(-1); // one second before the boundary
+        var useCase = CreateUseCase();
+
+        var result = await useCase.ExecuteAsync(new ChangePasswordRequest(
+            user.Id, SessionId, "TempPassw0rd1", "NewPassw0rd", "corr-1", AuditSource.Web));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(_hasher.Hash("NewPassw0rd"), user.PasswordHash);
+        Assert.False(user.MustChangePassword);
+    }
+
+    // Contract §5.5 lists currentPassword correctness before the newPassword
+    // length rules: a wrong current password must win over a too-short or
+    // too-long new password, not the other way around.
+    [Theory]
+    [InlineData("Sh0rt1")]
+    [InlineData("")]
+    public async Task ChangePassword_WithWrongCurrentPassword_AndATooShortNewPassword_StillReturnsCurrentPasswordIncorrect(string tooShort)
+    {
+        var user = SeedActiveUser();
+        var useCase = CreateUseCase();
+
+        var result = await useCase.ExecuteAsync(new ChangePasswordRequest(
+            user.Id, SessionId, "WrongPassword", tooShort, "corr-1", AuditSource.Web));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("auth.current_password_incorrect", result.Error!.Code);
+    }
+
+    [Fact]
+    public async Task ChangePassword_WithWrongCurrentPassword_AndATooLongNewPassword_StillReturnsCurrentPasswordIncorrect()
+    {
+        var user = SeedActiveUser();
+        var useCase = CreateUseCase();
+        var tooLong = new string('a', 129);
+
+        var result = await useCase.ExecuteAsync(new ChangePasswordRequest(
+            user.Id, SessionId, "WrongPassword", tooLong, "corr-1", AuditSource.Web));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("auth.current_password_incorrect", result.Error!.Code);
+    }
+
+    // Same precedence, for the expired-temporary-password path: the generic
+    // current-password-incorrect code still wins over a bad new-password length.
+    [Fact]
+    public async Task ChangePassword_WithAnExpiredTemporaryPassword_AndATooShortNewPassword_StillReturnsCurrentPasswordIncorrect()
+    {
+        var temporaryHash = _hasher.Hash("TempPassw0rd1");
+        var user = new User(
+            new LoginIdentifier("eng.ahmed"), UserStatus.Active, temporaryHash, mustChangePassword: true, _clock.UtcNow.AddHours(72));
+        _users.Seed(user);
+        _clock.UtcNow = user.TemporaryPasswordExpiresAt!.Value;
+        var useCase = CreateUseCase();
+
+        var result = await useCase.ExecuteAsync(new ChangePasswordRequest(
+            user.Id, SessionId, "TempPassw0rd1", "x", "corr-1", AuditSource.Web));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("auth.current_password_incorrect", result.Error!.Code);
+    }
+
+    [Fact]
+    public async Task ChangePassword_WithAnExpiredTemporaryPassword_AndATooLongNewPassword_StillReturnsCurrentPasswordIncorrect()
+    {
+        var temporaryHash = _hasher.Hash("TempPassw0rd1");
+        var user = new User(
+            new LoginIdentifier("eng.ahmed"), UserStatus.Active, temporaryHash, mustChangePassword: true, _clock.UtcNow.AddHours(72));
+        _users.Seed(user);
+        _clock.UtcNow = user.TemporaryPasswordExpiresAt!.Value;
+        var useCase = CreateUseCase();
+        var tooLong = new string('a', 129);
+
+        var result = await useCase.ExecuteAsync(new ChangePasswordRequest(
+            user.Id, SessionId, "TempPassw0rd1", tooLong, "corr-1", AuditSource.Web));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("auth.current_password_incorrect", result.Error!.Code);
+    }
+
+    [Fact]
     public async Task ChangePassword_AuditEvent_NamesTheUserAsActorAndTargetWithTheCallersSourceAndCorrelation()
     {
         var user = SeedActiveUser();
@@ -201,8 +318,29 @@ public class ChangePasswordUseCaseTests
             user.Id, SessionId, "OldPassw0rd", "NewPassw0rd", "corr-change", AuditSource.EmployeeApp));
 
         var auditEvent = Assert.Single(_auditWriter.Staged);
-        AuditAssert.Event(auditEvent, AuditActionType.PasswordChanged, user.Id, user.Id, "corr-change", AuditSource.EmployeeApp, _clock.UtcNow);
+        // OC-6 resolved: this seeded user has no active role, so the confirmed
+        // rule itself (not an unresolved OC-6) is what yields null here.
+        AuditAssert.Event(
+            auditEvent, AuditActionType.PasswordChanged, user.Id, user.Id, "corr-change", AuditSource.EmployeeApp, _clock.UtcNow,
+            actorRoleCodeStillPendingOc6: false, expectedActorRoleCode: null);
         Assert.Null(auditEvent.Snapshot);
         AuditAssert.ContainsNone(auditEvent, "OldPassw0rd", "NewPassw0rd", user.PasswordHash);
+    }
+
+    // Contract §14.1, owner decision OC-6: changing one's own password needs no
+    // permission, so the rule resolves to the actor's first active role by
+    // ordinal code order - "Accountant" sorts before "Engineer" and "OfficeStaff".
+    [Fact]
+    public async Task ChangePassword_AuditEvent_ActorRoleCode_IsTheFirstActiveRoleByOrdinalOrder_WhenTheActorHasSeveral()
+    {
+        var user = SeedActiveUser();
+        _accessReader.Set(user.Id, ["OfficeStaff", "Accountant", "Engineer"]);
+        var useCase = CreateUseCase();
+
+        await useCase.ExecuteAsync(new ChangePasswordRequest(
+            user.Id, SessionId, "OldPassw0rd", "NewPassw0rd", "corr-change", AuditSource.EmployeeApp));
+
+        var auditEvent = Assert.Single(_auditWriter.Staged);
+        Assert.Equal("Accountant", auditEvent.ActorRoleCode);
     }
 }

@@ -6,13 +6,15 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Contractra.Infrastructure.Startup;
 
 /// <summary>
-/// The operator-only command line of contract v1.5 §10A, §11, §18: not an HTTP
-/// endpoint, run on the server, one correlation id per run (§13), always with a
+/// The operator-only command line of contract v1.5 §10A, §11, §18 (plus §22 M5
+/// for <c>clear-throttle</c>, pending review with OC-8): not an HTTP endpoint,
+/// run on the server, one correlation id per run (§13), always with a
 /// <c>--reason</c>.
 ///
 /// <code>
 /// issue-password-reset --login &lt;identifier&gt; --reason &lt;text&gt;
 /// reset-bootstrap-password --reason &lt;text&gt;
+/// clear-throttle --identifier &lt;identifier&gt; --reason &lt;text&gt;
 /// </code>
 ///
 /// Exit codes: 0 done; 1 refused or failed (nothing changed); 2 bad usage. The
@@ -23,6 +25,7 @@ public sealed class OperatorCommandRunner
 {
     public const string IssuePasswordReset = "issue-password-reset";
     public const string ResetBootstrapPassword = "reset-bootstrap-password";
+    public const string ClearThrottle = "clear-throttle";
 
     private readonly IServiceScopeFactory _scopes;
     private readonly StartupInitializer _startup;
@@ -37,13 +40,14 @@ public sealed class OperatorCommandRunner
     }
 
     public static bool IsOperatorCommand(IReadOnlyList<string> args) =>
-        args.Count > 0 && args[0] is IssuePasswordReset or ResetBootstrapPassword;
+        args.Count > 0 && args[0] is IssuePasswordReset or ResetBootstrapPassword or ClearThrottle;
 
     public static string Usage =>
         $"""
         Usage:
           {IssuePasswordReset} --login <identifier> --reason <text>
           {ResetBootstrapPassword} --reason <text>
+          {ClearThrottle} --identifier <identifier> --reason <text>
 
         --reason is required (1-1000 characters, no leading or trailing spaces) and is written to the audit trail: do not put secrets in it.
         The code or password is printed once on this terminal. Do not redirect the output to a file, a ticket or a chat.
@@ -85,6 +89,24 @@ public sealed class OperatorCommandRunner
                 return 0;
             }
 
+            if (options.Command == ClearThrottle)
+            {
+                var cleared = await services.GetRequiredService<ClearThrottleUseCase>().ExecuteAsync(
+                    new ClearThrottleRequest(options.Identifier!, options.Reason, correlationId), cancellationToken);
+
+                if (!cleared.IsSuccess)
+                {
+                    // The clear and its audit event share one transaction
+                    // (IThrottleIdentifierEraser, ADR 0006 §6), so any failure here
+                    // rolled both back: "nothing was changed" is always accurate.
+                    await error.WriteLineAsync($"Refused: {cleared.Error}. Nothing was changed.");
+                    return 1;
+                }
+
+                await output.WriteLineAsync("Throttle cleared.");
+                return 0;
+            }
+
             var reset = await services.GetRequiredService<ResetBootstrapPasswordUseCase>().ExecuteAsync(
                 new ResetBootstrapPasswordRequest(options.Reason, correlationId), cancellationToken);
 
@@ -106,11 +128,11 @@ public sealed class OperatorCommandRunner
         }
     }
 
-    private sealed record Options(string Command, string? Login, string Reason);
+    private sealed record Options(string Command, string? Login, string? Identifier, string Reason);
 
     private static bool TryParse(IReadOnlyList<string> args, out Options options, out string problem)
     {
-        options = new Options(string.Empty, null, string.Empty);
+        options = new Options(string.Empty, null, null, string.Empty);
         problem = string.Empty;
 
         if (!IsOperatorCommand(args))
@@ -121,6 +143,7 @@ public sealed class OperatorCommandRunner
 
         var command = args[0];
         string? login = null;
+        string? identifier = null;
         string? reason = null;
 
         for (var i = 1; i < args.Count; i += 2)
@@ -138,6 +161,9 @@ public sealed class OperatorCommandRunner
                 case "--login" when command == IssuePasswordReset && login is null:
                     login = value;
                     break;
+                case "--identifier" when command == ClearThrottle && identifier is null:
+                    identifier = value;
+                    break;
                 case "--reason" when reason is null:
                     reason = value;
                     break;
@@ -153,13 +179,19 @@ public sealed class OperatorCommandRunner
             return false;
         }
 
+        if (command == ClearThrottle && string.IsNullOrWhiteSpace(identifier))
+        {
+            problem = "--identifier is required.";
+            return false;
+        }
+
         if (reason is null)
         {
             problem = "--reason is required.";
             return false;
         }
 
-        options = new Options(command, login, reason);
+        options = new Options(command, login, identifier, reason);
         return true;
     }
 }

@@ -174,6 +174,17 @@ public sealed class AuthThrottle : IAuthThrottle
         }
     }
 
+    public async Task ClearIdentifierAsync(byte[] identifierKey, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(identifierKey);
+        var key = new AuthThrottleKey(AuthThrottleScopes.Identifier, identifierKey);
+
+        await ApplyAsync(
+            [key],
+            states => new AuthThrottleDecision<bool>(true, new Dictionary<AuthThrottleKey, AuthThrottleState?> { [key] = null }),
+            cancellationToken);
+    }
+
     /// <summary>timestamptz keeps microseconds; decisions compare stored and in-memory times exactly.</summary>
     public static DateTimeOffset ToStoredPrecision(DateTimeOffset value) =>
         new(value.UtcTicks - (value.UtcTicks % 10), TimeSpan.Zero);

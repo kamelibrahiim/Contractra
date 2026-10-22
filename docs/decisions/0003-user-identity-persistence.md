@@ -1,6 +1,8 @@
 # ADR 0003: Physical persistence design for the User identity slice
 
-**Status:** Implemented for all four entities: `User`, `UserRole`, `UserPermission` and `UserPartyLink` (Domain + EF Core configuration + PostgreSQL constraints + tests), and — since Backend Sprint 2, Slice 2 — the user's credential and security state (§11). There is still no Application layer, API, authentication flow, or audit infrastructure.
+**Status:** Implemented for all four entities: `User`, `UserRole`, `UserPermission` and `UserPartyLink` (Domain + EF Core configuration + PostgreSQL constraints + tests), and — since Backend Sprint 2, Slice 2 (`fb45c1d`) — the user's credential and security state (§11).
+
+*Scope of this ADR versus later work (clarified 2026-10-22).* This ADR records the persistence design only. When it was written, and when §11 was added for Slice 2, there was no Application layer, API, authentication flow or audit infrastructure; sections that say so (§1, §2, §3.2, §6, §8) describe that state and are kept as history. Later Backend Sprint 2 slices added these outside this ADR's scope, recorded in `docs/implementation/backend/sprints/sprint-02.md` §A (the status record): `audit_events` persistence (Slice 3, `50832d1`, `d5c4c26`; its design, repository ADR 0006, is still Proposed); Application use cases (Slice 4, `5da097d`, owner-approved 2026-10-17); auth endpoints and the HTTP security pipeline (Slice 6, `fa62a98`, `cd8cbdc`; not owner-accepted); users endpoints (Slice 7, `1644077`; not reviewed, not accepted). These commits are on the branches `backend/auth-slice-3` and `backend/users-slice-7`; none of them is in `origin/main` (roadmap §1).
 
 **Scope:** `users`, `user_roles`, `user_permissions` and `user_party_links`, the remaining W1-A identity work (`docs/mvp-entity-scope-matrix-ar.md` §4.1). The backend Sprint 1 plan is in `docs/implementation/backend/sprints/sprint-01.md`.
 
@@ -15,8 +17,8 @@ Like ADR 0001 and ADR 0002, this is an engineering ADR. It records physical-desi
 | `users` has business key `login_identifier`, unique | `logical-data-model-ar.md` §1.6 | `ux_users_login_identifier_lower` (§3.2) |
 | Lifecycle `Active → Disabled`; `Disabled` may return to `Active`; no deletion | `logical-data-model-ar.md` §1.5 | `Disable()` / `Reactivate()` (§4) · `ck_users_status_valid_values` |
 | A user is disabled, never deleted, so their history stays linked | spec FR-AUTH-004 | No delete operation in the domain (§5) |
-| `password_hash` is never written to audit or Serilog | `logical-data-model-ar.md` §1.7 | Not applicable yet: no credential is stored (§6) |
-| Creating, disabling and reactivating users are audited in the same transaction | `logical-data-model-ar.md` §1.8 · BR-186 | **Not implemented** — see §8 |
+| `password_hash` is never written to audit or Serilog | `logical-data-model-ar.md` §1.7 | Not applicable at the time of this ADR: no credential was stored (§6). *Since Slice 2 the hash is stored (§11), under the same rule* |
+| Creating, disabling and reactivating users are audited in the same transaction | `logical-data-model-ar.md` §1.8 · BR-186 | **Not implemented** in this slice — see §8 and its later note |
 | `users → user_roles` is `1 : N` and dated | `logical-data-model-ar.md` §1.3, §1.4 | `UserRole` owned by `User` (§9.1) |
 | `user_roles` lifecycle `Active → Ended` by setting `ended_at`; no deletion | `logical-data-model-ar.md` §1.5 | `UserRole.End()` (§9.1) · FKs `ON DELETE RESTRICT` |
 | No uniqueness on `(user, role)`, because a role may be assigned, ended and assigned again; a partial index `WHERE ended_at IS NULL` | `logical-data-model-ar.md` §1.6 | `ux_user_roles_user_id_role_id_active` (§9.1) |
@@ -29,7 +31,9 @@ Like ADR 0001 and ADR 0002, this is an engineering ADR. It records physical-desi
 
 **Engineering choice (same as ADR 0001 §1 and ADR 0002 §2):** `Guid.CreateVersion7()` generated in the application, PostgreSQL `uuid`, `ValueGeneratedNever()`.
 
-**Stored today:** `users(id, login_identifier, status)`. Nothing else. No `password_hash` (§6), no `created_at`/`updated_at`, no soft-delete column.
+**Stored by the original Backend Sprint 1 schema:** `users(id, login_identifier, status)`. Nothing else. No `password_hash` (§6), no `created_at`/`updated_at`, no soft-delete column.
+
+> *Later (Backend Sprint 2, Slice 2):* the sentence above describes the schema created by this ADR's migrations, not the current schema. Migration `AddUserCredentialState` adds `password_hash`, `must_change_password`, `temporary_password_expires_at`, `security_version` and `is_bootstrap_admin` (§11.1, §11.3). The EF Core model snapshot at `1644077` (`backend/users-slice-7`) has exactly these eight columns. There is still no `created_at`/`updated_at` and no soft-delete column.
 
 ## 3. `LoginIdentifier`
 
@@ -59,7 +63,7 @@ CREATE UNIQUE INDEX ux_users_login_identifier_lower ON users (lower(login_identi
 - `citext`, custom collations and generated columns were not used, for the same reasons as ADR 0002 §5.2: they change the column type or add schema objects, and the expression index meets the requirement without them.
 - The domain does not lower-case anything. Value-object equality stays exact (ordinal), as in ADR 0002 §5.3. There is no domain-level uniqueness check; the database is the guard.
 
-**Note for future lookups:** any query that finds a user by login identifier must compare with `lower(login_identifier) = lower(@input)`, not with an exact EF Core equality on the value object. An exact match would miss `kamel` when `Kamel` is stored, and would not use `ux_users_login_identifier_lower`. No such query exists yet; this belongs to the authentication design (§6).
+**Note for future lookups:** any query that finds a user by login identifier must compare with `lower(login_identifier) = lower(@input)`, not with an exact EF Core equality on the value object. An exact match would miss `kamel` when `Kamel` is stored, and would not use `ux_users_login_identifier_lower`. No such query existed when this ADR was written; this belonged to the authentication design (§6). *Later:* Slice 2 added it as `UserLoginLookup` (§11.5).
 
 **Known limitation (same as ADR 0002 §5.2):** for non-ASCII characters, PostgreSQL's `lower()` follows the database locale, so exotic case mappings may differ from .NET's. No character set is confirmed for login identifiers; revisit this if one is defined.
 
@@ -115,6 +119,8 @@ The Sprint plan (US-BE-005) foresaw one combined migration for the whole slice. 
 **Confirmed requirement:** `UserCreated`, `UserDisabled` and `UserReactivated` are named audit events (`logical-data-model-ar.md` §1.8), written in the same transaction as the change (BR-186). `audit_events` belongs to W1-C and does not exist yet.
 
 **Decision:** as in ADR 0001 §13 and ADR 0002 §10, no Application use case or API endpoint exposes user creation or status changes until the audit trail exists. The same applies to assigning and ending roles and to granting and revoking permissions: `RoleAssigned`, `RoleEnded`, `PermissionGranted`, `PermissionRevoked`, `PayrollViewGranted` and `PayrollViewRevoked` are named audit events in the same section.
+
+> *Later (Backend Sprint 2):* "does not exist yet" above describes the state at the time of this ADR. `audit_events` was added in Slice 3 (`50832d1`, `d5c4c26`; design in repository ADR 0006, still **Proposed**). The Slice 4 use cases (`5da097d`) write their audit events in the same transaction as the change. Creation, disable and reactivate are exposed over HTTP only by the Slice 7 users endpoints (`1644077`; not reviewed, not accepted). No use case or endpoint for ending roles or granting or revoking permissions after creation exists (contract §15). Status and evidence: `docs/implementation/backend/sprints/sprint-02.md` §A. The decision above is unchanged.
 
 ## 9. Related entities
 

@@ -6,6 +6,8 @@
 
 **Revision:** corrected 2026-10-19 (second pass) — see "Corrections made in this revision" at the end.
 
+**Line references (noted 2026-10-22):** line numbers in this file refer to the files as they stood when the review was written. Several no longer match the current files. In the contract, OC-6, OC-8 and §22 have moved after later edits. Use the section references (OC-6 and OC-8 in contract §19; contract §22; ADR 0006 §§ as cited) to locate the text. The evidence and statuses recorded here are unchanged.
+
 ## Status legend
 
 | Term | Meaning in this file |

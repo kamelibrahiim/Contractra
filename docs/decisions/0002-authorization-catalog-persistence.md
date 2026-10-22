@@ -2,6 +2,8 @@
 
 **Status:** Implemented (Domain + EF Core configuration + PostgreSQL constraints and triggers + tests). No Application layer, API, authorization policies, audit infrastructure, users, or seed data.
 
+*Historical scope (clarified 2026-10-22).* The line above records the decision and its scope when this ADR was written. It is not the current state of the catalog. The catalog was later seeded by Backend Sprint 2, Slice 1 (`1e10742`, test fixtures `bc63d5f`): see [ADR 0004](0004-authorization-catalog-seed.md) and the dated note in §9. Users are covered by ADR 0003. Later Sprint 2 work (audit persistence, Application use cases, API) is recorded in `docs/implementation/backend/sprints/sprint-02.md` §A. The decisions in §1–§10, including the §6 `Payroll.View` guards, are unchanged.
+
 **Scope:** `Role`, `Permission`, `RolePermission` — the authorization-catalog part of W1-A (`docs/mvp-entity-scope-matrix-ar.md` §4.1). `User`, `UserRole`, `UserPermission` and `UserPartyLink` are out of scope.
 
 Like ADR 0001, this is an engineering ADR. It records physical-design decisions made to *implement* confirmed rules and is not authoritative over any document in `docs/` outside `docs/decisions/`. Every section below separates **confirmed rules** (with their source) from **engineering choices**.

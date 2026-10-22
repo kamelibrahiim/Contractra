@@ -2,6 +2,8 @@
 
 **Status:** Implemented (Domain + EF Core configuration + PostgreSQL constraints and triggers + tests). No Application layer, API, authorization policies, audit infrastructure, users, or seed data.
 
+*Historical scope (clarified 2026-10-22).* The line above records the decision and its scope when this ADR was written. It is not the current state of the catalog. The catalog was later seeded by Backend Sprint 2, Slice 1 (`1e10742`, test fixtures `bc63d5f`): see [ADR 0004](0004-authorization-catalog-seed.md) and the dated note in §9. Users are covered by ADR 0003. Later Sprint 2 work (audit persistence, Application use cases, API) is recorded in `docs/implementation/backend/sprints/sprint-02.md` §A. The decisions in §1–§10, including the §6 `Payroll.View` guards, are unchanged.
+
 **Scope:** `Role`, `Permission`, `RolePermission` — the authorization-catalog part of W1-A (`docs/mvp-entity-scope-matrix-ar.md` §4.1). `User`, `UserRole`, `UserPermission` and `UserPartyLink` are out of scope.
 
 Like ADR 0001, this is an engineering ADR. It records physical-design decisions made to *implement* confirmed rules and is not authoritative over any document in `docs/` outside `docs/decisions/`. Every section below separates **confirmed rules** (with their source) from **engineering choices**.
@@ -161,7 +163,11 @@ This slice only **records** the `Active → Deprecated` transition. It does not 
 
 ## 9. No seed data
 
-**Decision (approved):**
+> **Implementation status (clarified 2026-10-22): the catalog is now seeded.** This section described the state at the time of this ADR. The seed was decided separately, as anticipated below, and implemented in Backend Sprint 2, Slice 1 (migration `SeedAuthorizationCatalog`, commit `1e10742 feat(auth-slice-1): seed authorization catalog`; the existing tests it required were fixed in `bc63d5f`): 4 roles, 6 permissions and 7 role grants, with `Payroll.View` granted to no role. See [ADR 0004](0004-authorization-catalog-seed.md). The guards in §6 are unchanged.
+>
+> *Dates (clarified 2026-10-22).* This note originally had the heading "Update (2026-10-01): the catalog is now seeded." Two different dates apply to the seed, and that "2026-10-01" matches neither of them. The **owner decision** to seed only the permissions that implemented functionality uses is C2, owner-approved 2026-09-26 (`docs/implementation/backend/features/admin-user-creation-plan.md` §1; ADR 0004 §2). The **implementation** is recorded by Git: `1e10742` is timestamped 2026-10-15 01:54 (+03:00) and `bc63d5f` 2026-10-14 23:26 UTC (2026-10-15 02:26 +03:00). The date 2026-10-01 coincides with the contract v1.4 re-baseline (owner decisions R30–R43, plan §1B), and it is earlier than both commits, so it cannot be the date the seed was implemented. Git does not establish why it was used in the original heading or when that heading was first written; the heading was replaced on 2026-10-22 only to remove that ambiguity.
+
+**Decision at the time (approved):**
 - The four roles in spec §7.1 (`Engineer`, `OfficeStaff`, `Accountant`, `Admin`) are not seeded.
 - The permission list in spec §7.3 is explicitly 🔵 proposed, and it has the format contradiction described in §5.1.
 

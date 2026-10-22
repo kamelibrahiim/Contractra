@@ -2,6 +2,8 @@
 
 **Status:** Implemented (Domain + EF Core configuration + PostgreSQL constraints + tests). No Application layer, API, authorization, or audit infrastructure.
 
+*Historical scope (clarified 2026-10-22).* The sentence above records the state of the Party identity slice when this ADR was written. Later Backend Sprint 2 work added an Application layer, audit persistence and authentication endpoints elsewhere (ADRs 0003 to 0006; status record: `docs/implementation/backend/sprints/sprint-02.md` §A), on feature branches that are not in `origin/main`. That work does not change this ADR's scope or decisions. At `1644077` (`backend/users-slice-7`), Application and Api contain no Party use case or endpoint; the only Party-named file there is the `IPartyRepository` read port, which user creation uses to validate the Party link.
+
 **Scope:** `Party`, `PartyRole`, `PartyAlias`, `PartyIdentifier` — the W1-A core identity slice (`docs/mvp-entity-scope-matrix-ar.md`).
 
 This document is an engineering ADR, not a business-rule document. It records physical-design decisions made to *implement* confirmed business rules, and is explicitly not authoritative over any document in `docs/` outside `docs/decisions/`. Where a decision below is not dictated by a confirmed rule, it is marked as an engineering choice.

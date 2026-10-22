@@ -26,7 +26,7 @@ A newer file date never decides precedence by itself (same rule as the index).
 | `sprints/frontend-auth-and-users-plan.md` | Frontend plan (mock-first) | History; superseded by the contract (banner) |
 | `sprints/frontend-auth-contract-alignment-plan.md` | Frontend plan against contract v1.5 | Current; starts after the matching backend slices |
 | `../decisions/0001` … `0004` | ADRs | Implemented as each states |
-| `../decisions/0005` | ADR — Slice 2B persistence (sessions, refresh tokens, reset tickets, throttle store) | Accepted for implementation; status recorded in `backend/sprints/sprint-02.md` §A |
+| `../decisions/0005` | ADR — Slice 2B persistence (sessions, refresh tokens, reset tickets, throttle store) | Implemented in Backend Sprint 2, Slice 2B (the ADR's own status line; its throttle **policy** remains unimplemented and pending review, ADR 0005 §8); status recorded in `backend/sprints/sprint-02.md` §A |
 | `../decisions/0006` | Repository ADR 0006 (not business ADR-006) — Slice 3 audit persistence, owner decisions R46–R47 and those of 2026-10-19, Audit Completion slice and Gates A and B | Proposed — pending owner review; implemented in `50832d1` and `d5c4c26` (status recorded in `backend/sprints/sprint-02.md` §A) |
 
 **Two files are called `sprint-01.md`**: the one under `backend/sprints/` is the backend sprint, the one under `sprints/` is the frontend sprint. Always cite the full path.

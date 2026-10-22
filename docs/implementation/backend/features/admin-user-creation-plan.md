@@ -270,7 +270,7 @@ Approved by the reviewer for the implementation of Slice 2B (US-BE-008). They ar
 
 ### 1F.3 The documented behaviour
 
-> **Correction of 2026-10-22.** An earlier version of this section generated a new password on every delivery attempt. That is withdrawn: a message from an earlier attempt can arrive after a retry has changed the stored hash, so the employee holds a dead password and cannot tell which message to trust — it is not a safe retry design. **One password is now generated per operation** (account creation or reset), its hash is stored with the operation, and every retry of that operation sends the **same** password from a short-lived **encrypted** copy (§1F.4).
+> **Correction of 2026-10-22.** An earlier version of this section generated a new password on every delivery attempt. That is withdrawn: a message from an earlier attempt can arrive after a retry has changed the stored hash, so the employee holds a dead password and cannot tell which message to trust — it is not a safe retry design. **One password is now generated per operation** (account creation or reset), its hash is stored in the user record, in the operation's transaction (the delivery outbox row holds no copy of the hash, §1F.4), and every retry of that operation sends the **same** password from a short-lived **encrypted** copy (§1F.4).
 
 **Account creation (R49).**
 1. The Admin gives the roles, the Party for an Engineer (R31), the employee's name (for the username suggestion), the WhatsApp number, and affirms that the employee agreed to receive account messages on WhatsApp (§1F.5).

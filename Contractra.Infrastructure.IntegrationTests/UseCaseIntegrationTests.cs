@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
 using Contractra.Application.Audit;
 using Contractra.Application.Identity;
+using Contractra.Application.Identity.Credentials;
 using Contractra.Application.Identity.UseCases;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
+using Contractra.Infrastructure.Identity;
 using Contractra.Infrastructure.Persistence;
 using Contractra.Infrastructure.Persistence.Audit;
 using Microsoft.EntityFrameworkCore;
@@ -39,19 +41,28 @@ public class UseCaseIntegrationTests : IClassFixture<PostgresTestDatabaseFixture
         var actorId = await SeedActorUserAsync();
         var useCase = scope.ServiceProvider.GetRequiredService<CreateUserUseCase>();
 
-        var result = await useCase.ExecuteAsync(new CreateUserRequest(
-            $"office.{Guid.NewGuid():N}", new[] { "OfficeStaff" }, PartyId: null, actorId, "corr-1", AuditSource.Web));
+        var result = await useCase.ExecuteAsync(NewCreateRequest(UniqueLogin(), actorId, "corr-1"));
 
         Assert.True(result.IsSuccess);
 
         await using var read = _fixture.CreateDbContext();
         var user = await read.Users.Include(u => u.Roles).SingleAsync(u => u.Id == result.Value!.UserId);
         Assert.Equal(UserStatus.Active, user.Status);
-        Assert.True(user.MustChangePassword);
+        Assert.False(user.MustChangePassword);
         Assert.Single(user.Roles);
+
+        // The credential issuance is queued in the same transaction, with a sealed copy and no plaintext column.
+        var issuance = await read.CredentialIssuances.SingleAsync(i => i.UserId == user.Id);
+        Assert.Equal(CredentialDeliveryStatus.Queued, issuance.Status);
+        Assert.Equal(CredentialIssuanceKind.Initial, issuance.Kind);
+        Assert.Equal("+201000000001", issuance.Destination);
+        Assert.True(issuance.HasSealedCopy);
 
         var auditEvents = await read.AuditEvents.Where(e => e.EntityId == user.Id).ToListAsync();
         Assert.Equal(2, auditEvents.Count);
+        var createdEvent = Assert.Single(auditEvents, e => e.ActionType == AuditActionType.UserCreated);
+        Assert.Contains(issuance.Id.ToString(), createdEvent.Snapshot!);
+        Assert.DoesNotContain("+201000000001", createdEvent.Snapshot!);
         Assert.Contains(auditEvents, e => e.ActionType == AuditActionType.UserCreated);
         Assert.Contains(auditEvents, e => e.ActionType == AuditActionType.RoleAssigned);
     }
@@ -62,21 +73,19 @@ public class UseCaseIntegrationTests : IClassFixture<PostgresTestDatabaseFixture
         await using var provider = BuildProvider();
         await SeedRoleAsync("OfficeStaff");
         var actorId = await SeedActorUserAsync();
-        var login = $"office.{Guid.NewGuid():N}";
+        var login = UniqueLogin();
 
         await using (var scope = provider.CreateAsyncScope())
         {
             var useCase = scope.ServiceProvider.GetRequiredService<CreateUserUseCase>();
-            var first = await useCase.ExecuteAsync(new CreateUserRequest(
-                login, new[] { "OfficeStaff" }, PartyId: null, actorId, "corr-1", AuditSource.Web));
+            var first = await useCase.ExecuteAsync(NewCreateRequest(login, actorId, "corr-1"));
             Assert.True(first.IsSuccess);
         }
 
         await using (var scope = provider.CreateAsyncScope())
         {
             var useCase = scope.ServiceProvider.GetRequiredService<CreateUserUseCase>();
-            var second = await useCase.ExecuteAsync(new CreateUserRequest(
-                login, new[] { "OfficeStaff" }, PartyId: null, actorId, "corr-2", AuditSource.Web));
+            var second = await useCase.ExecuteAsync(NewCreateRequest(login, actorId, "corr-2"));
 
             Assert.False(second.IsSuccess);
             Assert.Equal("users.login_identifier_taken", second.Error!.Code);
@@ -85,6 +94,8 @@ public class UseCaseIntegrationTests : IClassFixture<PostgresTestDatabaseFixture
         var loginIdentifier = new LoginIdentifier(login);
         await using var read = _fixture.CreateDbContext();
         Assert.Equal(1, await read.Users.CountAsync(u => u.LoginIdentifier == loginIdentifier));
+        var winnerId = (await read.Users.SingleAsync(u => u.LoginIdentifier == loginIdentifier)).Id;
+        Assert.Equal(1, await read.CredentialIssuances.CountAsync(i => i.UserId == winnerId)); // the loser queued nothing
     }
 
     [Fact]
@@ -385,12 +396,27 @@ public class UseCaseIntegrationTests : IClassFixture<PostgresTestDatabaseFixture
 
     // ---- helpers -----------------------------------------------------------
 
+    private static CreateUserRequest NewCreateRequest(string login, Guid actorId, string correlation) =>
+        new(login, new[] { "OfficeStaff" }, PartyId: null, "+201000000001", ConsentAffirmed: true, "verbal", actorId, correlation, AuditSource.Web);
+
+    /// <summary>A policy-valid unique login: letters only, so it can never look like a phone number.</summary>
+    private static string UniqueLogin() =>
+        "u" + new string(Enumerable.Range(0, 12).Select(_ => (char)('a' + RandomNumberGenerator.GetInt32(26))).ToArray());
+
     private ServiceProvider BuildProvider(Action<IServiceCollection>? configure = null)
     {
         var configuration = new ConnectionStringConfiguration(_fixture.ConnectionString);
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
         services.AddInfrastructure(configuration);
+
+        // PS-04a: credential delivery on, with a throwaway sealing key and the fake sender (never a real one).
+        services.AddSingleton(CredentialSealingKeyRing.FromKeys(
+            "it-key", new Dictionary<string, byte[]> { ["it-key"] = RandomNumberGenerator.GetBytes(32) }));
+        services.AddSingleton(new CredentialDeliveryOptions { Enabled = true });
+        services.AddSingleton<FakeWhatsAppSender>();
+        services.AddSingleton<IWhatsAppSender>(sp => sp.GetRequiredService<FakeWhatsAppSender>());
+
         configure?.Invoke(services);
         return services.BuildServiceProvider(validateScopes: true);
     }

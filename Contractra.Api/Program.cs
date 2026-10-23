@@ -1,5 +1,6 @@
 using Contractra.Api;
 using Contractra.Api.Auth;
+using Contractra.Api.Integrations;
 using Contractra.Api.Users;
 using Contractra.Infrastructure;
 using Contractra.Infrastructure.Startup;
@@ -22,6 +23,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddContractraSerilog();
 builder.Services.AddInfrastructure(builder.Configuration);
+// PS-04a: the configured WhatsApp sender (Fake only in Development/Testing) and the delivery worker (ADR 0007).
+builder.AddContractraCredentialDelivery();
 builder.Services.AddStartupInitialization(failClosedOnUnsafeAuditPrivileges: builder.Environment.IsProduction());
 // Slice 6: auth endpoints and the HTTP security pipeline (contract §3-§8, §12, §13, §17, §18).
 // Invalid security configuration (signing keys, idle timeouts, CORS, proxies, throttle) stops startup.
@@ -44,6 +47,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapAuthEndpoints();
 app.MapUsersEndpoints();
+app.MapWhatsAppWebhook();
 
 app.Run();
 return 0;

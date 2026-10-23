@@ -1,6 +1,7 @@
 using Contractra.Application.Audit;
 using Contractra.Application.Common;
 using Contractra.Application.Identity.Auth;
+using Contractra.Application.Identity.Credentials;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
 
@@ -20,11 +21,13 @@ public sealed class DisableUserUseCase
     private readonly IClock _clock;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUserAccessReader _accessReader;
+    private readonly ICredentialIssuanceStore _issuances;
 
     public DisableUserUseCase(
         IUserRepository users, ISessionStore sessions, IAuditWriter auditWriter, IClock clock, IUnitOfWork unitOfWork,
-        IUserAccessReader accessReader)
+        IUserAccessReader accessReader, ICredentialIssuanceStore issuances)
     {
+        _issuances = issuances;
         _users = users;
         _sessions = sessions;
         _auditWriter = auditWriter;
@@ -63,6 +66,10 @@ public sealed class DisableUserUseCase
 
         user.Disable();
         await _sessions.RevokeAllActiveAsync(user.Id, SessionRevokeReason.UserDisabled, now, cancellationToken: cancellationToken);
+
+        // Contract §23.4: disabling cancels the open credential issuance (and purges its sealed copy);
+        // reactivating does not revive it.
+        (await _issuances.FindOpenForUserAsync(user.Id, cancellationToken))?.Cancel(now);
 
         _auditWriter.Stage(AuditEvent.ForUser(
             AuditActionType.UserDisabled,

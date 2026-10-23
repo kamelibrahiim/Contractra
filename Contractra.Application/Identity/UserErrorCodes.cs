@@ -21,4 +21,14 @@ public static class UserErrorCodes
     public const string InitialPasswordNotReissuable = "users.initial_password_not_reissuable";
     public const string ResetDeliveryUnavailable = "users.reset_delivery_unavailable";
     public const string BootstrapAccountProtected = "users.bootstrap_account_protected";
+
+    // Contract v1.6 §23.7 (credential delivery, R49-R51).
+    public const string CredentialDeliveryUnavailable = "users.credential_delivery_unavailable";
+    public const string CredentialDeliveryNotFound = "users.credential_delivery_not_found";
+    public const string WhatsAppNumberInvalid = "users.whatsapp_number_invalid";
+    public const string WhatsAppConsentRequired = "users.whatsapp_consent_required";
+    public const string WhatsAppDestinationMissing = "users.whatsapp_destination_missing";
+    public const string ReissueTooSoon = "users.reissue_too_soon";
+    public const string IssuanceChanged = "users.issuance_changed";
+    public const string SelfResetNotAllowed = "users.self_reset_not_allowed";
 }

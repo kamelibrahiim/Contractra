@@ -56,6 +56,19 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             ["Auth:Throttle:RefreshPermitLimit"] = "100000",
             ["Auth:Throttle:CleanupEnabled"] = "false",
             ["Auth:Throttle:LockTimeout"] = "00:00:02",
+
+            // PS-04a: credential delivery on with the fake sender and a throwaway sealing key. The worker is
+            // driven by the tests (RunOnceAsync), so its timer is parked; the re-issue interval is off so a
+            // test can reset right after creating, and tests that need it set it themselves.
+            ["WhatsApp:Enabled"] = "true",
+            // The fake sender exists only in Development/Testing; elsewhere startup refuses it (ADR 0007 §10).
+            ["WhatsApp:Sender"] = environment is "Development" or "Testing" ? "Fake" : "None",
+            ["WhatsApp:WorkerPollInterval"] = "01:00:00",
+            ["WhatsApp:MinReissueInterval"] = "00:00:00",
+            ["WhatsApp:AppSecret"] = WebhookAppSecret,
+            ["WhatsApp:WebhookVerifyToken"] = WebhookVerifyToken,
+            ["CredentialSealing:ActiveKeyId"] = "test-seal-1",
+            ["CredentialSealing:Keys:test-seal-1"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)),
         };
 
         foreach (var (key, value) in settings ?? new Dictionary<string, string?>())
@@ -63,6 +76,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             _settings[key] = value;
         }
     }
+
+    public const string WebhookAppSecret = "test-app-secret-not-real";
+    public const string WebhookVerifyToken = "test-verify-token-not-real";
 
     public string ActiveKeyId { get; }
 

@@ -17,8 +17,27 @@ public class DisableUserUseCaseTests
     private readonly FakeClock _clock = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly FakeUserAccessReader _accessReader = new();
+    private readonly FakeCredentialIssuanceStore _issuances = new();
 
-    private DisableUserUseCase CreateUseCase() => new(_users, _sessions, _auditWriter, _clock, _unitOfWork, _accessReader);
+    private DisableUserUseCase CreateUseCase() => new(_users, _sessions, _auditWriter, _clock, _unitOfWork, _accessReader, _issuances);
+
+    // Contract v1.6 §23.4: disabling an account cancels its open credential issuance and purges the sealed copy.
+    [Fact]
+    public async Task Disable_CancelsTheOpenCredentialIssuanceAndPurgesItsSealedCopy()
+    {
+        var user = new User(new LoginIdentifier("eng.ahmed"), UserStatus.Active, "hash", mustChangePassword: false);
+        _users.Seed(user);
+        var issuance = CredentialIssuance.Queue(
+            Guid.CreateVersion7(), user.Id, CredentialIssuanceKind.Initial, ActorId, _clock.UtcNow,
+            "+201000000001", "verbal", [1, 2], [3, 4], "k1", TimeSpan.FromHours(24));
+        _issuances.Add(issuance);
+
+        var result = await CreateUseCase().ExecuteAsync(new DisableUserRequest(user.Id, ActorId, "corr-1", AuditSource.Web));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(CredentialDeliveryStatus.Cancelled, issuance.Status);
+        Assert.False(issuance.HasSealedCopy);
+    }
 
     [Fact]
     public async Task Disable_AnActiveUser_SetsStatusRevokesSessionsAndAudits()

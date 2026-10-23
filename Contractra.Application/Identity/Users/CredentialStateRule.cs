@@ -1,3 +1,5 @@
+using Contractra.Domain.Identity;
+
 namespace Contractra.Application.Identity.Users;
 
 /// <summary>
@@ -15,6 +17,22 @@ public static class CredentialStateRule
     public static CredentialState Derive(UserDirectoryEntry entry, DateTimeOffset asOf)
     {
         ArgumentNullException.ThrowIfNull(entry);
+
+        // v1.6 (contract §23.1a): the latest issuance decides; a failure does not revert the hash.
+        if (entry.LatestIssuanceStatus is { } latest)
+        {
+            if (!CredentialIssuance.IsTerminal(latest))
+            {
+                return CredentialState.DeliveryPending;
+            }
+
+            if (latest == CredentialDeliveryStatus.Failed)
+            {
+                return CredentialState.DeliveryFailed;
+            }
+
+            return CredentialState.PasswordSet;
+        }
 
         if (!entry.HasUsablePassword)
         {

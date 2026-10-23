@@ -1,24 +1,29 @@
 using System.Net;
 using System.Text.Json;
+using Contractra.Api.Integrations;
 using Contractra.Api.Tests.Support;
-using Contractra.Application.Identity;
+using Contractra.Application.Identity.Credentials;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
 using Contractra.Domain.Parties;
+using Contractra.Infrastructure.Identity;
 using Contractra.Infrastructure.IntegrationTests;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Contractra.Api.Tests;
 
 /// <summary>
-/// /api/v1/users and /api/v1/roles - contract v1.5 §9 (Backend Sprint 2, Slice 7): the §9
-/// check order, the response contracts, the derived credentialState and the audit rows,
-/// against an ephemeral PostgreSQL database.
+/// /api/v1/users and /api/v1/roles - contract v1.5 §9 as amended by v1.6 §23 (Backend Sprint 2 Slice 7; PS-04a): the §9
+/// check order, the response contracts, the derived credentialState, the credential issuance (one generated password
+/// per operation, delivered by the worker, never in a response) and the audit rows, against an ephemeral PostgreSQL
+/// database.
 /// </summary>
 public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixture>, IAsyncLifetime
 {
+    private const string Number = "+201000000001";
+
     private readonly PostgresTestDatabaseFixture _database;
-    private readonly RecordingDelivery _delivery = new();
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
@@ -27,34 +32,20 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
         _database = database;
     }
 
-    /// <summary>A reset-delivery channel standing in for the one OC-2 has not decided; it only exists in these tests.</summary>
-    private sealed class RecordingDelivery : IPasswordResetDelivery
-    {
-        public string Channel => "test-channel";
-
-        public bool Reachable { get; set; } = true;
-
-        public bool ThrowOnSend { get; set; }
-
-        public List<(Guid UserId, string Code)> Sent { get; } = [];
-
-        public Task<bool> CanReachAsync(Guid userId, CancellationToken cancellationToken = default) => Task.FromResult(Reachable);
-
-        public Task SendAsync(Guid userId, string code, CancellationToken cancellationToken = default)
-        {
-            Sent.Add((userId, code));
-            return ThrowOnSend ? Task.FromException(new InvalidOperationException("channel down")) : Task.CompletedTask;
-        }
-    }
-
     public Task InitializeAsync()
     {
-        _factory = new ApiFactory(_database, configureServices: services => services.AddSingleton<IPasswordResetDelivery>(_delivery));
+        _factory = new ApiFactory(_database);
         _client = _factory.CreateApiClient();
         return Task.CompletedTask;
     }
 
     public async Task DisposeAsync() => await _factory.DisposeAsync();
+
+    /// <summary>The fake sender behind the real worker (registered because WhatsApp:Sender = Fake in Development).</summary>
+    private FakeWhatsAppSender Sender => _factory.Services.GetRequiredService<FakeWhatsAppSender>();
+
+    /// <summary>One worker cycle: sweep, then attempt every due issuance (the timer is parked in tests).</summary>
+    private Task RunWorkerAsync() => _factory.Services.GetRequiredService<CredentialDeliveryWorker>().RunOnceAsync(CancellationToken.None);
 
     private DateTimeOffset Now => _factory.Clock.UtcNow;
 
@@ -117,7 +108,8 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
         { "POST", "/api/v1/users/{id}/disable" },
         { "POST", "/api/v1/users/{id}/reactivate" },
         { "POST", "/api/v1/users/{id}/reset-password" },
-        { "POST", "/api/v1/users/{id}/initial-password" },
+        { "GET", "/api/v1/users/{id}/credential-delivery" },
+        { "POST", "/api/v1/users/username-suggestions" },
         { "GET", "/api/v1/roles" },
     };
 
@@ -188,16 +180,27 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
         Assert.Equal("auth.forbidden", response.Code);
     }
 
-    // ---- POST /users - §9.1 --------------------------------------------------------
+    // ---- POST /users - §9.1 as replaced by §23.2 ---------------------------------------
+
+    /// <summary>A create body in the v1.6 shape: roles, an optional party, and the WhatsApp number with the consent affirmation.</summary>
+    private static object Body(
+        string? login = null, string[]? roles = null, Guid? partyId = null, string? number = Number, bool consent = true, string basis = "verbal") =>
+        new
+        {
+            loginIdentifier = login ?? Seed.NewPolicyLogin(),
+            roleCodes = roles ?? ["OfficeStaff"],
+            partyId,
+            whatsapp = new { number, consent = new { affirmed = consent, basis } },
+        };
 
     [Fact]
-    public async Task Create_AnEngineerWithAParty_Is201WithTheContractBody_AndAuditsInTheSameTransaction()
+    public async Task Create_AnEngineerWithAParty_Is201WithTheContractBody_AndNeverReturnsAPassword()
     {
         var (admin, token) = await AdminAsync();
         var party = await SeedPartyAsync();
-        var login = Seed.NewLogin("eng");
+        var login = Seed.NewPolicyLogin("eng");
 
-        var response = await CreateAsync(token, new { loginIdentifier = login, roleCodes = new[] { "engineer" }, partyId = party.Id });
+        var response = await CreateAsync(token, Body(login, ["engineer"], party.Id));
 
         Assert.Equal(HttpStatusCode.Created, response.Status);
         var user = response.Json.GetProperty("user");
@@ -208,14 +211,28 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
         Assert.Equal("Active", user.GetProperty("status").GetString());
         Assert.Equal(["Engineer"], Roles(user)); // canonical casing, not the requested one
         Assert.False(user.GetProperty("isBootstrapAdmin").GetBoolean());
-        Assert.Equal("TemporaryPasswordIssued", user.GetProperty("credentialState").GetString());
-        var temporaryPassword = response.String("temporaryPassword")!;
-        Assert.Equal(12, temporaryPassword.Length);
-        Assert.Equal(Now.AddHours(72).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"), response.String("temporaryPasswordExpiresAt"));
-        Assert.Equal(["user", "temporaryPassword", "temporaryPasswordExpiresAt"], response.Json.EnumerateObject().Select(p => p.Name));
+        Assert.Equal("DeliveryPending", user.GetProperty("credentialState").GetString());
+        Assert.Equal(["user", "credentialDelivery"], response.Json.EnumerateObject().Select(p => p.Name));
+
+        var delivery = response.Json.GetProperty("credentialDelivery");
+        Assert.Equal(
+            ["issuanceId", "kind", "status", "attempts", "updatedAt", "destinationMasked", "failureCategory", "stalled"],
+            delivery.EnumerateObject().Select(p => p.Name));
+        Assert.Equal("Initial", delivery.GetProperty("kind").GetString());
+        Assert.Equal("Queued", delivery.GetProperty("status").GetString());
+        Assert.Equal(0, delivery.GetProperty("attempts").GetInt32());
+        Assert.Equal("+20••••••••01", delivery.GetProperty("destinationMasked").GetString());
+        Assert.Equal(JsonValueKind.Null, delivery.GetProperty("failureCategory").ValueKind);
+        Assert.False(delivery.GetProperty("stalled").GetBoolean());
+
+        // R51: nothing in the response can be a password, a hash, or the full number.
+        Assert.DoesNotContain("password", response.AllText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Number, response.AllText);
+        Assert.DoesNotContain("1000000001", response.AllText);
 
         var stored = await Seed.UserByIdAsync(_database, id);
-        Assert.True(stored.MustChangePassword);
+        Assert.False(stored.MustChangePassword); // R49: no forced change
+        Assert.Null(stored.TemporaryPasswordExpiresAt);
         await using (var db = _database.CreateDbContext())
         {
             Assert.Equal(party.Id, (await db.UserPartyLinks.SingleAsync(l => l.UserId == id)).PartyId);
@@ -226,14 +243,39 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
         Assert.Equal(AuditSource.Web, created.Source);
         Assert.Equal("Admin", created.ActorRoleCode);
         Assert.Equal(response.Header("X-Correlation-ID"), created.CorrelationId);
+        Assert.Contains(delivery.GetProperty("issuanceId").GetString()!, created.Snapshot!);
         Assert.Single(events, e => e.ActionType == AuditActionType.RoleAssigned && e.EntityId == id);
+        Assert.DoesNotContain(Sender.Sent, m => m.Username == login); // creation itself sends nothing
+    }
 
-        // The temporary password works once (the user must then change it) and is stored nowhere readable.
-        var signIn = await Calls.LoginAsync(_client, login, temporaryPassword);
+    [Fact]
+    public async Task Create_ThenTheWorkerDelivers_TheSamePasswordTheUserSignsInWith_AndItAppearsNowhereElse()
+    {
+        var (_, token) = await AdminAsync();
+        var login = Seed.NewPolicyLogin("deliver");
+        var created = await CreateAsync(token, Body(login));
+        var id = created.Json.GetProperty("user").GetProperty("id").GetString()!;
+
+        await RunWorkerAsync();
+
+        var message = Assert.Single(Sender.Sent, m => m.Username == login);
+        Assert.Equal(Number, message.Destination);
+        Assert.Equal(12, message.Password.Length);
+
+        // The employee signs in with it - no forced change (R49) - and the delivery is now Accepted.
+        var signIn = await Calls.LoginAsync(_client, login, message.Password, "admin");
         Assert.Equal(HttpStatusCode.OK, signIn.Status);
-        Assert.True(signIn.Json.GetProperty("mustChangePassword").GetBoolean());
-        Assert.DoesNotContain(temporaryPassword, await Seed.AuditTableTextAsync(_database));
-        Assert.DoesNotContain(temporaryPassword, _factory.Logs.AllText);
+        Assert.False(signIn.Json.GetProperty("mustChangePassword").GetBoolean());
+
+        var status = await SendAsync(HttpMethod.Get, $"/api/v1/users/{id}/credential-delivery", token);
+        Assert.Equal(HttpStatusCode.OK, status.Status);
+        Assert.Equal("Accepted", status.Json.GetProperty("credentialDelivery").GetProperty("status").GetString());
+        Assert.Equal(1, status.Json.GetProperty("credentialDelivery").GetProperty("attempts").GetInt32());
+
+        Assert.DoesNotContain(message.Password, status.AllText);
+        Assert.DoesNotContain(message.Password, await Seed.AuditTableTextAsync(_database));
+        Assert.DoesNotContain(message.Password, _factory.Logs.AllText);
+        Assert.DoesNotContain(Number, _factory.Logs.AllText);
     }
 
     [Fact]
@@ -241,7 +283,7 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
     {
         var (_, token) = await AdminAsync();
 
-        var response = await CreateAsync(token, new { loginIdentifier = Seed.NewLogin("office"), roleCodes = new[] { "OfficeStaff", "Accountant" } });
+        var response = await CreateAsync(token, Body(roles: ["OfficeStaff", "Accountant"]));
 
         Assert.Equal(HttpStatusCode.Created, response.Status);
         Assert.Equal(["Accountant", "OfficeStaff"], Roles(response.Json.GetProperty("user")));
@@ -256,6 +298,9 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
         "{\"loginIdentifier\":\"x2\",\"roleCodes\":[\"OfficeStaff\",5]}",
         "{\"loginIdentifier\":\"x3\",\"roleCodes\":[\"Engineer\"],\"partyId\":\"not-a-guid\"}",
         "{\"loginIdentifier\":\"x4\",\"roleCodes\":[\"Engineer\"],\"partyId\":7}",
+        "{\"loginIdentifier\":\"x5\",\"roleCodes\":[\"OfficeStaff\"],\"whatsapp\":\"+201000000001\"}",
+        "{\"loginIdentifier\":\"x6\",\"roleCodes\":[\"OfficeStaff\"],\"whatsapp\":{\"number\":5}}",
+        "{\"loginIdentifier\":\"x7\",\"roleCodes\":[\"OfficeStaff\"],\"whatsapp\":{\"number\":\"+201000000001\",\"consent\":{\"affirmed\":\"yes\"}}}",
     };
 
     [Theory]
@@ -279,9 +324,11 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
 
         var roles = await SendAsync(HttpMethod.Post, "/api/v1/users", token, rawBody: "{\"loginIdentifier\":\"x\",\"roleCodes\":\"OfficeStaff\"}");
         var party = await SendAsync(HttpMethod.Post, "/api/v1/users", token, rawBody: "{\"loginIdentifier\":\"x\",\"roleCodes\":[\"Engineer\"],\"partyId\":\"nope\"}");
+        var number = await SendAsync(HttpMethod.Post, "/api/v1/users", token, rawBody: "{\"loginIdentifier\":\"x\",\"roleCodes\":[\"OfficeStaff\"],\"whatsapp\":{\"number\":5}}");
 
         Assert.True(roles.Json.GetProperty("errors").TryGetProperty("roleCodes", out _));
         Assert.True(party.Json.GetProperty("errors").TryGetProperty("partyId", out _));
+        Assert.True(number.Json.GetProperty("errors").TryGetProperty("whatsapp.number", out _));
     }
 
     [Fact]
@@ -290,8 +337,8 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
         var (_, token) = await AdminAsync();
         var party = await SeedPartyAsync();
 
-        var duplicate = await CreateAsync(token, new { loginIdentifier = Seed.NewLogin(), roleCodes = new[] { "OfficeStaff", "officestaff" } });
-        var stray = await CreateAsync(token, new { loginIdentifier = Seed.NewLogin(), roleCodes = new[] { "OfficeStaff" }, partyId = party.Id });
+        var duplicate = await CreateAsync(token, Body(roles: ["OfficeStaff", "officestaff"]));
+        var stray = await CreateAsync(token, Body(roles: ["OfficeStaff"], partyId: party.Id));
 
         Assert.Equal(HttpStatusCode.BadRequest, duplicate.Status);
         Assert.Equal("validation.failed", duplicate.Code);
@@ -311,19 +358,22 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
 
         async Task<ApiResponse> Post(object body) => await CreateAsync(token, body);
 
-        var invalidLogin = await Post(new { loginIdentifier = " padded ", roleCodes = new[] { "OfficeStaff" } });
+        var invalidLogin = await Post(Body(login: " padded "));
         var emptyLogin = await SendAsync(HttpMethod.Post, "/api/v1/users", token, rawBody: "{\"roleCodes\":[\"OfficeStaff\"]}");
-        var tooLong = await Post(new { loginIdentifier = new string('a', 257), roleCodes = new[] { "OfficeStaff" } });
-        var noRoles = await Post(new { loginIdentifier = Seed.NewLogin(), roleCodes = Array.Empty<string>() });
-        var absentRoles = await SendAsync(HttpMethod.Post, "/api/v1/users", token, rawBody: "{\"loginIdentifier\":\"abc\"}");
-        var unknownRole = await Post(new { loginIdentifier = Seed.NewLogin(), roleCodes = new[] { "Wizard" } });
-        var noParty = await Post(new { loginIdentifier = Seed.NewLogin(), roleCodes = new[] { "Engineer" } });
-        var missingParty = await Post(new { loginIdentifier = Seed.NewLogin(), roleCodes = new[] { "Engineer" }, partyId = Guid.NewGuid() });
-        var notActive = await Post(new { loginIdentifier = Seed.NewLogin(), roleCodes = new[] { "Engineer" }, partyId = inactive.Id });
-        var notClassified = await Post(new { loginIdentifier = Seed.NewLogin(), roleCodes = new[] { "Engineer" }, partyId = needsClassification.Id });
-        var noEngineerRole = await Post(new { loginIdentifier = Seed.NewLogin(), roleCodes = new[] { "Engineer" }, partyId = noRole.Id });
+        var tooLong = await Post(Body(login: new string('a', 257)));
+        var noRoles = await Post(Body(roles: []));
+        var absentRoles = await SendAsync(HttpMethod.Post, "/api/v1/users", token, rawBody: "{\"loginIdentifier\":\"abcd\"}");
+        var unknownRole = await Post(Body(roles: ["Wizard"]));
+        var noParty = await Post(Body(roles: ["Engineer"]));
+        var missingParty = await Post(Body(roles: ["Engineer"], partyId: Guid.NewGuid()));
+        var notActive = await Post(Body(roles: ["Engineer"], partyId: inactive.Id));
+        var notClassified = await Post(Body(roles: ["Engineer"], partyId: needsClassification.Id));
+        var noEngineerRole = await Post(Body(roles: ["Engineer"], partyId: noRole.Id));
 
         Assert.All([invalidLogin, emptyLogin, tooLong], r => Assert.Equal("users.login_identifier_invalid", r.Code));
+        Assert.Equal("whitespace", invalidLogin.String("reason"));
+        Assert.Equal("too_short", emptyLogin.String("reason"));
+        Assert.Equal("too_long", tooLong.String("reason"));
         Assert.All([noRoles, absentRoles], r => Assert.Equal("users.role_required", r.Code));
         Assert.Equal("users.role_unknown", unknownRole.Code);
         Assert.Equal("users.party_required", noParty.Code);
@@ -335,22 +385,90 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
         Assert.Equal("not_active", notActive.String("reason"));
         Assert.Equal("not_active", notClassified.String("reason"));
         Assert.Equal("no_active_engineer_role", noEngineerRole.String("reason"));
-        Assert.Null(invalidLogin.String("reason"));
+        Assert.Null(noParty.String("reason"));
+    }
+
+    [Theory]
+    [InlineData("admin", "reserved")]
+    [InlineData("Admin2", "reserved")]
+    [InlineData("OfficeStaff", "reserved")] // a role code
+    [InlineData("ab", "too_short")]
+    [InlineData("1abc", "bad_shape")]
+    [InlineData("has space", "whitespace")]
+    [InlineData("a@b.com", "bad_characters")]
+    [InlineData("user1234567", "phone_like")]
+    public async Task Create_TheUsernamePolicyRefusesAnInvalidIdentifier_WithTheReason(string login, string reason)
+    {
+        var (_, token) = await AdminAsync();
+
+        var response = await CreateAsync(token, Body(login: login));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.Status);
+        Assert.Equal("users.login_identifier_invalid", response.Code);
+        Assert.Equal(reason, response.String("reason"));
+    }
+
+    [Theory]
+    [InlineData("01000000001")]
+    [InlineData("+0123456789")]
+    [InlineData("not a number")]
+    public async Task Create_AnInvalidWhatsAppNumber_Is400_AndCreatesNothing(string number)
+    {
+        var (_, token) = await AdminAsync();
+        var before = await CountUsersAsync();
+
+        var response = await CreateAsync(token, Body(number: number));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.Status);
+        Assert.Equal("users.whatsapp_number_invalid", response.Code);
+        Assert.Equal(before, await CountUsersAsync());
     }
 
     [Fact]
-    public async Task Create_ADuplicateLoginIdentifier_IsCaseInsensitive409_AndAPartyCanBeLinkedOnce()
+    public async Task Create_WithoutTheNumberOrWithoutAffirmedConsent_Is400_AndCreatesNothing()
+    {
+        var (_, token) = await AdminAsync();
+        var before = await CountUsersAsync();
+
+        var noNumber = await SendAsync(HttpMethod.Post, "/api/v1/users", token, rawBody: $"{{\"loginIdentifier\":\"{Seed.NewPolicyLogin()}\",\"roleCodes\":[\"OfficeStaff\"]}}");
+        var noConsent = await CreateAsync(token, Body(consent: false));
+        var badBasis = await CreateAsync(token, Body(basis: "telepathy"));
+
+        Assert.Equal("users.whatsapp_number_invalid", noNumber.Code);
+        Assert.Equal("users.whatsapp_consent_required", noConsent.Code);
+        Assert.Equal("users.whatsapp_consent_required", badBasis.Code);
+        Assert.All([noNumber, noConsent, badBasis], r => Assert.Equal(HttpStatusCode.BadRequest, r.Status));
+        Assert.Equal(before, await CountUsersAsync());
+    }
+
+    [Fact]
+    public async Task Create_AnIdentifierIsStoredInItsCanonicalLowercaseForm()
+    {
+        var (_, token) = await AdminAsync();
+        var login = Seed.NewPolicyLogin("mixed");
+
+        var response = await CreateAsync(token, Body(login: login.ToUpperInvariant()));
+
+        Assert.Equal(HttpStatusCode.Created, response.Status);
+        Assert.Equal(login, response.Json.GetProperty("user").GetProperty("loginIdentifier").GetString());
+    }
+
+    [Fact]
+    public async Task Create_ADuplicateLoginIdentifier_IsCaseInsensitive409WithFreeAlternatives_AndAPartyCanBeLinkedOnce()
     {
         var (_, token) = await AdminAsync();
         var party = await SeedPartyAsync();
-        var login = Seed.NewLogin("Dup");
-        Assert.Equal(HttpStatusCode.Created, (await CreateAsync(token, new { loginIdentifier = login, roleCodes = new[] { "Engineer" }, partyId = party.Id })).Status);
+        var login = Seed.NewPolicyLogin("dup");
+        Assert.Equal(HttpStatusCode.Created, (await CreateAsync(token, Body(login, ["Engineer"], party.Id))).Status);
 
-        var taken = await CreateAsync(token, new { loginIdentifier = login.ToUpperInvariant(), roleCodes = new[] { "OfficeStaff" } });
-        var linked = await CreateAsync(token, new { loginIdentifier = Seed.NewLogin(), roleCodes = new[] { "Engineer" }, partyId = party.Id });
+        var taken = await CreateAsync(token, Body(login.ToUpperInvariant()));
+        var linked = await CreateAsync(token, Body(roles: ["Engineer"], partyId: party.Id));
 
         Assert.Equal(HttpStatusCode.Conflict, taken.Status);
         Assert.Equal("users.login_identifier_taken", taken.Code);
+        var alternatives = taken.Json.GetProperty("alternatives").EnumerateArray().Select(a => a.GetString()!).ToList();
+        Assert.Equal(3, alternatives.Count);
+        Assert.Equal([login + "2", login + "3", login + "4"], alternatives);
         Assert.Equal(HttpStatusCode.Conflict, linked.Status);
         Assert.Equal("users.party_already_linked", linked.Code);
     }
@@ -359,8 +477,7 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
     public async Task Create_ConcurrentRequestsForTheSameLogin_OneWins_TheOtherIs409Taken()
     {
         var (_, token) = await AdminAsync();
-        var login = Seed.NewLogin("race");
-        var body = new { loginIdentifier = login, roleCodes = new[] { "OfficeStaff" } };
+        var body = Body(Seed.NewPolicyLogin("race"));
 
         var responses = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => CreateAsync(token, body)));
 
@@ -370,6 +487,11 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
             Assert.Equal(HttpStatusCode.Conflict, r.Status);
             Assert.Equal("users.login_identifier_taken", r.Code);
         });
+        // The losers queued no credential issuance: exactly one user and one issuance exist for the login.
+        var winner = responses.Single(r => r.Status == HttpStatusCode.Created);
+        var winnerId = Guid.Parse(winner.Json.GetProperty("user").GetProperty("id").GetString()!);
+        await using var db = _database.CreateDbContext();
+        Assert.Equal(1, await db.CredentialIssuances.CountAsync(i => i.UserId == winnerId));
     }
 
     [Fact]
@@ -379,7 +501,7 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
         var party = await SeedPartyAsync();
 
         var responses = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ =>
-            CreateAsync(token, new { loginIdentifier = Seed.NewLogin("racep"), roleCodes = new[] { "Engineer" }, partyId = party.Id })));
+            CreateAsync(token, Body(Seed.NewPolicyLogin("racep"), ["Engineer"], party.Id))));
 
         Assert.Equal(1, responses.Count(r => r.Status == HttpStatusCode.Created));
         Assert.All(responses.Where(r => r.Status != HttpStatusCode.Created), r =>
@@ -389,10 +511,100 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
         });
     }
 
+    [Fact]
+    public async Task Create_WhenDeliveryIsNotAvailable_Is503_AndCreatesNothing()
+    {
+        foreach (var settings in new[]
+        {
+            new Dictionary<string, string?> { ["WhatsApp:Enabled"] = "false" },
+            new Dictionary<string, string?> { ["WhatsApp:Sender"] = "None" },
+            new Dictionary<string, string?> { ["CredentialSealing:ActiveKeyId"] = "" },
+        })
+        {
+            await using var plain = new ApiFactory(_database, settings);
+            var client = plain.CreateApiClient();
+            var admin = await Seed.UserAsync(_database, plain.Clock.UtcNow, ["Admin"]);
+            var token = (await Calls.LoginAsync(client, admin.Login, admin.Password, "admin")).String("accessToken")!;
+            var before = await CountUsersAsync();
+
+            var response = await Calls.SendAsync(client, HttpMethod.Post, "/api/v1/users", Body(), token);
+
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.Status);
+            Assert.Equal("users.credential_delivery_unavailable", response.Code);
+            Assert.Equal(before, await CountUsersAsync());
+            Assert.True(plain.Logs.Contains("Users.CredentialDeliveryUnavailable"));
+        }
+    }
+
     private async Task<int> CountUsersAsync()
     {
         await using var db = _database.CreateDbContext();
         return await db.Users.CountAsync();
+    }
+
+    // ---- POST /users/username-suggestions - §23.5 --------------------------------------
+
+    [Fact]
+    public async Task UsernameSuggestions_SuggestFromTheNameWithTheFirstFreeSuffix()
+    {
+        var (_, token) = await AdminAsync();
+        var given = "Zq" + Seed.NewLetters(8);
+        var first = await SendAsync(HttpMethod.Post, "/api/v1/users/username-suggestions", token, new { name = $"{given} Hassan" });
+        Assert.Equal(HttpStatusCode.OK, first.Status);
+        Assert.Equal("v1", first.String("policyVersion"));
+        var suggestion = first.Json.GetProperty("suggestions")[0];
+        Assert.Equal($"{given.ToLowerInvariant()}.hassan", suggestion.GetProperty("value").GetString());
+        Assert.True(suggestion.GetProperty("available").GetBoolean());
+        Assert.Equal("name", suggestion.GetProperty("source").GetString());
+
+        // Once that username exists, the next free one is suggested.
+        Assert.Equal(HttpStatusCode.Created, (await CreateAsync(token, Body(login: $"{given}.hassan"))).Status);
+        var second = await SendAsync(HttpMethod.Post, "/api/v1/users/username-suggestions", token, new { name = $"{given} Hassan" });
+        Assert.Equal($"{given.ToLowerInvariant()}.hassan2", second.Json.GetProperty("suggestions")[0].GetProperty("value").GetString());
+    }
+
+    [Fact]
+    public async Task UsernameSuggestions_ThePreferredLatinNameWins_AndAnUnusableNameGivesNoSuggestion()
+    {
+        var (_, token) = await AdminAsync();
+        var given = "Zr" + Seed.NewLetters(8);
+
+        var latin = await SendAsync(HttpMethod.Post, "/api/v1/users/username-suggestions", token, new { name = "أحمد محمد", latinName = $"{given} Mohammed" });
+        var unusable = await SendAsync(HttpMethod.Post, "/api/v1/users/username-suggestions", token, new { name = "???" });
+
+        Assert.Equal($"{given.ToLowerInvariant()}.mohammed", latin.Json.GetProperty("suggestions")[0].GetProperty("value").GetString());
+        Assert.Equal("latinName", latin.Json.GetProperty("suggestions")[0].GetProperty("source").GetString());
+        Assert.Equal(HttpStatusCode.OK, unusable.Status);
+        Assert.Empty(unusable.Json.GetProperty("suggestions").EnumerateArray());
+        Assert.Equal("name_unusable", unusable.String("reason"));
+    }
+
+    [Fact]
+    public async Task UsernameSuggestions_ACandidateIsValidatedAndCheckedForAvailability()
+    {
+        var (_, token) = await AdminAsync();
+        var login = Seed.NewPolicyLogin("cand");
+        await CreateAsync(token, Body(login: login));
+
+        var taken = await SendAsync(HttpMethod.Post, "/api/v1/users/username-suggestions", token, new { candidate = login });
+        var reserved = await SendAsync(HttpMethod.Post, "/api/v1/users/username-suggestions", token, new { candidate = "admin" });
+        var bad = await SendAsync(HttpMethod.Post, "/api/v1/users/username-suggestions", token, new { candidate = "a b" });
+
+        Assert.False(taken.Json.GetProperty("suggestions")[0].GetProperty("available").GetBoolean());
+        Assert.Equal(3, taken.Json.GetProperty("alternatives").GetArrayLength());
+        Assert.Equal("reserved", reserved.String("reason"));
+        Assert.Equal("whitespace", bad.String("reason"));
+    }
+
+    [Fact]
+    public async Task UsernameSuggestions_AWrongShapeIs400()
+    {
+        var (_, token) = await AdminAsync();
+
+        var response = await SendAsync(HttpMethod.Post, "/api/v1/users/username-suggestions", token, rawBody: "{\"name\":5}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.Status);
+        Assert.Equal("validation.failed", response.Code);
     }
 
     // ---- GET /users, GET /users/{id} - §9.2, §9.3 -----------------------------------
@@ -512,10 +724,11 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
     {
         var (_, token) = await AdminAsync();
 
+        const string Whatsapp = "\"whatsapp\":{\"number\":\"+201000000001\",\"consent\":{\"affirmed\":true,\"basis\":\"verbal\"}}";
         var response = await SendAsync(HttpMethod.Post, "/api/v1/users", token,
-            rawBody: "{\"loginIdentifier\":\"a\\u0000b\",\"roleCodes\":[\"OfficeStaff\"]}");
+            rawBody: "{\"loginIdentifier\":\"a\\u0000b\",\"roleCodes\":[\"OfficeStaff\"]," + Whatsapp + "}");
         var role = await SendAsync(HttpMethod.Post, "/api/v1/users", token,
-            rawBody: "{\"loginIdentifier\":\"nul.role\",\"roleCodes\":[\"Office\\u0000Staff\"]}");
+            rawBody: "{\"loginIdentifier\":\"nul.role\",\"roleCodes\":[\"Office\\u0000Staff\"]," + Whatsapp + "}");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.Status);
         Assert.Equal("users.login_identifier_invalid", response.Code);
@@ -562,7 +775,6 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("disable")]
     [InlineData("reactivate")]
     [InlineData("reset-password")]
-    [InlineData("initial-password")]
     public async Task ActionsOnAnUnknownOrMalformedId_Are404NotFound(string action)
     {
         var (_, token) = await AdminAsync();
@@ -650,7 +862,6 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
     [InlineData("disable")]
     [InlineData("reactivate")]
     [InlineData("reset-password")]
-    [InlineData("initial-password")]
     public async Task TheBootstrapAdmin_IsProtectedFromEveryMutation_NothingChangesAndNothingIsAudited(string action)
     {
         var (admin, token) = await AdminAsync();
@@ -670,179 +881,293 @@ public sealed class UsersEndpointTests : IClassFixture<PostgresTestDatabaseFixtu
         Assert.DoesNotContain(await Seed.AuditEventsAsync(_database), e => e.ActionType == AuditActionType.AccessDenied && e.ActorUserId == admin.Id);
     }
 
-    // ---- reset-password - §9.6 -------------------------------------------------------
+    // ---- credential issuance helpers ---------------------------------------------------
 
-    [Fact]
-    public async Task ResetPassword_WithNoDeliveryChannelConfigured_Is503_AndNothingChanges()
+    /// <summary>Creates an account through the API, runs the worker once and returns the id, login and delivered password.</summary>
+    private async Task<(Guid Id, string Login, string Password, Guid IssuanceId)> CreateDeliveredAsync(string token, string[]? roles = null)
     {
-        await using var plain = new ApiFactory(_database); // the shipped state: no IPasswordResetDelivery registered
-        var client = plain.CreateApiClient();
-        var admin = await Seed.UserAsync(_database, plain.Clock.UtcNow, ["Admin"]);
-        var token = (await Calls.LoginAsync(client, admin.Login, admin.Password, "admin")).String("accessToken")!;
-        var target = await Seed.UserAsync(_database, plain.Clock.UtcNow, ["Engineer"]);
-        var session = await Calls.LoginAsync(client, target.Login, target.Password);
-        var before = await Seed.UserByIdAsync(_database, target.Id);
+        var login = Seed.NewPolicyLogin("acct");
+        var created = await CreateAsync(token, Body(login, roles ?? ["OfficeStaff"]));
+        Assert.Equal(HttpStatusCode.Created, created.Status);
+        var id = Guid.Parse(created.Json.GetProperty("user").GetProperty("id").GetString()!);
+        var issuance = Guid.Parse(created.Json.GetProperty("credentialDelivery").GetProperty("issuanceId").GetString()!);
 
-        var response = await Calls.SendAsync(client, HttpMethod.Post, $"/api/v1/users/{target.Id}/reset-password", bearer: token);
-
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.Status);
-        Assert.Equal("users.reset_delivery_unavailable", response.Code);
-        var after = await Seed.UserByIdAsync(_database, target.Id);
-        Assert.Equal(before.SecurityVersion, after.SecurityVersion);
-        Assert.Equal(before.PasswordHash, after.PasswordHash);
-        Assert.All(await Seed.SessionsOfAsync(_database, target.Id), s => Assert.Null(s.RevokedAt));
-        Assert.Equal(HttpStatusCode.OK, (await Calls.MeAsync(client, session.String("accessToken")!)).Status);
-        Assert.Empty(await AuditOfAsync(admin.Id, AuditActionType.PasswordResetIssued));
-        await using (var db = _database.CreateDbContext())
-        {
-            Assert.False(await db.PasswordResetTickets.AnyAsync(t => t.UserId == target.Id));
-        }
-
-        Assert.True(plain.Logs.Contains("Users.ResetDeliveryUnavailable"));
+        await RunWorkerAsync();
+        var password = Sender.Sent.Last(m => m.Username == login).Password;
+        return (id, login, password, issuance);
     }
 
-    [Fact]
-    public async Task ResetPassword_WhenTheChannelCannotReachTheUser_Is503()
-    {
-        var (_, token) = await AdminAsync();
-        var target = await Seed.UserAsync(_database, Now, ["Engineer"]);
-        _delivery.Reachable = false;
+    private Task<ApiResponse> ResetAsync(string token, Guid id, Guid? expectedIssuanceId = null) =>
+        SendAsync(HttpMethod.Post, $"/api/v1/users/{id}/reset-password", token, expectedIssuanceId is null ? null : new { expectedIssuanceId });
 
-        var response = await SendAsync(HttpMethod.Post, $"/api/v1/users/{target.Id}/reset-password", token);
-
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.Status);
-        Assert.Equal("users.reset_delivery_unavailable", response.Code);
-    }
+    // ---- reset-password - §9.6 as replaced by §23.3 -------------------------------------
 
     [Fact]
-    public async Task ResetPassword_Is202WithoutAnySecret_InvalidatesThePassword_RevokesSessions_AuditsAndDeliversTheCode()
+    public async Task ResetPassword_Is202WithTheDeliveryStatusOnly_InvalidatesThePasswordAndSessions_AndAudits()
     {
         var (admin, token) = await AdminAsync();
-        var target = await Seed.UserAsync(_database, Now, ["Engineer"]);
-        var session = await Calls.LoginAsync(_client, target.Login, target.Password);
+        var (id, login, oldPassword, issuance) = await CreateDeliveredAsync(token);
+        var session = await Calls.LoginAsync(_client, login, oldPassword, "admin");
+        Assert.Equal(HttpStatusCode.OK, session.Status);
 
-        var response = await SendAsync(HttpMethod.Post, $"/api/v1/users/{target.Id}/reset-password", token);
+        var response = await ResetAsync(token, id, issuance);
 
         Assert.Equal(HttpStatusCode.Accepted, response.Status);
-        Assert.Equal("test-channel", response.String("channel"));
-        Assert.Equal(Now.AddHours(24).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"), response.String("expiresAt"));
-        Assert.Equal(["channel", "expiresAt"], response.Json.EnumerateObject().Select(p => p.Name));
         Assert.Equal("no-store", response.Header("Cache-Control"));
-        var (deliveredTo, code) = Assert.Single(_delivery.Sent);
-        Assert.Equal(target.Id, deliveredTo);
-        Assert.DoesNotContain(code, response.AllText);
-        Assert.DoesNotContain(code, await Seed.AuditTableTextAsync(_database));
-        Assert.DoesNotContain(code, _factory.Logs.AllText);
+        Assert.Equal(["credentialDelivery"], response.Json.EnumerateObject().Select(p => p.Name));
+        var delivery = response.Json.GetProperty("credentialDelivery");
+        Assert.Equal("Reset", delivery.GetProperty("kind").GetString());
+        Assert.Equal("Queued", delivery.GetProperty("status").GetString());
+        Assert.NotEqual(issuance.ToString(), delivery.GetProperty("issuanceId").GetString());
+        Assert.DoesNotContain("password", response.AllText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Number, response.AllText);
 
-        Assert.All(await Seed.SessionsOfAsync(_database, target.Id), s => Assert.NotNull(s.RevokedAt));
-        Assert.Equal(HttpStatusCode.Unauthorized, (await Calls.LoginAsync(_client, target.Login, target.Password)).Status);
-        var audit = Assert.Single(await AuditOfAsync(admin.Id, AuditActionType.PasswordResetIssued));
-        Assert.Equal(target.Id, audit.EntityId);
-        Assert.Equal(AuditSource.Web, audit.Source);
+        // OD-29(a): the old password and every session are invalid from the request, not from delivery.
+        Assert.All(await Seed.SessionsOfAsync(_database, id), s => Assert.NotNull(s.RevokedAt));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Calls.LoginAsync(_client, login, oldPassword, "admin")).Status);
         Assert.Equal(HttpStatusCode.Unauthorized, (await Calls.MeAsync(_client, session.String("accessToken")!)).Status);
+        Assert.Equal("DeliveryPending", (await SendAsync(HttpMethod.Get, $"/api/v1/users/{id}", token)).String("credentialState"));
 
-        var read = await SendAsync(HttpMethod.Get, $"/api/v1/users/{target.Id}", token);
-        Assert.Equal("ResetPending", read.String("credentialState"));
+        var audit = Assert.Single(await AuditOfAsync(admin.Id, AuditActionType.PasswordResetIssued));
+        Assert.Equal(id, audit.EntityId);
+        Assert.Equal(AuditSource.Web, audit.Source);
+        Assert.Contains(delivery.GetProperty("issuanceId").GetString()!, audit.Snapshot!);
+        Assert.Contains("whatsapp", audit.Snapshot!);
+        Assert.DoesNotContain(Number, audit.Snapshot!);
     }
 
     [Fact]
-    public async Task ResetPassword_CredentialStateFollowsTheTicket_AndTheUserCanCompleteTheReset()
+    public async Task ResetPassword_TheWorkerDeliversTheNewPassword_NeverTheOldOne_AndItSignsIn()
     {
         var (_, token) = await AdminAsync();
-        var target = await Seed.UserAsync(_database, Now, ["Engineer"]);
-        await SendAsync(HttpMethod.Post, $"/api/v1/users/{target.Id}/reset-password", token);
-        var code = _delivery.Sent.Single().Code;
+        var (id, login, oldPassword, issuance) = await CreateDeliveredAsync(token);
+        await ResetAsync(token, id, issuance);
 
-        // The code expires after 24 hours, unused: ResetRequired (the Admin token is re-issued first).
-        _factory.Clock.Advance(TimeSpan.FromHours(25));
-        var (_, laterToken) = await AdminAsync();
-        var expired = await SendAsync(HttpMethod.Get, $"/api/v1/users/{target.Id}", laterToken);
-        Assert.Equal("ResetRequired", expired.String("credentialState"));
+        await RunWorkerAsync();
 
-        // Issuing again supersedes the old ticket: ResetPending, and only the new code works.
-        await SendAsync(HttpMethod.Post, $"/api/v1/users/{target.Id}/reset-password", laterToken);
-        Assert.Equal("ResetPending", (await SendAsync(HttpMethod.Get, $"/api/v1/users/{target.Id}", laterToken)).String("credentialState"));
-        var newCode = _delivery.Sent.Last().Code;
-        Assert.NotEqual(code, newCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await Calls.CompleteResetAsync(_client, target.Login, code, "Chosen-Passw0rd")).Status);
-
-        var completed = await Calls.CompleteResetAsync(_client, target.Login, newCode, "Chosen-Passw0rd");
-        Assert.Equal(HttpStatusCode.NoContent, completed.Status);
-        Assert.Equal("PasswordSet", (await SendAsync(HttpMethod.Get, $"/api/v1/users/{target.Id}", laterToken)).String("credentialState"));
+        var messages = Sender.Sent.Where(m => m.Username == login).ToList();
+        Assert.Equal(2, messages.Count);
+        Assert.NotEqual(oldPassword, messages[1].Password);
+        var signIn = await Calls.LoginAsync(_client, login, messages[1].Password, "admin");
+        Assert.Equal(HttpStatusCode.OK, signIn.Status);
+        Assert.False(signIn.Json.GetProperty("mustChangePassword").GetBoolean());
+        Assert.DoesNotContain(messages[1].Password, await Seed.AuditTableTextAsync(_database));
+        Assert.DoesNotContain(messages[1].Password, _factory.Logs.AllText);
     }
 
     [Fact]
-    public async Task ResetPassword_APostCommitDeliveryFailure_StillLeavesAValidTicket()
+    public async Task ResetPassword_AStaleOrMissingExpectedIssuanceId_Is409_AndNothingChanges()
     {
-        // PROVISIONAL (contract gap): §9.6 step 6 defines no HTTP outcome for this; 202 is returned.
-        var (admin, token) = await AdminAsync();
-        var target = await Seed.UserAsync(_database, Now, ["Engineer"]);
-        _delivery.ThrowOnSend = true;
+        var (_, token) = await AdminAsync();
+        var created = await CreateAsync(token, Body()); // still Queued: the latest issuance is open
+        var id = Guid.Parse(created.Json.GetProperty("user").GetProperty("id").GetString()!);
+        var before = await Seed.UserByIdAsync(_database, id);
 
-        var response = await SendAsync(HttpMethod.Post, $"/api/v1/users/{target.Id}/reset-password", token);
+        var missing = await ResetAsync(token, id);
+        var stale = await ResetAsync(token, id, Guid.NewGuid());
 
-        Assert.Equal(HttpStatusCode.Accepted, response.Status);
-        Assert.Single(await AuditOfAsync(admin.Id, AuditActionType.PasswordResetIssued));
-        Assert.True(_factory.Logs.Contains("delivery failed"));
-        Assert.Equal("ResetPending", (await SendAsync(HttpMethod.Get, $"/api/v1/users/{target.Id}", token)).String("credentialState"));
+        Assert.All([missing, stale], r =>
+        {
+            Assert.Equal(HttpStatusCode.Conflict, r.Status);
+            Assert.Equal("users.issuance_changed", r.Code);
+        });
+        Assert.Equal(before.PasswordHash, (await Seed.UserByIdAsync(_database, id)).PasswordHash);
+    }
+
+    [Fact]
+    public async Task ResetPassword_ADoubleClick_IssuesOnce()
+    {
+        var (_, token) = await AdminAsync();
+        var (id, _, _, issuance) = await CreateDeliveredAsync(token);
+        var first = await ResetAsync(token, id, issuance);
+        var queued = Guid.Parse(first.Json.GetProperty("credentialDelivery").GetProperty("issuanceId").GetString()!);
+
+        // Two more clicks from a stale screen that still shows the first issuance.
+        var responses = await Task.WhenAll(Enumerable.Range(0, 3).Select(_ => ResetAsync(token, id, issuance)));
+
+        Assert.Equal(HttpStatusCode.Accepted, first.Status);
+        Assert.All(responses, r =>
+        {
+            Assert.Equal(HttpStatusCode.Conflict, r.Status);
+            Assert.Equal("users.issuance_changed", r.Code);
+        });
+        await using var db = _database.CreateDbContext();
+        Assert.Equal(2, await db.CredentialIssuances.CountAsync(i => i.UserId == id));
+        Assert.Equal(queued, (await db.CredentialIssuances.AsNoTracking().Where(i => i.UserId == id && i.Kind == CredentialIssuanceKind.Reset).SingleAsync()).Id);
+    }
+
+    [Fact]
+    public async Task ResetPassword_ConcurrentRequestsNamingTheSameIssuance_OneWins()
+    {
+        var (_, token) = await AdminAsync();
+        var (id, _, _, issuance) = await CreateDeliveredAsync(token);
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => ResetAsync(token, id, issuance)));
+
+        Assert.Equal(1, responses.Count(r => r.Status == HttpStatusCode.Accepted));
+        Assert.All(responses.Where(r => r.Status != HttpStatusCode.Accepted), r =>
+        {
+            Assert.Equal(HttpStatusCode.Conflict, r.Status);
+            Assert.Equal("users.issuance_changed", r.Code);
+        });
+        await using var db = _database.CreateDbContext();
+        Assert.Equal(1, await db.CredentialIssuances.CountAsync(i => i.UserId == id && i.Kind == CredentialIssuanceKind.Reset));
+        Assert.Equal(1, await db.CredentialIssuances.CountAsync(i => i.UserId == id && i.Status == CredentialDeliveryStatus.Queued));
+    }
+
+    [Fact]
+    public async Task ResetPassword_WithinTheMinimumInterval_Is429WithRetryAfter()
+    {
+        await using var slow = new ApiFactory(_database, new Dictionary<string, string?> { ["WhatsApp:MinReissueInterval"] = "00:10:00" });
+        var client = slow.CreateApiClient();
+        var admin = await Seed.UserAsync(_database, slow.Clock.UtcNow, ["Admin"]);
+        var token = (await Calls.LoginAsync(client, admin.Login, admin.Password, "admin")).String("accessToken")!;
+        var created = await Calls.SendAsync(client, HttpMethod.Post, "/api/v1/users", Body(), token);
+        var id = created.Json.GetProperty("user").GetProperty("id").GetString()!;
+        var issuance = created.Json.GetProperty("credentialDelivery").GetProperty("issuanceId").GetString();
+
+        var response = await Calls.SendAsync(client, HttpMethod.Post, $"/api/v1/users/{id}/reset-password", new { expectedIssuanceId = issuance }, token);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.Status);
+        Assert.Equal("users.reissue_too_soon", response.Code);
+        Assert.InRange(int.Parse(response.Header("Retry-After")!), 1, 600);
+    }
+
+    [Fact]
+    public async Task ResetPassword_WhenDeliveryIsUnavailable_Is503_AndNothingChanges()
+    {
+        var (_, creatorToken) = await AdminAsync();
+        var (id, login, password, _) = await CreateDeliveredAsync(creatorToken);
+        var session = await Calls.LoginAsync(_client, login, password, "admin");
+        var before = await Seed.UserByIdAsync(_database, id);
+
+        await using var off = new ApiFactory(_database, new Dictionary<string, string?> { ["WhatsApp:Enabled"] = "false" });
+        var client = off.CreateApiClient();
+        var admin = await Seed.UserAsync(_database, off.Clock.UtcNow, ["Admin"]);
+        var token = (await Calls.LoginAsync(client, admin.Login, admin.Password, "admin")).String("accessToken")!;
+
+        var response = await Calls.SendAsync(client, HttpMethod.Post, $"/api/v1/users/{id}/reset-password", bearer: token);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.Status);
+        Assert.Equal("users.credential_delivery_unavailable", response.Code);
+        var after = await Seed.UserByIdAsync(_database, id);
+        Assert.Equal(before.PasswordHash, after.PasswordHash);
+        Assert.Equal(before.SecurityVersion, after.SecurityVersion);
+        Assert.All(await Seed.SessionsOfAsync(_database, id), s => Assert.Null(s.RevokedAt));
+        Assert.Equal(HttpStatusCode.OK, (await Calls.MeAsync(_client, session.String("accessToken")!)).Status);
+        Assert.Empty(await AuditOfAsync(admin.Id, AuditActionType.PasswordResetIssued));
+        Assert.True(off.Logs.Contains("Users.CredentialDeliveryUnavailable"));
     }
 
     [Fact]
     public async Task ResetPassword_Preconditions_AreConflicts()
     {
-        var (_, token) = await AdminAsync();
+        var (admin, token) = await AdminAsync();
         var disabled = await Seed.UserAsync(_database, Now, ["Engineer"], disabled: true);
-        var firstPassword = await Seed.UserAsync(_database, Now, ["Engineer"], mustChangePassword: true);
+        var legacy = await Seed.UserAsync(_database, Now, ["Engineer"]); // seeded: never had a credential issuance, so no stored number
 
-        var onDisabled = await SendAsync(HttpMethod.Post, $"/api/v1/users/{disabled.Id}/reset-password", token);
-        var onFirst = await SendAsync(HttpMethod.Post, $"/api/v1/users/{firstPassword.Id}/reset-password", token);
+        var onDisabled = await ResetAsync(token, disabled.Id);
+        var onLegacy = await ResetAsync(token, legacy.Id);
+        var onSelf = await ResetAsync(token, admin.Id);
 
         Assert.Equal(HttpStatusCode.Conflict, onDisabled.Status);
         Assert.Equal("users.already_disabled", onDisabled.Code);
-        Assert.Equal(HttpStatusCode.Conflict, onFirst.Status);
-        Assert.Equal("users.initial_password_pending", onFirst.Code);
-        Assert.Empty(_delivery.Sent);
+        Assert.Equal(HttpStatusCode.Conflict, onLegacy.Status);
+        Assert.Equal("users.whatsapp_destination_missing", onLegacy.Code);
+        Assert.Equal(HttpStatusCode.Conflict, onSelf.Status);
+        Assert.Equal("users.self_reset_not_allowed", onSelf.Code);
+        Assert.DoesNotContain(Sender.Sent, m => m.Username == legacy.Login);
     }
 
-    // ---- initial-password - §9.8 -----------------------------------------------------
+    [Fact]
+    public async Task ResetPassword_TheRequestCannotNameADestination()
+    {
+        var (_, token) = await AdminAsync();
+        var (id, login, _, issuance) = await CreateDeliveredAsync(token);
+
+        // An extra "number" in the body is ignored: the stored number is the only destination.
+        var response = await SendAsync(HttpMethod.Post, $"/api/v1/users/{id}/reset-password", token,
+            rawBody: $"{{\"expectedIssuanceId\":\"{issuance}\",\"number\":\"+201999999999\",\"whatsapp\":{{\"number\":\"+201999999999\"}}}}");
+        await RunWorkerAsync();
+
+        Assert.Equal(HttpStatusCode.Accepted, response.Status);
+        Assert.All(Sender.Sent.Where(m => m.Username == login), m => Assert.Equal(Number, m.Destination));
+    }
 
     [Fact]
-    public async Task InitialPassword_ForAnExpiredTemporaryPassword_Is200WithANewOne_NoStore_AndAudits()
+    public async Task Disable_CancelsTheOpenCredentialIssuance()
     {
-        var (admin, token) = await AdminAsync();
-        var target = await Seed.UserAsync(_database, Now, ["Engineer"], mustChangePassword: true, temporaryPasswordExpiresAt: Now.AddHours(-1));
-        Assert.Equal("InitialPasswordRequired", (await SendAsync(HttpMethod.Get, $"/api/v1/users/{target.Id}", token)).String("credentialState"));
+        var (_, token) = await AdminAsync();
+        var created = await CreateAsync(token, Body());
+        var id = created.Json.GetProperty("user").GetProperty("id").GetString()!;
 
-        var response = await SendAsync(HttpMethod.Post, $"/api/v1/users/{target.Id}/initial-password", token);
+        await SendAsync(HttpMethod.Post, $"/api/v1/users/{id}/disable", token);
+        await RunWorkerAsync();
+
+        var status = await SendAsync(HttpMethod.Get, $"/api/v1/users/{id}/credential-delivery", token);
+        Assert.Equal("Cancelled", status.Json.GetProperty("credentialDelivery").GetProperty("status").GetString());
+        Assert.DoesNotContain(Sender.Sent, m => m.Username == created.Json.GetProperty("user").GetProperty("loginIdentifier").GetString());
+    }
+
+    // ---- GET /users/{id}/credential-delivery - §23.4 ------------------------------------
+
+    [Fact]
+    public async Task CredentialDelivery_ShowsTheLatestIssuanceAndTheHistory_WithoutNumbersOrSecrets()
+    {
+        var (_, token) = await AdminAsync();
+        var (id, _, password, issuance) = await CreateDeliveredAsync(token);
+        await ResetAsync(token, id, issuance);
+
+        var response = await SendAsync(HttpMethod.Get, $"/api/v1/users/{id}/credential-delivery", token);
 
         Assert.Equal(HttpStatusCode.OK, response.Status);
         Assert.Equal("no-store", response.Header("Cache-Control"));
-        Assert.Equal(["temporaryPassword", "temporaryPasswordExpiresAt"], response.Json.EnumerateObject().Select(p => p.Name));
-        var temporaryPassword = response.String("temporaryPassword")!;
-        Assert.Equal(12, temporaryPassword.Length);
-        Assert.Equal(Now.AddHours(72).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"), response.String("temporaryPasswordExpiresAt"));
-        Assert.Equal(HttpStatusCode.OK, (await Calls.LoginAsync(_client, target.Login, temporaryPassword)).Status);
-        Assert.Single(await AuditOfAsync(admin.Id, AuditActionType.InitialPasswordReissued));
-        Assert.DoesNotContain(temporaryPassword, await Seed.AuditTableTextAsync(_database));
-        Assert.DoesNotContain(temporaryPassword, _factory.Logs.AllText);
-        Assert.Equal("TemporaryPasswordIssued", (await SendAsync(HttpMethod.Get, $"/api/v1/users/{target.Id}", token)).String("credentialState"));
+        Assert.Equal("Reset", response.Json.GetProperty("credentialDelivery").GetProperty("kind").GetString());
+        var history = response.Json.GetProperty("history");
+        Assert.Equal(1, history.GetArrayLength());
+        Assert.Equal("Initial", history[0].GetProperty("kind").GetString());
+        Assert.Equal("Superseded", history[0].GetProperty("status").GetString());
+        Assert.DoesNotContain(password, response.AllText);
+        Assert.DoesNotContain(Number, response.AllText);
     }
 
     [Fact]
-    public async Task InitialPassword_Preconditions_AreConflicts()
+    public async Task CredentialDelivery_AnUnknownUserIs404NotFound_AndAnAccountWithoutAnIssuanceIs404DeliveryNotFound()
     {
         var (_, token) = await AdminAsync();
-        var chosen = await Seed.UserAsync(_database, Now, ["Engineer"]);
-        var disabled = await Seed.UserAsync(_database, Now, ["Engineer"], mustChangePassword: true, disabled: true);
+        var legacy = await Seed.UserAsync(_database, Now, ["Engineer"]);
 
-        var onChosen = await SendAsync(HttpMethod.Post, $"/api/v1/users/{chosen.Id}/initial-password", token);
-        var onDisabled = await SendAsync(HttpMethod.Post, $"/api/v1/users/{disabled.Id}/initial-password", token);
+        var unknown = await SendAsync(HttpMethod.Get, $"/api/v1/users/{Guid.NewGuid()}/credential-delivery", token);
+        var none = await SendAsync(HttpMethod.Get, $"/api/v1/users/{legacy.Id}/credential-delivery", token);
 
-        Assert.Equal(HttpStatusCode.Conflict, onChosen.Status);
-        Assert.Equal("users.initial_password_not_reissuable", onChosen.Code);
-        Assert.Equal(HttpStatusCode.Conflict, onDisabled.Status);
-        Assert.Equal("users.already_disabled", onDisabled.Code);
-        Assert.DoesNotContain("temporaryPassword", onChosen.Body);
+        Assert.Equal("users.not_found", unknown.Code);
+        Assert.Equal(HttpStatusCode.NotFound, none.Status);
+        Assert.Equal("users.credential_delivery_not_found", none.Code);
+    }
+
+    [Fact]
+    public async Task CredentialState_FollowsTheLatestIssuance_PendingFailedThenPasswordSet()
+    {
+        var (_, token) = await AdminAsync();
+        Sender.Script(new WhatsAppSendResult(WhatsAppSendOutcome.Definitive, Category: CredentialFailureCategory.NotOnWhatsApp));
+        var login = Seed.NewPolicyLogin("state");
+        var created = await CreateAsync(token, Body(login));
+        var id = Guid.Parse(created.Json.GetProperty("user").GetProperty("id").GetString()!);
+        var issuance = created.Json.GetProperty("credentialDelivery").GetProperty("issuanceId").GetString();
+        Assert.Equal("DeliveryPending", created.Json.GetProperty("user").GetProperty("credentialState").GetString());
+
+        await RunWorkerAsync();
+        var failed = await SendAsync(HttpMethod.Get, $"/api/v1/users/{id}", token);
+        Assert.Equal("DeliveryFailed", failed.String("credentialState"));
+        var failedStatus = await SendAsync(HttpMethod.Get, $"/api/v1/users/{id}/credential-delivery", token);
+        Assert.Equal("not_on_whatsapp", failedStatus.Json.GetProperty("credentialDelivery").GetProperty("failureCategory").GetString());
+
+        // R51: the account stays; re-issue (naming the failed issuance) starts a new operation.
+        Assert.Equal(HttpStatusCode.Accepted, (await ResetAsync(token, id, Guid.Parse(issuance!))).Status);
+        await RunWorkerAsync();
+        var accepted = await SendAsync(HttpMethod.Get, $"/api/v1/users/{id}/credential-delivery", token);
+        Assert.Equal("Accepted", accepted.Json.GetProperty("credentialDelivery").GetProperty("status").GetString());
+        Assert.Equal("DeliveryPending", (await SendAsync(HttpMethod.Get, $"/api/v1/users/{id}", token)).String("credentialState"));
     }
 
     // ---- GET /roles - §9.7 -----------------------------------------------------------

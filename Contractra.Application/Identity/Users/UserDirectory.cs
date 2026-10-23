@@ -22,6 +22,12 @@ public enum CredentialState
 
     /// <summary>A reset was issued but its code expired unused.</summary>
     ResetRequired,
+
+    /// <summary>v1.6 (contract §23.1a): the latest credential issuance is still open (queued, sending or awaiting a provider status).</summary>
+    DeliveryPending,
+
+    /// <summary>v1.6: the latest credential issuance ended without delivery; re-issue.</summary>
+    DeliveryFailed,
 }
 
 /// <summary>
@@ -38,7 +44,8 @@ public sealed record UserDirectoryEntry(
     bool MustChangePassword,
     DateTimeOffset? TemporaryPasswordExpiresAt,
     bool HasUsablePassword,
-    DateTimeOffset? OpenResetTicketExpiresAt);
+    DateTimeOffset? OpenResetTicketExpiresAt,
+    CredentialDeliveryStatus? LatestIssuanceStatus = null);
 
 /// <summary>Contract §9.2 query: 1-based <paramref name="Page"/>, case-insensitive substring <paramref name="Search"/> of the login identifier, optional status filter.</summary>
 public sealed record UserListCriteria(int Page, int PageSize, string? Search, UserStatus? Status)

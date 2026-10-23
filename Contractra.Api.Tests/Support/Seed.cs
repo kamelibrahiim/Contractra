@@ -14,6 +14,13 @@ public static class Seed
 
     public static string NewLogin(string prefix = "user") => $"{prefix}.{Guid.NewGuid():N}";
 
+    /// <summary>Random lowercase letters (never digits, so it can never look like a phone number to the username policy).</summary>
+    public static string NewLetters(int count) =>
+        new(Enumerable.Range(0, count).Select(_ => (char)('a' + System.Security.Cryptography.RandomNumberGenerator.GetInt32(26))).ToArray());
+
+    /// <summary>A login that passes username policy v1: lowercase, 3-32 characters, letters and one separator.</summary>
+    public static string NewPolicyLogin(string prefix = "user") => $"{prefix.ToLowerInvariant()}.{NewLetters(10)}";
+
     public static async Task<SeededUser> UserAsync(
         PostgresTestDatabaseFixture database,
         DateTimeOffset now,

@@ -150,6 +150,93 @@ public sealed class AuthRequestBody
         return null;
     }
 
+    /// <summary>A string at a nested path (for example <c>whatsapp.number</c>); null when absent or JSON null; a non-string is a type error named by the dotted path.</summary>
+    public string? GetStringAt(params string[] path)
+    {
+        var element = Walk(path, out var name);
+        if (element is null)
+        {
+            return null;
+        }
+
+        switch (element.Value.ValueKind)
+        {
+            case JsonValueKind.String:
+                return element.Value.GetString();
+            case JsonValueKind.Null:
+                return null;
+            default:
+                _typeErrors[name] = StringMessage;
+                return null;
+        }
+    }
+
+    /// <summary>A boolean at a nested path; null when absent or JSON null; a non-boolean is a type error named by the dotted path.</summary>
+    public bool? GetBooleanAt(params string[] path)
+    {
+        var element = Walk(path, out var name);
+        if (element is null)
+        {
+            return null;
+        }
+
+        switch (element.Value.ValueKind)
+        {
+            case JsonValueKind.True:
+                return true;
+            case JsonValueKind.False:
+                return false;
+            case JsonValueKind.Null:
+                return null;
+            default:
+                _typeErrors[name] = "The value must be true or false.";
+                return null;
+        }
+    }
+
+    private JsonElement? Walk(string[] path, out string dottedName)
+    {
+        dottedName = string.Join('.', path);
+        if (Status != BodyStatus.Ok)
+        {
+            return null;
+        }
+
+        var current = _root;
+        foreach (var segment in path)
+        {
+            if (current.ValueKind == JsonValueKind.Null)
+            {
+                return null;
+            }
+
+            if (current.ValueKind != JsonValueKind.Object)
+            {
+                _typeErrors[dottedName] = "The value must be an object.";
+                return null;
+            }
+
+            JsonElement? next = null;
+            foreach (var property in current.EnumerateObject())
+            {
+                if (string.Equals(property.Name, segment, StringComparison.OrdinalIgnoreCase))
+                {
+                    next = property.Value;
+                    break;
+                }
+            }
+
+            if (next is null)
+            {
+                return null;
+            }
+
+            current = next.Value;
+        }
+
+        return current;
+    }
+
     /// <summary>Records a field-level error for a value that cannot be used (for example a malformed identifier).</summary>
     public void AddFieldError(string name, string message) => _typeErrors[name] = message;
 

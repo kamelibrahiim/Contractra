@@ -1,6 +1,7 @@
 ﻿using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
 using Contractra.Domain.Parties;
+using Contractra.Infrastructure.Persistence.Configurations;
 using Contractra.Infrastructure.Persistence.Throttling;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,6 +42,10 @@ public sealed class ContractraDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     public DbSet<PasswordResetTicket> PasswordResetTickets => Set<PasswordResetTicket>();
+
+    public DbSet<CredentialIssuance> CredentialIssuances => Set<CredentialIssuance>();
+
+    public DbSet<WhatsAppWebhookEvent> WhatsAppWebhookEvents => Set<WhatsAppWebhookEvent>();
 
     public DbSet<AuthThrottleCounter> AuthThrottleCounters => Set<AuthThrottleCounter>();
 

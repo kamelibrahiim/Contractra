@@ -96,6 +96,15 @@ public sealed class UserDirectory : IUserDirectory
             .Select(t => new { t.UserId, t.ExpiresAt })
             .ToListAsync(cancellationToken);
 
+        // v1.6: the latest credential issuance decides credentialState (contract §23.1a).
+        var issuances = await _dbContext.CredentialIssuances.AsNoTracking()
+            .Where(i => ids.Contains(i.UserId))
+            .Select(i => new { i.UserId, i.Status, i.IssuedAt, i.Id })
+            .ToListAsync(cancellationToken);
+        var latestIssuanceByUser = issuances
+            .GroupBy(i => i.UserId)
+            .ToDictionary(g => g.Key, g => (CredentialDeliveryStatus?)g.OrderByDescending(i => i.IssuedAt).ThenByDescending(i => i.Id).First().Status);
+
         var rolesByUser = roles
             .GroupBy(r => r.UserId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(r => r.Code.Value).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList());
@@ -112,6 +121,7 @@ public sealed class UserDirectory : IUserDirectory
                 u.MustChangePassword,
                 u.TemporaryPasswordExpiresAt,
                 u.HasUsablePassword,
-                ticketExpiryByUser.GetValueOrDefault(u.Id)));
+                ticketExpiryByUser.GetValueOrDefault(u.Id),
+                latestIssuanceByUser.GetValueOrDefault(u.Id)));
     }
 }

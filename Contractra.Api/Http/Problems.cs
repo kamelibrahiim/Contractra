@@ -23,7 +23,8 @@ public static class Problems
         string title,
         IReadOnlyDictionary<string, string[]>? errors = null,
         TimeSpan? retryAfter = null,
-        string? reason = null)
+        string? reason = null,
+        IReadOnlyList<string>? alternatives = null)
     {
         var response = context.Response;
         response.StatusCode = status;
@@ -53,6 +54,12 @@ public static class Problems
             body["reason"] = reason;
         }
 
+        if (alternatives is not null)
+        {
+            // users.login_identifier_taken only (contract §23.2): up to three free usernames.
+            body["alternatives"] = alternatives;
+        }
+
         await JsonSerializer.SerializeAsync(response.Body, body, Json, context.RequestAborted);
     }
 
@@ -63,7 +70,10 @@ public static class Problems
         AuthErrorCodes.Forbidden or AuthErrorCodes.PasswordChangeRequired or AuthErrorCodes.AppAccessDenied => StatusCodes.Status403Forbidden,
         AuthErrorCodes.TooManyAttempts => StatusCodes.Status429TooManyRequests,
         AuthErrorCodes.ServerError => StatusCodes.Status500InternalServerError,
-        UserErrorCodes.NotFound => StatusCodes.Status404NotFound,
+        UserErrorCodes.NotFound or UserErrorCodes.CredentialDeliveryNotFound => StatusCodes.Status404NotFound,
+        UserErrorCodes.WhatsAppDestinationMissing or UserErrorCodes.IssuanceChanged or UserErrorCodes.SelfResetNotAllowed => StatusCodes.Status409Conflict,
+        UserErrorCodes.ReissueTooSoon => StatusCodes.Status429TooManyRequests,
+        UserErrorCodes.CredentialDeliveryUnavailable => StatusCodes.Status503ServiceUnavailable,
         UserErrorCodes.LoginIdentifierTaken or UserErrorCodes.PartyAlreadyLinked or UserErrorCodes.AlreadyDisabled
             or UserErrorCodes.AlreadyActive or UserErrorCodes.InitialPasswordPending
             or UserErrorCodes.InitialPasswordNotReissuable or UserErrorCodes.BootstrapAccountProtected => StatusCodes.Status409Conflict,
@@ -101,12 +111,21 @@ public static class Problems
         UserErrorCodes.InitialPasswordNotReissuable => "Initial password not reissuable",
         UserErrorCodes.ResetDeliveryUnavailable => "Password reset delivery unavailable",
         UserErrorCodes.BootstrapAccountProtected => "Bootstrap account protected",
+        UserErrorCodes.CredentialDeliveryUnavailable => "Credential delivery unavailable",
+        UserErrorCodes.CredentialDeliveryNotFound => "Credential delivery not found",
+        UserErrorCodes.WhatsAppNumberInvalid => "WhatsApp number invalid",
+        UserErrorCodes.WhatsAppConsentRequired => "WhatsApp consent required",
+        UserErrorCodes.WhatsAppDestinationMissing => "WhatsApp destination missing",
+        UserErrorCodes.ReissueTooSoon => "Credential re-issued too soon",
+        UserErrorCodes.IssuanceChanged => "Credential issuance changed",
+        UserErrorCodes.SelfResetNotAllowed => "Self reset not allowed",
         _ => "Server error",
     };
 
     public static Task WriteCodeAsync(
-        HttpContext context, string code, IReadOnlyDictionary<string, string[]>? errors = null, TimeSpan? retryAfter = null, string? reason = null) =>
-        WriteAsync(context, StatusFor(code), code, TitleFor(code), errors, retryAfter, reason);
+        HttpContext context, string code, IReadOnlyDictionary<string, string[]>? errors = null, TimeSpan? retryAfter = null, string? reason = null,
+        IReadOnlyList<string>? alternatives = null) =>
+        WriteAsync(context, StatusFor(code), code, TitleFor(code), errors, retryAfter, reason, alternatives);
 
     public static Task ServerErrorAsync(HttpContext context) =>
         WriteAsync(context, StatusCodes.Status500InternalServerError, AuthErrorCodes.ServerError, TitleFor(AuthErrorCodes.ServerError));

@@ -253,6 +253,164 @@ namespace Contractra.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Contractra.Domain.Identity.CredentialIssuance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<DateTimeOffset>("ConsentAffirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consent_affirmed_at");
+
+                    b.Property<Guid>("ConsentAffirmedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("consent_affirmed_by_user_id");
+
+                    b.Property<string>("ConsentBasis")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("consent_basis");
+
+                    b.Property<string>("Destination")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("destination");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<string>("FailureCategory")
+                        .HasColumnType("text")
+                        .HasColumnName("failure_category");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at");
+
+                    b.Property<Guid>("IssuedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issued_by_user_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("LeaseOwner")
+                        .HasColumnType("text")
+                        .HasColumnName("lease_owner");
+
+                    b.Property<DateTimeOffset?>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lease_until");
+
+                    b.Property<DateTimeOffset?>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<string>("ProviderMessageId")
+                        .HasColumnType("text")
+                        .HasColumnName("provider_message_id");
+
+                    b.Property<DateTimeOffset?>("ProviderStatusAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("provider_status_at");
+
+                    b.Property<DateTimeOffset>("PurgeBy")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("purge_by");
+
+                    b.Property<DateTimeOffset?>("PurgedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("purged_at");
+
+                    b.Property<string>("SealKeyId")
+                        .HasColumnType("text")
+                        .HasColumnName("seal_key_id");
+
+                    b.Property<byte[]>("SealNonce")
+                        .HasColumnType("bytea")
+                        .HasColumnName("seal_nonce");
+
+                    b.Property<DateTimeOffset?>("SealedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sealed_at");
+
+                    b.Property<byte[]>("SealedBytes")
+                        .HasColumnType("bytea")
+                        .HasColumnName("sealed_bytes");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_credential_issuances");
+
+                    b.HasIndex("ConsentAffirmedByUserId")
+                        .HasDatabaseName("ix_credential_issuances_consent_affirmed_by_user_id");
+
+                    b.HasIndex("IssuedByUserId")
+                        .HasDatabaseName("ix_credential_issuances_issued_by_user_id");
+
+                    b.HasIndex("NextAttemptAt")
+                        .HasDatabaseName("ix_credential_issuances_due")
+                        .HasFilter("status IN ('Queued', 'Sending')");
+
+                    b.HasIndex("ProviderMessageId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_credential_issuances_provider_message_id")
+                        .HasFilter("provider_message_id IS NOT NULL");
+
+                    b.HasIndex("UserId", "IssuedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_credential_issuances_user_id_issued_at");
+
+                    b.ToTable("credential_issuances", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_credential_issuances_attempts_not_negative", "attempts >= 0");
+
+                            t.HasCheckConstraint("ck_credential_issuances_consent_basis_valid_values", "consent_basis IN ('written', 'verbal')");
+
+                            t.HasCheckConstraint("ck_credential_issuances_destination_e164", "destination ~ '^\\+[1-9][0-9]{7,14}$'");
+
+                            t.HasCheckConstraint("ck_credential_issuances_ended_matches_status", "(status IN ('Delivered', 'Read', 'Failed', 'Superseded', 'Cancelled')) = (ended_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_credential_issuances_failed_has_category", "status <> 'Failed' OR failure_category IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_credential_issuances_failure_category_valid_values", "failure_category IS NULL OR failure_category IN ('InvalidNumber', 'NotOnWhatsApp', 'TemplateUnavailable', 'AuthOrPermission', 'RateLimited', 'ProviderOutage', 'ConsentWithdrawn', 'KeyUnavailable', 'ExpiredBeforeDelivery')");
+
+                            t.HasCheckConstraint("ck_credential_issuances_kind_valid_values", "kind IN ('Initial', 'Reset')");
+
+                            t.HasCheckConstraint("ck_credential_issuances_purge_by_after_issued", "purge_by > issued_at");
+
+                            t.HasCheckConstraint("ck_credential_issuances_purge_recorded", "(sealed_bytes IS NOT NULL) OR (purged_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_credential_issuances_sealed_columns_together", "(sealed_bytes IS NULL) = (seal_nonce IS NULL) AND (sealed_bytes IS NULL) = (seal_key_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_credential_issuances_status_valid_values", "status IN ('Queued', 'Sending', 'Accepted', 'Sent', 'Delivered', 'Read', 'Failed', 'Unknown', 'Superseded', 'Cancelled')");
+
+                            t.HasCheckConstraint("ck_credential_issuances_terminal_has_no_ciphertext", "status NOT IN ('Delivered', 'Read', 'Failed', 'Superseded', 'Cancelled') OR (sealed_bytes IS NULL AND seal_nonce IS NULL AND seal_key_id IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Contractra.Domain.Identity.PasswordResetTicket", b =>
                 {
                     b.Property<Guid>("Id")
@@ -743,6 +901,60 @@ namespace Contractra.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Contractra.Infrastructure.Persistence.Configurations.WhatsAppWebhookEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ErrorCode")
+                        .HasColumnType("text")
+                        .HasColumnName("error_code");
+
+                    b.Property<string>("ErrorTitle")
+                        .HasColumnType("text")
+                        .HasColumnName("error_title");
+
+                    b.Property<string>("ProviderMessageId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("provider_message_id");
+
+                    b.Property<DateTimeOffset>("ProviderTimestamp")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("provider_timestamp");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_whatsapp_webhook_events");
+
+                    b.HasIndex("ProviderMessageId", "Status", "ProviderTimestamp")
+                        .IsUnique()
+                        .HasDatabaseName("ux_whatsapp_webhook_events_message_status_timestamp");
+
+                    b.ToTable("whatsapp_webhook_events", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_whatsapp_webhook_events_error_code_length", "error_code IS NULL OR char_length(error_code) <= 64");
+
+                            t.HasCheckConstraint("ck_whatsapp_webhook_events_error_title_length", "error_title IS NULL OR char_length(error_title) <= 256");
+
+                            t.HasCheckConstraint("ck_whatsapp_webhook_events_provider_message_id_length", "char_length(provider_message_id) BETWEEN 1 AND 256");
+
+                            t.HasCheckConstraint("ck_whatsapp_webhook_events_status_valid_values", "status IN ('sent', 'delivered', 'read', 'failed')");
+                        });
+                });
+
             modelBuilder.Entity("Contractra.Infrastructure.Persistence.Throttling.AuthThrottleCounter", b =>
                 {
                     b.Property<string>("Scope")
@@ -806,6 +1018,30 @@ namespace Contractra.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_auth_sessions_users_user_id");
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.CredentialIssuance", b =>
+                {
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ConsentAffirmedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_credential_issuances_users_consent_affirmed_by_user_id");
+
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("IssuedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_credential_issuances_users_issued_by_user_id");
+
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_credential_issuances_users_user_id");
                 });
 
             modelBuilder.Entity("Contractra.Domain.Identity.PasswordResetTicket", b =>

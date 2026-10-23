@@ -2,6 +2,8 @@ using Contractra.Application.Audit;
 using Contractra.Application.Common;
 using Contractra.Application.Identity;
 using Contractra.Application.Identity.Auth;
+using Contractra.Application.Identity.Credentials;
+using Contractra.Application.Identity.Usernames;
 using Contractra.Application.Identity.Operations;
 using Contractra.Application.Identity.UseCases;
 using Contractra.Application.Identity.Users;
@@ -69,6 +71,23 @@ public static class DependencyInjection
 		services.AddScoped<CompletePasswordResetUseCase>();
 		services.AddScoped<ReissueInitialPasswordUseCase>();
 
+		// PS-04a (contract v1.6 §23, ADR 0007): credential issuance, sealed copy and WhatsApp delivery.
+		// The composition root (Api) replaces the sender; by default none is configured, so create and
+		// reset answer 503 rather than queueing into nothing.
+		services.AddSingleton(CredentialSealingKeyRing.Load(configuration));
+		services.AddSingleton<AesGcmCredentialSealer>();
+		services.AddSingleton<ICredentialSealing>(sp => sp.GetRequiredService<AesGcmCredentialSealer>());
+		services.AddSingleton<ICredentialOpening>(sp => sp.GetRequiredService<AesGcmCredentialSealer>());
+		services.AddSingleton(LoadDeliveryOptions(configuration));
+		services.AddSingleton<IWhatsAppSender, UnconfiguredWhatsAppSender>();
+		services.AddScoped<ICredentialIssuanceStore, CredentialIssuanceStore>();
+		services.AddSingleton<UsernamePolicy>();
+		services.AddSingleton<UsernameSuggester>();
+		services.AddScoped<ReissueCredentialUseCase>();
+		services.AddScoped<DeliverCredentialUseCase>();
+		services.AddScoped<SweepCredentialsUseCase>();
+		services.AddScoped<ApplyWhatsAppStatusUseCase>();
+
 		// Slice 7: read side of the Admin users endpoints (contract §9.2, §9.3, §9.7).
 		services.AddScoped<GetUserQuery>();
 		services.AddScoped<ListUsersQuery>();
@@ -82,6 +101,54 @@ public static class DependencyInjection
 		services.AddScoped<ClearThrottleUseCase>();
 
 		return services;
+	}
+
+	private static CredentialDeliveryOptions LoadDeliveryOptions(IConfiguration configuration)
+	{
+		var section = configuration.GetSection(CredentialDeliveryOptions.Section);
+		var options = new CredentialDeliveryOptions();
+
+		if (bool.TryParse(section["Enabled"], out var enabled))
+		{
+			options.Enabled = enabled;
+		}
+
+		if (TimeSpan.TryParse(section["SealedCopyRetention"], System.Globalization.CultureInfo.InvariantCulture, out var retention) && retention > TimeSpan.Zero)
+		{
+			options.SealedCopyRetention = retention;
+		}
+
+		if (int.TryParse(section["MaxAttempts"], out var attempts) && attempts > 0)
+		{
+			options.MaxAttempts = attempts;
+		}
+
+		if (TimeSpan.TryParse(section["BackoffBase"], System.Globalization.CultureInfo.InvariantCulture, out var backoff) && backoff > TimeSpan.Zero)
+		{
+			options.BackoffBase = backoff;
+		}
+
+		if (TimeSpan.TryParse(section["MinReissueInterval"], System.Globalization.CultureInfo.InvariantCulture, out var interval) && interval >= TimeSpan.Zero)
+		{
+			options.MinReissueInterval = interval;
+		}
+
+		if (int.TryParse(section["MaxReissuesPer24Hours"], out var cap) && cap > 0)
+		{
+			options.MaxReissuesPer24Hours = cap;
+		}
+
+		if (TimeSpan.TryParse(section["StalledAfter"], System.Globalization.CultureInfo.InvariantCulture, out var stalled) && stalled > TimeSpan.Zero)
+		{
+			options.StalledAfter = stalled;
+		}
+
+		if (TimeSpan.TryParse(section["WorkerPollInterval"], System.Globalization.CultureInfo.InvariantCulture, out var poll) && poll > TimeSpan.Zero)
+		{
+			options.WorkerPollInterval = poll;
+		}
+
+		return options;
 	}
 
 	/// <summary>

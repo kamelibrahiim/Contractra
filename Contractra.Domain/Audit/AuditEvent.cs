@@ -36,7 +36,10 @@ public sealed partial class AuditEvent
         ["user_permission_id", "permission_id", "permission_code", "granted_at", "revoked_at"];
 
     private static readonly string[] ResetTicketSnapshotKeys =
-        ["password_reset_ticket_id", "issued_by_user_id", "channel", "issued_at", "expires_at", "consumed_at"];
+        ["password_reset_ticket_id", "credential_issuance_id", "issued_by_user_id", "channel", "issued_at", "expires_at", "consumed_at"];
+
+    // ADR 0007 §10: a creation that issues a credential records which issuance and that consent was affirmed - never the password, hash or number.
+    private static readonly string[] CredentialIssuanceSnapshotKeys = ["credential_issuance_id", "consent_affirmed"];
 
     public Guid Id { get; private set; }
 
@@ -361,6 +364,7 @@ public sealed partial class AuditEvent
             AuditActionType.PermissionGranted or AuditActionType.PermissionRevoked
                 or AuditActionType.PayrollViewGranted or AuditActionType.PayrollViewRevoked => PermissionSnapshotKeys,
             AuditActionType.PasswordResetIssued or AuditActionType.PasswordResetCompleted => ResetTicketSnapshotKeys,
+            AuditActionType.UserCreated => CredentialIssuanceSnapshotKeys,
             _ => throw new ArgumentException($"A {actionType} event carries no snapshot.", nameof(snapshot)),
         };
 

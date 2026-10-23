@@ -1,6 +1,8 @@
 using Contractra.Application.Audit;
 using Contractra.Application.Common;
 using Contractra.Application.Identity.Auth;
+using Contractra.Application.Identity.Credentials;
+using Contractra.Application.Identity.Usernames;
 using Contractra.Application.Parties;
 using Contractra.Domain.Audit;
 using Contractra.Domain.Identity;
@@ -9,26 +11,30 @@ using Contractra.Domain.Parties;
 namespace Contractra.Application.Identity.UseCases;
 
 /// <summary>
-/// Auth contract v1.5 §9.1, owner decisions R2, R9, R30, R31, R43; engineering
-/// decisions E4, E8, E13. One role at least; Engineer requires a valid,
-/// unlinked Party on the business date; a random temporary password is
-/// issued and returned once.
+/// Auth contract v1.6 §23.2, owner decisions R9, R30, R31, R43, R49, R51; engineering decisions E8,
+/// E13; ADR 0007. One role at least; an Engineer requires a valid, unlinked Party on the business
+/// date. The system generates <b>one</b> password, stores its hash in the user, seals a copy into the
+/// credential issuance and queues the WhatsApp delivery - all in one transaction. The password is
+/// never returned. Nothing is created when delivery or the sealing key is unavailable.
 /// </summary>
 public sealed class CreateUserUseCase
 {
     private const string EngineerRoleCode = "Engineer";
-    private const int MaxLoginIdentifierLength = 256;
 
     private readonly IUserRepository _users;
     private readonly IRoleRepository _roles;
     private readonly IPartyRepository _parties;
     private readonly IPasswordHasher _hasher;
-    private readonly ITemporaryPasswordGenerator _temporaryPasswords;
+    private readonly ITemporaryPasswordGenerator _passwords;
+    private readonly ICredentialSealing _sealing;
+    private readonly IWhatsAppSender _sender;
+    private readonly ICredentialIssuanceStore _issuances;
+    private readonly CredentialDeliveryOptions _delivery;
+    private readonly UsernamePolicy _usernamePolicy;
     private readonly IAuditWriter _auditWriter;
     private readonly IClock _clock;
     private readonly IBusinessDateProvider _businessDate;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly TimeSpan _temporaryPasswordLifetime;
     private readonly IUserAccessReader _accessReader;
 
     public CreateUserUseCase(
@@ -36,37 +42,55 @@ public sealed class CreateUserUseCase
         IRoleRepository roles,
         IPartyRepository parties,
         IPasswordHasher hasher,
-        ITemporaryPasswordGenerator temporaryPasswords,
+        ITemporaryPasswordGenerator passwords,
+        ICredentialSealing sealing,
+        IWhatsAppSender sender,
+        ICredentialIssuanceStore issuances,
+        CredentialDeliveryOptions delivery,
+        UsernamePolicy usernamePolicy,
         IAuditWriter auditWriter,
         IClock clock,
         IBusinessDateProvider businessDate,
         IUnitOfWork unitOfWork,
-        IUserAccessReader accessReader,
-        TimeSpan? temporaryPasswordLifetime = null)
+        IUserAccessReader accessReader)
     {
         _users = users;
         _roles = roles;
         _parties = parties;
         _hasher = hasher;
-        _temporaryPasswords = temporaryPasswords;
+        _passwords = passwords;
+        _sealing = sealing;
+        _sender = sender;
+        _issuances = issuances;
+        _delivery = delivery;
+        _usernamePolicy = usernamePolicy;
         _auditWriter = auditWriter;
         _clock = clock;
         _businessDate = businessDate;
         _unitOfWork = unitOfWork;
         _accessReader = accessReader;
-        _temporaryPasswordLifetime = temporaryPasswordLifetime ?? TimeSpan.FromHours(72);
     }
 
     public async Task<UseCaseResult<CreateUserResult>> ExecuteAsync(
         CreateUserRequest request, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.LoginIdentifier)
-            || request.LoginIdentifier != request.LoginIdentifier.Trim()
-            || request.LoginIdentifier.Length > MaxLoginIdentifierLength
-            || request.LoginIdentifier.Contains('\0')) // PostgreSQL text cannot hold NUL
+        if (!_delivery.Enabled || !_sender.IsConfigured || !_sealing.IsAvailable)
         {
-            return Fail("users.login_identifier_invalid", "The login identifier is invalid.");
+            return Fail(UserErrorCodes.CredentialDeliveryUnavailable, "Credential delivery is not available; nothing was created.");
         }
+
+        if (request.LoginIdentifier is null || request.LoginIdentifier.Contains('\0'))
+        {
+            return Fail(UserErrorCodes.LoginIdentifierInvalid, "bad_characters");
+        }
+
+        var validation = _usernamePolicy.Validate(request.LoginIdentifier);
+        if (!validation.IsValid)
+        {
+            return Fail(UserErrorCodes.LoginIdentifierInvalid, UsernameValidation.ReasonCode(validation.Reason!.Value));
+        }
+
+        var login = validation.Canonical!;
 
         if (request.RoleCodes.Count == 0)
         {
@@ -76,6 +100,16 @@ public sealed class CreateUserUseCase
         if (request.RoleCodes.Select(c => c.ToLowerInvariant()).Distinct().Count() != request.RoleCodes.Count)
         {
             return Fail("validation.failed", "Duplicate role codes are not allowed.");
+        }
+
+        if (!WhatsAppNumber.TryNormalize(request.WhatsAppNumber, out var destination))
+        {
+            return Fail(UserErrorCodes.WhatsAppNumberInvalid, "The WhatsApp number is not a valid international number.");
+        }
+
+        if (!request.ConsentAffirmed || request.ConsentBasis is not ("written" or "verbal"))
+        {
+            return Fail(UserErrorCodes.WhatsAppConsentRequired, "The Admin must affirm the employee's consent (basis written or verbal).");
         }
 
         var isEngineer = request.RoleCodes.Any(c => string.Equals(c, EngineerRoleCode, StringComparison.OrdinalIgnoreCase));
@@ -107,9 +141,18 @@ public sealed class CreateUserUseCase
             roles.Add(role);
         }
 
-        if (await _users.ExistsWithLoginIdentifierAsync(request.LoginIdentifier, cancellationToken))
+        // Role codes and the bootstrap identifier are reserved names (username policy v1 §4).
+        var activeRoleCodes = await _roles.ListActiveCodesAsync(cancellationToken);
+        var bootstrap = await _users.FindBootstrapAdminAsync(cancellationToken);
+        if (activeRoleCodes.Any(c => string.Equals(c, login, StringComparison.OrdinalIgnoreCase))
+            || (bootstrap is not null && string.Equals(bootstrap.LoginIdentifier.Value, login, StringComparison.OrdinalIgnoreCase)))
         {
-            return Fail("users.login_identifier_taken", "This login identifier is already taken.");
+            return Fail(UserErrorCodes.LoginIdentifierInvalid, "reserved");
+        }
+
+        if (await _users.ExistsWithLoginIdentifierAsync(login, cancellationToken))
+        {
+            return Fail(UserErrorCodes.LoginIdentifierTaken, "This login identifier is already taken.");
         }
 
         Party? party = null;
@@ -145,16 +188,11 @@ public sealed class CreateUserUseCase
         }
 
         var now = _clock.UtcNow;
-        var temporaryPassword = _temporaryPasswords.Generate();
-        var temporaryPasswordHash = _hasher.Hash(temporaryPassword);
-        var expiresAt = now.Add(_temporaryPasswordLifetime);
 
-        var user = new User(
-            new LoginIdentifier(request.LoginIdentifier),
-            UserStatus.Active,
-            temporaryPasswordHash,
-            mustChangePassword: true,
-            expiresAt);
+        // One password for this operation. Its hash goes into the user; the sealed copy goes into the
+        // issuance. The plaintext leaves scope when this method returns.
+        var password = new SensitivePassword(_passwords.Generate());
+        var user = new User(new LoginIdentifier(login), UserStatus.Active, _hasher.Hash(password.Reveal()), mustChangePassword: false);
 
         foreach (var role in roles)
         {
@@ -166,16 +204,22 @@ public sealed class CreateUserUseCase
             user.LinkToParty(party);
         }
 
-        // actor_role_code (contract §14.1, owner decision OC-6, confirmed): this
-        // action requires Users.Manage, so the rule resolves to the active role
-        // through which the actor held it (several → first by ordinal code
-        // order); the same resolved value is used for every event below.
+        var issuanceId = Guid.CreateVersion7();
+        var sealedSecret = _sealing.Seal(password, new SealContext(issuanceId, user.Id));
+        var issuance = CredentialIssuance.Queue(
+            issuanceId, user.Id, CredentialIssuanceKind.Initial, request.ActorUserId, now,
+            destination, request.ConsentBasis, sealedSecret.Bytes, sealedSecret.Nonce, sealedSecret.KeyId,
+            _delivery.SealedCopyRetention);
+
+        // actor_role_code (contract §14.1, owner decision OC-6): this action requires Users.Manage,
+        // so the rule resolves to the active role through which the actor held it.
         var access = await _accessReader.GetAsync(request.ActorUserId, now, cancellationToken);
         var actorRoleCode = ActorRoleCodeRule.Resolve(access, "Users.Manage");
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
         _users.Add(user);
+        _issuances.Add(issuance);
 
         _auditWriter.Stage(AuditEvent.ForUser(
             AuditActionType.UserCreated,
@@ -185,7 +229,12 @@ public sealed class CreateUserUseCase
             entityId: user.Id,
             occurredAtUtc: now,
             correlationId: request.CorrelationId,
-            source: request.Source));
+            source: request.Source,
+            snapshot: new Dictionary<string, string?>
+            {
+                ["credential_issuance_id"] = issuance.Id.ToString(),
+                ["consent_affirmed"] = "true",
+            }));
 
         foreach (var role in roles)
         {
@@ -215,8 +264,7 @@ public sealed class CreateUserUseCase
             user.Id,
             user.LoginIdentifier.Value,
             request.RoleCodes,
-            temporaryPassword,
-            expiresAt));
+            CredentialDeliveryView.From(issuance, now, _delivery.StalledAfter)));
     }
 
     private static UseCaseResult<CreateUserResult> Fail(string code, string message) =>

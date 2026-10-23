@@ -59,6 +59,20 @@ public sealed class CompositionTests : IClassFixture<PostgresTestDatabaseFixture
         Assert.DoesNotContain("Auth:Jwt", output, StringComparison.Ordinal);
     }
 
+    // ADR 0007 §10: the fake WhatsApp sender receives plaintext passwords in memory, so it can never be registered
+    // outside Development or Testing - startup fails closed instead of silently using it.
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public void TheFakeSender_RefusesToStartTheWebHostOutsideDevelopmentAndTesting(string environment)
+    {
+        using var factory = new ApiFactory(_database, new Dictionary<string, string?> { ["WhatsApp:Sender"] = "Fake" }, environment);
+
+        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateApiClient());
+
+        Assert.Contains("fake WhatsApp sender", exception.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public async Task ThrottleCleanup_DeletesOnlyExpiredUnblockedRows()
     {

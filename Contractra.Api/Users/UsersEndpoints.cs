@@ -1,9 +1,12 @@
 using System.Globalization;
 using Contractra.Api.Auth;
 using Contractra.Api.Http;
+using Contractra.Application.Common;
 using Contractra.Application.Identity;
 using Contractra.Application.Identity.Auth;
+using Contractra.Application.Identity.Credentials;
 using Contractra.Application.Identity.UseCases;
+using Contractra.Application.Identity.Usernames;
 using Contractra.Application.Identity.Users;
 using Contractra.Domain.Identity;
 using Npgsql;
@@ -11,12 +14,13 @@ using Npgsql;
 namespace Contractra.Api.Users;
 
 /// <summary>
-/// <c>/api/v1/users</c> and <c>/api/v1/roles</c> (auth contract v1.5 §9). Every endpoint
-/// declares audience <c>admin</c> and requires <c>Users.Manage</c>; steps 1-4 of the §9
+/// <c>/api/v1/users</c> and <c>/api/v1/roles</c> (auth contract v1.5 §9 as amended by v1.6 §23). Every
+/// endpoint declares audience <c>admin</c> and requires <c>Users.Manage</c>; steps 1-4 of the §9
 /// check order (authentication, password-change gate, app audience, permission) are
 /// enforced by <see cref="AudienceGateMiddleware"/> before any handler runs. Handlers only
-/// translate HTTP to the Slice 4 use cases and the Slice 7 queries and back; the target
-/// lookup, bootstrap protection and state-transition checks (steps 5-7) live in the use cases.
+/// translate HTTP to the use cases and queries and back; the target lookup, bootstrap
+/// protection and state-transition checks (steps 5-7) live in the use cases. No response
+/// ever carries a password (R51).
 /// </summary>
 public static class UsersEndpoints
 {
@@ -30,11 +34,13 @@ public static class UsersEndpoints
 
         users.MapPost("", CreateAsync);
         users.MapGet("", ListAsync);
+        users.MapPost("/username-suggestions", UsernameSuggestionsAsync);
         users.MapGet("/{id}", GetAsync);
         users.MapPost("/{id}/disable", DisableAsync);
         users.MapPost("/{id}/reactivate", ReactivateAsync);
         users.MapPost("/{id}/reset-password", ResetPasswordAsync);
-        users.MapPost("/{id}/initial-password", ReissueInitialPasswordAsync);
+        users.MapGet("/{id}/credential-delivery", CredentialDeliveryAsync);
+        // v1.6 (contract §23.1): POST /users/{id}/initial-password is retired - it returned a password to the Admin.
 
         app.MapGroup("/api/v1/roles")
             .WithAudience(AuthAudience.Admin)
@@ -44,7 +50,7 @@ public static class UsersEndpoints
         return app;
     }
 
-    // POST /api/v1/users - §9.1
+    // POST /api/v1/users - §9.1 as replaced by §23.2 (no password in the request or the response)
     private static async Task CreateAsync(HttpContext context)
     {
         var caller = context.RequireCaller();
@@ -57,10 +63,13 @@ public static class UsersEndpoints
 
         // A field of the wrong type (or a partyId that is not a GUID) is a request-shape
         // error: 400 validation.failed. An absent field is passed on as "nothing supplied"
-        // so the use case reports the documented code (login_identifier_invalid, role_required).
+        // so the use case reports the documented code.
         var loginIdentifier = body.GetString("loginIdentifier");
         var roleCodes = body.GetStringArray("roleCodes");
         var partyIdText = body.GetString("partyId");
+        var whatsAppNumber = body.GetStringAt("whatsapp", "number");
+        var consentAffirmed = body.GetBooleanAt("whatsapp", "consent", "affirmed");
+        var consentBasis = body.GetStringAt("whatsapp", "consent", "basis");
         Guid? partyId = null;
         if (partyIdText is not null)
         {
@@ -84,6 +93,9 @@ public static class UsersEndpoints
             loginIdentifier ?? string.Empty,
             roleCodes ?? [],
             partyId,
+            whatsAppNumber,
+            consentAffirmed ?? false,
+            consentBasis,
             caller.UserId,
             CorrelationIdMiddleware.Get(context),
             AppAccess.AuditSourceFor(caller.App));
@@ -101,7 +113,7 @@ public static class UsersEndpoints
 
         if (!result.IsSuccess)
         {
-            await WriteFailureAsync(context, caller, result.Error!);
+            await WriteFailureAsync(context, caller, result.Error!, request.LoginIdentifier);
             return;
         }
 
@@ -119,8 +131,86 @@ public static class UsersEndpoints
         await context.Response.WriteAsJsonAsync(new Dictionary<string, object?>
         {
             ["user"] = ToJson(user),
-            ["temporaryPassword"] = created.TemporaryPassword,
-            ["temporaryPasswordExpiresAt"] = Utc(created.TemporaryPasswordExpiresAt),
+            ["credentialDelivery"] = DeliveryJson(created.Delivery),
+        });
+    }
+
+    // POST /api/v1/users/username-suggestions - §23.5
+    private static async Task UsernameSuggestionsAsync(HttpContext context)
+    {
+        var body = await AuthRequestBody.ReadAsync(context.Request);
+        if (body.Status is BodyStatus.TooLarge or BodyStatus.Malformed or BodyStatus.Empty)
+        {
+            await MalformedAsync(context);
+            return;
+        }
+
+        var name = body.GetString("name");
+        var latinName = body.GetString("latinName");
+        var candidate = body.GetString("candidate");
+        if (body.TypeErrors.Count > 0)
+        {
+            await Problems.WriteCodeAsync(context, AuthErrorCodes.ValidationFailed, body.TypeErrorMessages());
+            return;
+        }
+
+        var services = context.RequestServices;
+        var users = services.GetRequiredService<IUserRepository>();
+        var roles = await services.GetRequiredService<IRoleRepository>().ListActiveCodesAsync(context.RequestAborted);
+        var bootstrap = await users.FindBootstrapAdminAsync(context.RequestAborted);
+        var policy = new UsernamePolicy(roles.Append(bootstrap?.LoginIdentifier.Value ?? string.Empty));
+        var suggester = new UsernameSuggester(policy);
+
+        Task<bool> IsTaken(string value) => users.ExistsWithLoginIdentifierAsync(value, context.RequestAborted);
+
+        context.Response.Headers.CacheControl = "no-store";
+
+        if (candidate is not null)
+        {
+            var validation = policy.Validate(candidate);
+            if (!validation.IsValid)
+            {
+                await context.Response.WriteAsJsonAsync(new Dictionary<string, object?>
+                {
+                    ["policyVersion"] = UsernamePolicy.Version,
+                    ["suggestions"] = Array.Empty<object>(),
+                    ["reason"] = UsernameValidation.ReasonCode(validation.Reason!.Value),
+                });
+                return;
+            }
+
+            var taken = await IsTaken(validation.Canonical!);
+            await context.Response.WriteAsJsonAsync(new Dictionary<string, object?>
+            {
+                ["policyVersion"] = UsernamePolicy.Version,
+                ["suggestions"] = new[]
+                {
+                    new Dictionary<string, object?> { ["value"] = validation.Canonical, ["available"] = !taken, ["source"] = "candidate" },
+                },
+                ["alternatives"] = taken ? await suggester.AlternativesAsync(validation.Canonical!, IsTaken) : [],
+            });
+            return;
+        }
+
+        var suggestions = await suggester.SuggestAsync(name, latinName, IsTaken);
+        if (suggestions.Reason is not null)
+        {
+            await context.Response.WriteAsJsonAsync(new Dictionary<string, object?>
+            {
+                ["policyVersion"] = suggestions.PolicyVersion,
+                ["suggestions"] = Array.Empty<object>(),
+                ["reason"] = suggestions.Reason,
+            });
+            return;
+        }
+
+        await context.Response.WriteAsJsonAsync(new Dictionary<string, object?>
+        {
+            ["policyVersion"] = suggestions.PolicyVersion,
+            ["suggestions"] = suggestions.Suggestions
+                .Select(x => new Dictionary<string, object?> { ["value"] = x.Value, ["available"] = x.Available, ["source"] = x.Source })
+                .ToList(),
+            ["alternatives"] = suggestions.Alternatives,
         });
     }
 
@@ -243,7 +333,7 @@ public static class UsersEndpoints
         await WriteUserOrNotFoundAsync(context, userId);
     }
 
-    // POST /api/v1/users/{id}/reset-password - §9.6
+    // POST /api/v1/users/{id}/reset-password - §9.6 as replaced by §23.3
     private static async Task ResetPasswordAsync(HttpContext context, string id)
     {
         if (!TryParseId(id, out var userId))
@@ -252,32 +342,61 @@ public static class UsersEndpoints
             return;
         }
 
+        // The optional body carries expectedIssuanceId only; the request can never name a destination.
+        Guid? expected = null;
+        var body = await AuthRequestBody.ReadAsync(context.Request);
+        if (body.Status is BodyStatus.TooLarge or BodyStatus.Malformed)
+        {
+            await MalformedAsync(context);
+            return;
+        }
+
+        var text = body.GetString("expectedIssuanceId");
+        if (text is not null)
+        {
+            if (Guid.TryParse(text, out var parsed))
+            {
+                expected = parsed;
+            }
+            else
+            {
+                body.AddFieldError("expectedIssuanceId", "The value must be a GUID.");
+            }
+        }
+
+        if (body.TypeErrors.Count > 0)
+        {
+            await Problems.WriteCodeAsync(context, AuthErrorCodes.ValidationFailed, body.TypeErrorMessages());
+            return;
+        }
+
         var caller = context.RequireCaller();
-        var request = new IssuePasswordResetRequest(userId, caller.UserId, CorrelationIdMiddleware.Get(context), AppAccess.AuditSourceFor(caller.App));
-        var result = await AuthEndpoints.WithConcurrencyRetryAsync(context, services =>
-            services.GetRequiredService<IssuePasswordResetUseCase>().ExecuteAsync(request, context.RequestAborted));
+        var request = new ReissueCredentialRequest(userId, expected, caller.UserId, CorrelationIdMiddleware.Get(context), AppAccess.AuditSourceFor(caller.App));
+        UseCaseResult<CredentialDeliveryView> result;
+        try
+        {
+            result = await AuthEndpoints.WithConcurrencyRetryAsync(context, services =>
+                services.GetRequiredService<ReissueCredentialUseCase>().ExecuteAsync(request, context.RequestAborted));
+        }
+        catch (Exception exception) when (exception.GetBaseException() is PostgresException { SqlState: PostgresErrorCodes.ExclusionViolation })
+        {
+            // Two concurrent re-issues of one account: the deferred exclusion constraint let only one commit.
+            result = UseCaseResult<CredentialDeliveryView>.Failure(UserErrorCodes.IssuanceChanged, "Lost a concurrent re-issue.");
+        }
+
         if (!result.IsSuccess)
         {
             await WriteFailureAsync(context, caller, result.Error!);
             return;
         }
 
-        // PROVISIONAL - contract gap. §9.6 step 6 says a delivery failure after the commit is
-        // logged and "leaves the ticket valid until it expires", and defines no other
-        // response, so the same 202 is returned (the use case has already logged the failure
-        // with the correlation id). Owner decision needed: whether the Admin must be told.
-        // No code or secret is ever in the body.
         context.Response.StatusCode = StatusCodes.Status202Accepted;
         context.Response.Headers.CacheControl = "no-store";
-        await context.Response.WriteAsJsonAsync(new Dictionary<string, object?>
-        {
-            ["channel"] = result.Value!.Channel,
-            ["expiresAt"] = Utc(result.Value.ExpiresAt),
-        });
+        await context.Response.WriteAsJsonAsync(new Dictionary<string, object?> { ["credentialDelivery"] = DeliveryJson(result.Value!) });
     }
 
-    // POST /api/v1/users/{id}/initial-password - §9.8
-    private static async Task ReissueInitialPasswordAsync(HttpContext context, string id)
+    // GET /api/v1/users/{id}/credential-delivery - §23.4
+    private static async Task CredentialDeliveryAsync(HttpContext context, string id)
     {
         if (!TryParseId(id, out var userId))
         {
@@ -285,21 +404,36 @@ public static class UsersEndpoints
             return;
         }
 
-        var caller = context.RequireCaller();
-        var request = new ReissueInitialPasswordRequest(userId, caller.UserId, CorrelationIdMiddleware.Get(context), AppAccess.AuditSourceFor(caller.App));
-        var result = await AuthEndpoints.WithConcurrencyRetryAsync(context, services =>
-            services.GetRequiredService<ReissueInitialPasswordUseCase>().ExecuteAsync(request, context.RequestAborted));
-        if (!result.IsSuccess)
+        var services = context.RequestServices;
+        if (await services.GetRequiredService<GetUserQuery>().ExecuteAsync(userId, context.RequestAborted) is null)
         {
-            await WriteFailureAsync(context, caller, result.Error!);
+            await Problems.WriteCodeAsync(context, UserErrorCodes.NotFound);
             return;
         }
 
+        var options = services.GetRequiredService<CredentialDeliveryOptions>();
+        var history = await services.GetRequiredService<ICredentialIssuanceStore>().ListSummariesForUserAsync(userId, 20, context.RequestAborted);
+        if (history.Count == 0)
+        {
+            await Problems.WriteCodeAsync(context, UserErrorCodes.CredentialDeliveryNotFound);
+            return;
+        }
+
+        var now = services.GetRequiredService<IClock>().UtcNow;
         context.Response.Headers.CacheControl = "no-store";
         await context.Response.WriteAsJsonAsync(new Dictionary<string, object?>
         {
-            ["temporaryPassword"] = result.Value!.TemporaryPassword,
-            ["temporaryPasswordExpiresAt"] = Utc(result.Value.TemporaryPasswordExpiresAt),
+            ["credentialDelivery"] = DeliveryJson(history[0].ToView(now, options.StalledAfter)),
+            ["history"] = history.Skip(1).Select(h => new Dictionary<string, object?>
+            {
+                ["issuanceId"] = h.Id,
+                ["kind"] = h.Kind.ToString(),
+                ["status"] = h.Status.ToString(),
+                ["attempts"] = h.Attempts,
+                ["issuedAt"] = Utc(h.IssuedAt),
+                ["updatedAt"] = Utc(h.UpdatedAt),
+                ["failureCategory"] = CredentialDeliveryView.CategoryCode(h.FailureCategory),
+            }).ToList(),
         });
     }
 
@@ -334,12 +468,25 @@ public static class UsersEndpoints
         ["credentialState"] = user.CredentialState.ToString(),
     };
 
+    private static Dictionary<string, object?> DeliveryJson(CredentialDeliveryView view) => new()
+    {
+        ["issuanceId"] = view.IssuanceId,
+        ["kind"] = view.Kind.ToString(),
+        ["status"] = view.Status.ToString(),
+        ["attempts"] = view.Attempts,
+        ["updatedAt"] = view.UpdatedAtUtc,
+        ["destinationMasked"] = view.DestinationMasked,
+        ["failureCategory"] = CredentialDeliveryView.CategoryCode(view.FailureCategory),
+        ["stalled"] = view.Stalled,
+    };
+
     /// <summary>
     /// Maps a use case failure to its ProblemDetails. Business failures (404/409/503, 400)
     /// are not <c>AccessDenied</c> events; a bootstrap-account rejection and an unavailable
     /// delivery channel are logged to Serilog with the correlation id (§9.6, §12).
     /// </summary>
-    private static async Task WriteFailureAsync(HttpContext context, AuthenticatedCaller caller, UseCaseError error)
+    private static async Task WriteFailureAsync(
+        HttpContext context, AuthenticatedCaller caller, UseCaseError error, string? attemptedLoginIdentifier = null)
     {
         switch (error.Code)
         {
@@ -347,6 +494,11 @@ public static class UsersEndpoints
                 Logger(context).LogWarning(
                     "Users.BootstrapAccountProtected UserId={UserId} Action={Action} CorrelationId={CorrelationId}",
                     caller.UserId, $"{context.Request.Method} {context.Request.Path}", CorrelationIdMiddleware.Get(context));
+                break;
+            case UserErrorCodes.CredentialDeliveryUnavailable:
+                Logger(context).LogWarning(
+                    "Users.CredentialDeliveryUnavailable UserId={UserId} CorrelationId={CorrelationId}: delivery or the sealing key is unavailable; nothing changed.",
+                    caller.UserId, CorrelationIdMiddleware.Get(context));
                 break;
             case UserErrorCodes.ResetDeliveryUnavailable:
                 Logger(context).LogWarning(
@@ -362,6 +514,18 @@ public static class UsersEndpoints
                 var reason = error.Message is "not_found" or "not_active" or "no_active_engineer_role" ? error.Message : null;
                 await Problems.WriteCodeAsync(context, error.Code, reason: reason);
                 break;
+            case UserErrorCodes.LoginIdentifierInvalid:
+                // v1.6: the username-policy reason (too_short, reserved, ...).
+                await Problems.WriteCodeAsync(context, error.Code, reason: error.Message);
+                break;
+            case UserErrorCodes.LoginIdentifierTaken when attemptedLoginIdentifier is not null:
+                await WriteTakenAsync(context, error.Code, attemptedLoginIdentifier);
+                break;
+            case UserErrorCodes.ReissueTooSoon:
+                // The use case puts the wait, in whole seconds, in the message.
+                var wait = int.TryParse(error.Message, out var seconds) ? TimeSpan.FromSeconds(seconds) : TimeSpan.FromMinutes(1);
+                await Problems.WriteCodeAsync(context, error.Code, retryAfter: wait);
+                break;
             case AuthErrorCodes.ValidationFailed:
                 var field = error.Message.Contains("partyId", StringComparison.Ordinal) ? "partyId" : "roleCodes";
                 await Problems.WriteCodeAsync(context, error.Code, new Dictionary<string, string[]> { [field] = [error.Message] });
@@ -370,6 +534,20 @@ public static class UsersEndpoints
                 await Problems.WriteCodeAsync(context, error.Code);
                 break;
         }
+    }
+
+    /// <summary>409 users.login_identifier_taken with up to three free alternatives (contract §23.2).</summary>
+    private static async Task WriteTakenAsync(HttpContext context, string code, string attempted)
+    {
+        var services = context.RequestServices;
+        var users = services.GetRequiredService<IUserRepository>();
+        var validation = services.GetRequiredService<UsernamePolicy>().Validate(attempted);
+        IReadOnlyList<string> alternatives = validation.IsValid
+            ? await services.GetRequiredService<UsernameSuggester>()
+                .AlternativesAsync(validation.Canonical!, value => users.ExistsWithLoginIdentifierAsync(value, context.RequestAborted))
+            : [];
+
+        await Problems.WriteCodeAsync(context, code, alternatives: alternatives);
     }
 
     /// <summary>The users.* code for a unique-index violation of a concurrent create, or null for any other exception.</summary>

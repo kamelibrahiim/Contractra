@@ -1,6 +1,6 @@
 # ADR 0007 — Credential issuance, transactional outbox, sealed temporary copy and WhatsApp delivery
 
-**Status:** Proposed (2026-10-23). Written for owner/engineering review before PS-04a code is merged. Nothing in this ADR is applied to any shared database.
+**Status:** Proposed (2026-10-23); backend implemented 2026-10-24 (commit `8e8b68a`, fake sender only). Written for owner/engineering review before PS-04a code is merged. Nothing in this ADR is applied to any shared database.
 **Kind:** working document under `docs/decisions/**` (editable; not ranked by `docs/documentation-index-ar.md`).
 **Implements:** owner decisions R49–R51 (plan §1F; contract §23). **Open owner items it depends on:** OD-18, OD-29, OD-30 (see §11). Where an item is undecided, this ADR states the default PS-04a builds, recorded provisionally on 2026-10-23 as "recommendation adopted by owner instruction; to be confirmed in the decision session".
 
@@ -23,7 +23,7 @@ Retries must resend the *same* password: a new password per attempt lets a delay
 ## 3. Domain model
 
 - `CredentialIssuance` — `id`, `user_id`, `kind` (`Initial` | `Reset`), `status` (`Open` | `Delivered` | `Failed` | `Superseded` | `Cancelled`), `issued_by_user_id`, `issued_at`, `ended_at`, `failure_category`. At most **one `Open` issuance per user** (partial unique index).
-- `CredentialDelivery` — one row per issuance (retries are attempts on the row): `issuance_id` (PK/FK), `status` (`Queued` | `Sending` | `Accepted` | `Sent` | `Delivered` | `Read` | `Failed` | `Unknown` | `Superseded` | `Cancelled`), `destination` (E.164 snapshot), `attempts`, `next_attempt_at`, `lease_owner`, `lease_until`, `provider_message_id`, `provider_status_at`, `failure_category`, **`sealed_bytes`, `nonce`, `key_id`, `sealed_at`, `purge_by`, `purged_at`**.
+- **Implemented as one table, `credential_issuances`** (the delivery columns live on the issuance row; the 1:1 split below was folded together). Delivery columns - retries are attempts on the row: `issuance_id` (PK/FK), `status` (`Queued` | `Sending` | `Accepted` | `Sent` | `Delivered` | `Read` | `Failed` | `Unknown` | `Superseded` | `Cancelled`), `destination` (E.164 snapshot), `attempts`, `next_attempt_at`, `lease_owner`, `lease_until`, `provider_message_id`, `provider_status_at`, `failure_category`, **`sealed_bytes`, `nonce`, `key_id`, `sealed_at`, `purge_by`, `purged_at`**.
 - `WhatsAppConsent` columns on the delivery destination record: affirmed-by user, affirmed-at, basis (`written` | `verbal`).
 - `WhatsAppWebhookEvent` — `provider_message_id`, `status`, `provider_timestamp`, `error_code`, `error_title`; unique on the first three.
 - **No plaintext column and no duplicate of the hash anywhere.**
@@ -55,7 +55,7 @@ Retries must resend the *same* password: a new password per attempt lets a delay
 - `Accepted`/`Sent` alone do **not** purge (an asynchronous failure may follow).
 - A hosted **sweeper** enforces `purge_by` (marks `Failed(expired_before_delivery)`) and catches rows the worker missed.
 - CHECK `ck_credential_deliveries_terminal_has_no_ciphertext`: `status IN ('Delivered','Read','Failed','Superseded','Cancelled') ⇒ sealed_bytes IS NULL AND nonce IS NULL AND key_id IS NULL`. A second CHECK requires the three sealed columns to be all-null or all-non-null.
-- The sealed copy is never exported, never copied, never selected outside the worker repository.
+- The sealed copy is never exported or copied. Summary reads project explicit columns without the sealed ones; the entity is loaded only by the worker and, on the request path, by the supersede/cancel step that nulls it.
 
 ## 7. Worker
 

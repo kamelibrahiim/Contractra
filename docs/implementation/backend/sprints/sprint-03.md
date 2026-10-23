@@ -69,3 +69,9 @@ Every code path embedding behaviour that R49–R51 supersede, and what PS-04a do
 | Verified unit price recorded | business owner | not started |
 
 No external system was contacted and no claim is made about Meta's acceptance of the template.
+
+## 5. Updates after PS-04a backend work (2026-10-24)
+
+- **OD-26 built as recommended**, not the Engineers-only default: every API-created account uses the credential flow; the number lives on the issuance (no contact table). **OD-2** is only partly done: the reset-code endpoint `POST /auth/password-reset/complete` is still mapped (dormant) because removing it means rewriting its endpoint and throttling tests; it is not removed yet.
+- **Not done and why:** frontend tracks (other worktrees); Meta setup, template, live sender, real key custody (owner: OD-23, OD-30); the emergency `purge-sealed-credentials` operator command (ADR 0007 section 5); Party endpoints and the `Parties.View/Manage` seed (PS4-BE-01..03); OD-1(d) number-change action; OD-20 username correction; `must_change_password` gate remains dormant.
+- Contract status and the named tests per endpoint: `auth-and-users-api-contract.md` section 23.12.

@@ -800,6 +800,17 @@ Each item below behaves as written in this contract until the owner confirms or 
 | OC-8 | **Layer 3 starvation by a distributed attacker** (added 2026-10-15). With the §22 proposals, a single source cannot monopolize a user's sign-in attempts, but about 30 or more coordinated sources can keep taking every 30-second slot (§22 H). Accept this as a documented limitation (with operator alerting and an operator unblock command), or require trusted-device protection (§22 M3: a long-lived device credential, a new table, changes to both apps). Relates to owner instruction R45. | Undecided; the throttle policy (§17, §22) is not finalized until this is reviewed. Does not block Slice 2B. |
 | OC-9 | **Retention of session, refresh-token and reset-ticket history** (added 2026-10-15). Session rows are the only record of revocations (§14). | Session, refresh-token and reset-ticket history is kept; Slice 2B deletes only expired throttle rows (ADR 0005 E24). *Clarified 2026-10-19:* throttle counters are not history — §17 and §22 D also clear a counter on success, and `clear-throttle` (§22 M5) clears one identifier's layer 3 row. |
 
+
+**Owner decisions of 2026-10-23 (Backend Sprint 2 closure).** One line each; they resolve the items named and change no §1-§18 text:
+- 2026-10-23 - **Slice 6 and Slice 7 accepted**, with the documented residual risks (`sprint-02.md` section A; `backend/reviews/slice-06-acceptance-review-2026-10-19.md`; `backend/reviews/slice-07-acceptance-review-2026-10-23.md`).
+- 2026-10-23 - **§22 accepted as written** (its items and the throttle proposals A-E, H, M1-M5 stand as drafted); **repository ADR 0006 accepted as written**.
+- 2026-10-23 - **OC-8 resolved:** the Layer 3 starvation limitation is accepted, mitigated by the slow-mode warning log and operator `clear-throttle`; trusted devices (M3) are **not** adopted.
+- 2026-10-23 - **OC-9 resolved:** session, refresh-token and reset-ticket history is kept (no deletion or archival policy in Sprint 2).
+- 2026-10-23 - **OC-4 resolved:** an Engineer account requires an `Active` Party holding the party role code `Engineer` on the business date in `Africa/Cairo` (engineering decision E8, as implemented).
+- 2026-10-23 - **OC-7 deferred** to the next sprint (no Party lookup endpoint or permission yet).
+- 2026-10-23 - **R49-R51 (WhatsApp credential delivery, §23) deferred** to the next sprint; the v1.5 behaviour in §9.1, §9.6 and §9.8 remains the Sprint 2 baseline.
+- 2026-10-23 - **B1/B2/B3 live privilege checks remain mandatory** before the first deployment with real data (Gate B).
+
 ---
 
 ## 20. Implementation map
@@ -834,6 +845,7 @@ Each item below behaves as written in this contract until the owner confirms or 
 | 2026-10-19 | Owner decisions from the Slice 6 acceptance review (D1, D4): `ThrottleCleared` is added to the §14 event table as the 16th audit code, written by operator `clear-throttle` (§22 M5); its audit event, the command's output and its Serilog messages must not carry the cleared login identifier or its unsalted hash. §14.1 `reason` now names `clear-throttle` among the operator commands that require one. §22 I3's count and the §22 M5 implementation note updated to match (the M5 note records the target `OperatorCommandRun` + the run's UUID, a dated deviation from §14.1/ADR E33/E36, with no schema change). §19 OC-9's current-behaviour cell clarified to ADR 0005 E24's own scope; OC-9 itself stays undecided. No owner-decision number was assigned to these decisions. ADR 0006 and §22 stay **proposed**; OC-8 stays undecided; the contract stays **Draft v1.5**. |
 | 2026-10-21 | Note only (no change to §1–§18, §20, §22): owner decision R48 (temporary-password reset shown to the Admin, no delivery channel) overrides OC-1 and supersedes §9.6/§10A; recorded in the §19 preface and `admin-user-creation-plan.md` §1E. The rewrite is scheduled as contract v1.6 in roadmap PS-03. The code still follows v1.5. (R48 itself was superseded later the same day by R49–R51; see the next row.) |
 | 2026-10-21 | §23 written: **derived** v1.6 amendments from owner decisions R49–R51 (system-generated password delivered by WhatsApp, no forced change, English-only usernames, delivery status, webhook, error codes, audit, frontend impact); an earlier same-day draft of §23 based on an employee-chosen-password activation link was **withdrawn** and removed. Pointers added to §5.6, §7, §9.1, §9.6, §9.8, §10, §10A and the §19 note. §1–§22 otherwise unchanged; nothing is implemented; the code still follows v1.5. |
+| 2026-10-23 | Owner decisions closing Backend Sprint 2 recorded in §19 (Slices 6-7 accepted; §22 and ADR 0006 accepted as written; OC-4, OC-8, OC-9 resolved; OC-7 and R49-R51 deferred; B1/B2/B3 still mandatory). No §1-§18 text changed. |
 
 ---
 

@@ -280,6 +280,24 @@ public sealed class User
     }
 
     /// <summary>
+    /// Stores the hash of a password the system generated for a credential issuance
+    /// (account reset or re-issue; owner decisions R49-R51, ADR 0007). The password is
+    /// delivered to the employee, never to the Admin; nothing forces a change, so
+    /// <see cref="MustChangePassword"/> stays false. Not for the bootstrap admin.
+    /// </summary>
+    public void ReplacePasswordForIssuance(string newPasswordHash)
+    {
+        ValidateUsablePasswordHash(newPasswordHash, nameof(newPasswordHash));
+        EnsureNotBootstrapAdmin(nameof(ReplacePasswordForIssuance));
+        EnsureActive(nameof(ReplacePasswordForIssuance));
+
+        PasswordHash = newPasswordHash;
+        MustChangePassword = false;
+        TemporaryPasswordExpiresAt = null;
+        BumpSecurityVersion();
+    }
+
+    /// <summary>
     /// Replaces the temporary password of an account that has never chosen its
     /// own password (plan E3). The caller supplies "now" as asOf.
     /// </summary>

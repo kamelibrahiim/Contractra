@@ -117,18 +117,28 @@ public class PasswordResetTicketPersistenceTests : IClassFixture<PostgresTestDat
         var ticket = await IssueAsync(user, T0);
         const int Completions = 5;
 
+        // A completion that reads after the winner has committed finds no open ticket
+        // at all; that is a valid loss, not a crash, so it is recorded separately.
+        var foundNoOpenTicket = new System.Collections.Concurrent.ConcurrentBag<int>();
         var errors = await Concurrently.RunAsync(Completions, async i =>
         {
             await using var context = _fixture.CreateDbContext();
             var open = await context.PasswordResetTickets.FindOpenAsync(user);
-            open!.Consume(T0.AddMinutes(10 + i));
+            if (open is null)
+            {
+                foundNoOpenTicket.Add(i);
+                return;
+            }
+
+            open.Consume(T0.AddMinutes(10 + i));
             await context.SaveChangesAsync();
         });
 
-        Assert.Equal(1, errors.Count(e => e is null));
+        var consumers = errors.Select((e, i) => (e, i)).Where(x => x.e is null && !foundNoOpenTicket.Contains(x.i)).Select(x => x.i).ToArray();
+        Assert.Single(consumers);
         Assert.All(errors.Where(e => e is not null), e => Assert.IsType<DbUpdateConcurrencyException>(e));
 
-        var winnerTime = T0.AddMinutes(10 + Array.FindIndex(errors, e => e is null));
+        var winnerTime = T0.AddMinutes(10 + consumers[0]);
         await using var connection = await OpenAsync();
         Assert.Equal(1, await CountAsync(connection, "SELECT COUNT(*) FROM password_reset_tickets WHERE id = @id AND consumed_at = @at;", ("id", ticket), ("at", winnerTime)));
     }

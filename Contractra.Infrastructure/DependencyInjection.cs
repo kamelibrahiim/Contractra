@@ -50,6 +50,10 @@ public static class DependencyInjection
 		services.AddScoped<ISessionStore, SessionStore>();
 		services.AddScoped<IPasswordResetTicketStore, PasswordResetTicketStore>();
 		services.AddScoped<IUserDirectory, UserDirectory>();
+		// Read by the user use cases, so the operator-command host (no AddAuthInfrastructure) needs it too.
+		services.AddScoped<UserAccessReader>();
+		services.AddScoped<IUserAccessReader>(sp => sp.GetRequiredService<UserAccessReader>());
+		services.AddScoped<ISecurityStampReader>(sp => sp.GetRequiredService<UserAccessReader>());
 
 		services.AddSingleton<IClock, SystemClock>();
 		services.AddSingleton<IBusinessDateProvider, ConfiguredBusinessDateProvider>();

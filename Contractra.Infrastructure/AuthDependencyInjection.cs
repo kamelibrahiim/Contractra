@@ -27,9 +27,6 @@ public static class AuthDependencyInjection
         services.AddSingleton(throttleOptions);
         services.AddSingleton(sessionPolicy);
 
-        services.AddScoped<UserAccessReader>();
-        services.AddScoped<IUserAccessReader>(sp => sp.GetRequiredService<UserAccessReader>());
-        services.AddScoped<ISecurityStampReader>(sp => sp.GetRequiredService<UserAccessReader>());
         services.AddScoped<IAuthSessionRepository, AuthSessionRepository>();
         services.AddScoped<IPasswordRehashStore, PasswordRehashStore>();
         services.AddSingleton<IRefreshTokenFactory, SecureRefreshTokenFactory>();

@@ -76,8 +76,8 @@ Exact, case-insensitive: `admin`, `administrator`, `root`, `system`, `support`, 
 | G9 | name `أحمد مُحَمَّد` (diacritics) | `ahmed.mohamed` |
 | G10 | name `أحمـد محمد` (tatweel) | `ahmed.mohamed` |
 | G11 | name `عبد الرحمن علي` | `abdelrahman.ali` |
-| G12 | name `سلمى` (not in dictionary, map) | `salma` |
-| G13 | name `ندى أحمد` | `nada.ahmed` |
+| G12 | name `سلمى` (not in dictionary, letter map; short vowels are not written in Arabic, so the result is low quality and the UI says "check the spelling") | `slma` |
+| G13 | name `ندى أحمد` (map + dictionary) | `nda.ahmed` |
 | G14 | name `أحمد محمد`, latinName `Ahmed Mohammed` | `ahmed.mohammed` (latinName wins) |
 | G15 | name `A` | no suggestion |
 | G16 | name `Ahmed Mohamed` when `ahmed.mohamed` and `ahmed.mohamed2` exist | `ahmed.mohamed3` |

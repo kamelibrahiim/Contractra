@@ -1,5 +1,7 @@
-﻿using Contractra.Domain.Identity;
+﻿using Contractra.Domain.Audit;
+using Contractra.Domain.Identity;
 using Contractra.Domain.Parties;
+using Contractra.Infrastructure.Persistence.Throttling;
 using Microsoft.EntityFrameworkCore;
 
 namespace Contractra.Infrastructure.Persistence;
@@ -33,6 +35,16 @@ public sealed class ContractraDbContext : DbContext
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
 
     public DbSet<UserPartyLink> UserPartyLinks => Set<UserPartyLink>();
+
+    public DbSet<AuthSession> AuthSessions => Set<AuthSession>();
+
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    public DbSet<PasswordResetTicket> PasswordResetTickets => Set<PasswordResetTicket>();
+
+    public DbSet<AuthThrottleCounter> AuthThrottleCounters => Set<AuthThrottleCounter>();
+
+    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -7,7 +7,9 @@ import 'package:flutter_screenutil_plus/flutter_screenutil_plus.dart';
 import 'core/font/app_font.dart';
 import 'core/language/app_language.dart' as app_language;
 import 'core/language/locales.dart';
+import 'core/session/session_cubit.dart';
 import 'core/theme/app_theme.dart';
+import 'module/auth/data_layer/repository/auth_repository.dart';
 import 'utilities/enum.dart';
 import 'utilities/git_it.dart';
 import 'utilities/router_config.dart';
@@ -21,6 +23,7 @@ Future<void> main() async {
         BlocProvider(create: (_) => app_language.LanguageCubit()),
         BlocProvider(create: (_) => ThemeCubit()),
         BlocProvider(create: (_) => FontCubit()),
+        BlocProvider(create: (_) => SessionCubit(GitIt.instance<AuthRepository>())),
       ],
       child: const EntryPoint(),
     ),
@@ -35,6 +38,7 @@ class EntryPoint extends StatelessWidget {
     final languageState = context.watch<app_language.LanguageCubit>().state;
     final themeCubit = context.watch<ThemeCubit>();
     final fontState = context.watch<FontCubit>().state;
+    GoRouterConfig.init(context.read<SessionCubit>());
 
     return LayoutBuilder(
       builder: (context, constraints) {

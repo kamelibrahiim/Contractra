@@ -58,8 +58,15 @@ public class AuthorizationCatalogCodeUniquenessTests : IClassFixture<PostgresTes
     [Fact]
     public async Task StoredCodes_KeepTheSuppliedCasing()
     {
-        var role = new Role(new RoleCode("OfficeStaff"), RoleStatus.Active);
-        var permission = new Permission(new PermissionCode("Reports.Monthly.View"), PermissionStatus.Deprecated);
+        // "CasedOfficeStaff"/"Reports.Monthly.View.Cased" rather than the bare
+        // documented spellings: Sprint 2's SeedAuthorizationCatalog migration
+        // now seeds "OfficeStaff" as a permanent, committed row in every
+        // ephemeral test database, so inserting it again here would collide on
+        // ux_roles_code_lower regardless of this test's own casing. The point
+        // under test - that casing is preserved exactly as supplied - does not
+        // depend on using a real business role/permission name.
+        var role = new Role(new RoleCode("CasedOfficeStaff"), RoleStatus.Active);
+        var permission = new Permission(new PermissionCode("Reports.Monthly.View.Cased"), PermissionStatus.Deprecated);
 
         await using (var dbContext = _fixture.CreateDbContext())
         {
@@ -72,9 +79,9 @@ public class AuthorizationCatalogCodeUniquenessTests : IClassFixture<PostgresTes
         var storedRole = await verifyContext.Roles.SingleAsync(r => r.Id == role.Id);
         var storedPermission = await verifyContext.Permissions.SingleAsync(p => p.Id == permission.Id);
 
-        Assert.Equal("OfficeStaff", storedRole.Code.Value);
+        Assert.Equal("CasedOfficeStaff", storedRole.Code.Value);
         Assert.Equal(RoleStatus.Active, storedRole.Status);
-        Assert.Equal("Reports.Monthly.View", storedPermission.Code.Value);
+        Assert.Equal("Reports.Monthly.View.Cased", storedPermission.Code.Value);
         Assert.Equal(PermissionStatus.Deprecated, storedPermission.Status);
     }
 

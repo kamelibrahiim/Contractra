@@ -24,7 +24,7 @@ public class UserLoginIdentifierMigrationTests : IClassFixture<PostgresTestDatab
     [Fact]
     public async Task Down_RestoresOnlyTheCaseSensitiveIndex_KeepsUserData_AndUpReappliesCleanly()
     {
-        var user = new User(new LoginIdentifier("Migration.Kamel"), UserStatus.Active);
+        var user = TestUsers.NewUser("Migration.Kamel", UserStatus.Active);
         await using (var seedContext = _fixture.CreateDbContext())
         {
             seedContext.Users.Add(user);

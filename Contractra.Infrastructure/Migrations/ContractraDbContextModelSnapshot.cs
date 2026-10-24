@@ -22,6 +22,307 @@ namespace Contractra.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Contractra.Domain.Audit.AuditEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("action_type");
+
+                    b.Property<string>("ActorRoleCode")
+                        .HasColumnType("text")
+                        .HasColumnName("actor_role_code");
+
+                    b.Property<string>("ActorType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("actor_type");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_by_user_id");
+
+                    b.Property<string>("BusinessDocumentNumber")
+                        .HasColumnType("text")
+                        .HasColumnName("business_document_number");
+
+                    b.Property<string>("CausationId")
+                        .HasColumnType("text")
+                        .HasColumnName("causation_id");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasColumnType("text")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<Guid?>("ManagedCompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("managed_company_id");
+
+                    b.Property<string>("NewStatus")
+                        .HasColumnType("text")
+                        .HasColumnName("new_status");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at_utc");
+
+                    b.Property<Guid?>("OperationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("operation_id");
+
+                    b.Property<string>("PreviousStatus")
+                        .HasColumnType("text")
+                        .HasColumnName("previous_status");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.Property<Guid?>("SiteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("site_id");
+
+                    b.Property<string>("Snapshot")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("snapshot");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_events");
+
+                    b.HasIndex("ActorUserId")
+                        .HasDatabaseName("ix_audit_events_actor_user_id");
+
+                    b.HasIndex("ApprovedByUserId")
+                        .HasDatabaseName("ix_audit_events_approved_by_user_id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_audit_events_idempotency_key")
+                        .HasFilter("idempotency_key IS NOT NULL");
+
+                    b.HasIndex("EntityType", "EntityId", "OccurredAtUtc")
+                        .HasDatabaseName("ix_audit_events_entity");
+
+                    b.ToTable("audit_events", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_audit_events_action_type_valid_values", "action_type IN ('UserCreated', 'UserDisabled', 'UserReactivated', 'RoleAssigned', 'RoleEnded', 'PermissionGranted', 'PermissionRevoked', 'PayrollViewGranted', 'PayrollViewRevoked', 'PasswordChanged', 'PasswordResetIssued', 'PasswordResetCompleted', 'InitialPasswordReissued', 'BootstrapPasswordReset', 'AccessDenied', 'ThrottleCleared')");
+
+                            t.HasCheckConstraint("ck_audit_events_actor_consistency", "(actor_type = 'User' AND actor_user_id IS NOT NULL) OR (actor_type = 'System' AND actor_user_id IS NULL AND actor_role_code IS NULL)");
+
+                            t.HasCheckConstraint("ck_audit_events_actor_role_code_valid", "actor_role_code IS NULL OR actor_role_code ~ '^\\S(.*\\S)?$'");
+
+                            t.HasCheckConstraint("ck_audit_events_actor_type_valid_values", "actor_type IN ('User', 'System')");
+
+                            t.HasCheckConstraint("ck_audit_events_approved_by_not_yet_defined", "approved_by_user_id IS NULL");
+
+                            t.HasCheckConstraint("ck_audit_events_business_document_number_valid", "business_document_number IS NULL OR (char_length(business_document_number) <= 128 AND business_document_number ~ '^\\S(.*\\S)?$')");
+
+                            t.HasCheckConstraint("ck_audit_events_causation_id_format", "causation_id IS NULL OR causation_id ~ '^[A-Za-z0-9._-]{1,64}$'");
+
+                            t.HasCheckConstraint("ck_audit_events_context_not_yet_defined", "managed_company_id IS NULL AND operation_id IS NULL AND site_id IS NULL");
+
+                            t.HasCheckConstraint("ck_audit_events_correlation_id_format", "correlation_id ~ '^[A-Za-z0-9._-]{1,64}$'");
+
+                            t.HasCheckConstraint("ck_audit_events_entity_type_valid", "entity_type ~ '^[A-Z][A-Za-z0-9]{0,63}$'");
+
+                            t.HasCheckConstraint("ck_audit_events_idempotency_key_format", "idempotency_key IS NULL OR idempotency_key ~ '^[!-~]+$'");
+
+                            t.HasCheckConstraint("ck_audit_events_idempotency_key_length", "idempotency_key IS NULL OR char_length(idempotency_key) BETWEEN 1 AND 256");
+
+                            t.HasCheckConstraint("ck_audit_events_idempotency_key_prefix", "idempotency_key IS NULL OR idempotency_key LIKE action_type || ':%'");
+
+                            t.HasCheckConstraint("ck_audit_events_idempotency_key_required_for_source", "source NOT IN ('OfflineSync', 'Import', 'SystemJob') OR idempotency_key IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_audit_events_reason_valid", "reason IS NULL OR (char_length(reason) <= 1000 AND reason ~ '^\\S(.*\\S)?$')");
+
+                            t.HasCheckConstraint("ck_audit_events_schema_version_positive", "schema_version >= 1");
+
+                            t.HasCheckConstraint("ck_audit_events_snapshot_valid", "snapshot IS NULL OR (jsonb_typeof(snapshot) = 'object' AND octet_length(snapshot::text) <= 8192)");
+
+                            t.HasCheckConstraint("ck_audit_events_source_valid_values", "source IN ('Web', 'EmployeeApp', 'OfflineSync', 'Import', 'SystemJob')");
+
+                            t.HasCheckConstraint("ck_audit_events_status_changed", "previous_status IS NULL OR previous_status <> new_status");
+
+                            t.HasCheckConstraint("ck_audit_events_status_pair", "(previous_status IS NULL) = (new_status IS NULL)");
+
+                            t.HasCheckConstraint("ck_audit_events_status_valid", "previous_status IS NULL OR (previous_status ~ '^\\S(.*\\S)?$' AND new_status ~ '^\\S(.*\\S)?$')");
+
+                            t.HasCheckConstraint("ck_audit_events_system_actor_source", "actor_type <> 'System' OR source = 'SystemJob'");
+                        });
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.AuthSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AbsoluteExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("absolute_expires_at");
+
+                    b.Property<string>("ClientApp")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("client_app");
+
+                    b.Property<string>("ClientPlatform")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("client_platform");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("LastRefreshedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_refreshed_at");
+
+                    b.Property<string>("RevokeReason")
+                        .HasColumnType("text")
+                        .HasColumnName("revoke_reason");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_auth_sessions");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_auth_sessions_user_id_active")
+                        .HasFilter("revoked_at IS NULL");
+
+                    b.ToTable("auth_sessions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_auth_sessions_absolute_expiry_after_creation", "absolute_expires_at > created_at");
+
+                            t.HasCheckConstraint("ck_auth_sessions_client_app_valid_values", "client_app IN ('admin', 'employee')");
+
+                            t.HasCheckConstraint("ck_auth_sessions_client_platform_valid_values", "client_platform IN ('web', 'mobile')");
+
+                            t.HasCheckConstraint("ck_auth_sessions_last_refreshed_not_before_creation", "last_refreshed_at >= created_at");
+
+                            t.HasCheckConstraint("ck_auth_sessions_revocation_fields_together", "(revoked_at IS NULL) = (revoke_reason IS NULL)");
+
+                            t.HasCheckConstraint("ck_auth_sessions_revoke_reason_valid_values", "revoke_reason IS NULL OR revoke_reason IN ('logout', 'idle', 'refresh_reuse', 'app_access_lost', 'user_disabled', 'password_reset_issued', 'password_reset_completed', 'initial_password_reissued', 'password_changed')");
+
+                            t.HasCheckConstraint("ck_auth_sessions_revoked_not_before_creation", "revoked_at IS NULL OR revoked_at >= created_at");
+                        });
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.PasswordResetTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("channel");
+
+                    b.Property<byte[]>("CodeHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("code_hash");
+
+                    b.Property<DateTimeOffset?>("ConsumedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at");
+
+                    b.Property<Guid?>("IssuedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issued_by_user_id");
+
+                    b.Property<DateTimeOffset?>("SupersededAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("superseded_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_password_reset_tickets");
+
+                    b.HasIndex("IssuedByUserId")
+                        .HasDatabaseName("ix_password_reset_tickets_issued_by_user_id");
+
+                    b.HasIndex("UserId", "IssuedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_password_reset_tickets_user_id_issued_at");
+
+                    b.ToTable("password_reset_tickets", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_password_reset_tickets_channel_valid", "char_length(channel) BETWEEN 1 AND 32");
+
+                            t.HasCheckConstraint("ck_password_reset_tickets_code_hash_length", "octet_length(code_hash) = 32");
+
+                            t.HasCheckConstraint("ck_password_reset_tickets_consumed_before_expiry", "consumed_at IS NULL OR consumed_at < expires_at");
+
+                            t.HasCheckConstraint("ck_password_reset_tickets_consumed_not_before_issued", "consumed_at IS NULL OR consumed_at >= issued_at");
+
+                            t.HasCheckConstraint("ck_password_reset_tickets_expires_after_issued", "expires_at > issued_at");
+
+                            t.HasCheckConstraint("ck_password_reset_tickets_not_consumed_and_superseded", "consumed_at IS NULL OR superseded_at IS NULL");
+
+                            t.HasCheckConstraint("ck_password_reset_tickets_superseded_not_before_issued", "superseded_at IS NULL OR superseded_at >= issued_at");
+                        });
+                });
+
             modelBuilder.Entity("Contractra.Domain.Identity.Permission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -44,6 +345,48 @@ namespace Contractra.Infrastructure.Migrations
                     b.ToTable("permissions", null, t =>
                         {
                             t.HasCheckConstraint("ck_permissions_status_valid_values", "status IN ('Active', 'Deprecated')");
+                        });
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ConsumedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<byte[]>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_refresh_tokens");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("ix_refresh_tokens_session_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_refresh_tokens_token_hash");
+
+                    b.ToTable("refresh_tokens", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_refresh_tokens_consumed_not_before_issued", "consumed_at IS NULL OR consumed_at >= issued_at");
+
+                            t.HasCheckConstraint("ck_refresh_tokens_token_hash_length", "octet_length(token_hash) = 32");
                         });
                 });
 
@@ -105,22 +448,57 @@ namespace Contractra.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool>("IsBootstrapAdmin")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_bootstrap_admin");
+
                     b.Property<string>("LoginIdentifier")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("login_identifier");
+
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("boolean")
+                        .HasColumnName("must_change_password");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("password_hash");
+
+                    b.Property<int>("SecurityVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("security_version");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("status");
 
+                    b.Property<DateTimeOffset?>("TemporaryPasswordExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("temporary_password_expires_at");
+
                     b.HasKey("Id")
                         .HasName("pk_users");
 
+                    b.HasIndex("IsBootstrapAdmin")
+                        .IsUnique()
+                        .HasDatabaseName("ux_users_is_bootstrap_admin")
+                        .HasFilter("is_bootstrap_admin");
+
                     b.ToTable("users", null, t =>
                         {
+                            t.HasCheckConstraint("ck_users_bootstrap_admin_never_must_change", "NOT (is_bootstrap_admin AND must_change_password)");
+
+                            t.HasCheckConstraint("ck_users_password_hash_not_empty", "password_hash <> ''");
+
+                            t.HasCheckConstraint("ck_users_security_version_positive", "security_version >= 1");
+
                             t.HasCheckConstraint("ck_users_status_valid_values", "status IN ('Active', 'Disabled')");
+
+                            t.HasCheckConstraint("ck_users_temporary_password_requires_change", "temporary_password_expires_at IS NULL OR must_change_password");
                         });
                 });
 
@@ -142,7 +520,8 @@ namespace Contractra.Infrastructure.Migrations
                         .HasName("pk_user_party_links");
 
                     b.HasIndex("PartyId")
-                        .HasDatabaseName("ix_user_party_links_party_id");
+                        .IsUnique()
+                        .HasDatabaseName("ux_user_party_links_party_id");
 
                     b.HasIndex("UserId")
                         .IsUnique()
@@ -364,6 +743,97 @@ namespace Contractra.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Contractra.Infrastructure.Persistence.Throttling.AuthThrottleCounter", b =>
+                {
+                    b.Property<string>("Scope")
+                        .HasColumnType("text")
+                        .HasColumnName("scope");
+
+                    b.Property<byte[]>("KeyHash")
+                        .HasColumnType("bytea")
+                        .HasColumnName("key_hash");
+
+                    b.Property<DateTimeOffset?>("BlockedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("blocked_until");
+
+                    b.Property<int>("FailureCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("failure_count");
+
+                    b.Property<DateTimeOffset>("WindowStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("window_start");
+
+                    b.HasKey("Scope", "KeyHash")
+                        .HasName("pk_auth_throttle_counters");
+
+                    b.HasIndex("WindowStart")
+                        .HasDatabaseName("ix_auth_throttle_counters_window_start");
+
+                    b.ToTable("auth_throttle_counters", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_auth_throttle_counters_blocked_until_not_before_window_start", "blocked_until IS NULL OR blocked_until >= window_start");
+
+                            t.HasCheckConstraint("ck_auth_throttle_counters_failure_count_positive", "failure_count >= 1");
+
+                            t.HasCheckConstraint("ck_auth_throttle_counters_key_hash_length", "octet_length(key_hash) = 32");
+
+                            t.HasCheckConstraint("ck_auth_throttle_counters_scope_valid_values", "scope IN ('login_pair', 'identifier', 'change_password_user')");
+                        });
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Audit.AuditEvent", b =>
+                {
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_audit_events_users_actor_user_id");
+
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_audit_events_users_approved_by_user_id");
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.AuthSession", b =>
+                {
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_auth_sessions_users_user_id");
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.PasswordResetTicket", b =>
+                {
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("IssuedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_password_reset_tickets_users_issued_by_user_id");
+
+                    b.HasOne("Contractra.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_password_reset_tickets_users_user_id");
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.RefreshToken", b =>
+                {
+                    b.HasOne("Contractra.Domain.Identity.AuthSession", null)
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_refresh_tokens_auth_sessions_session_id");
+                });
+
             modelBuilder.Entity("Contractra.Domain.Identity.RolePermission", b =>
                 {
                     b.HasOne("Contractra.Domain.Identity.Permission", null)
@@ -460,6 +930,11 @@ namespace Contractra.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_party_roles_parties_party_id");
+                });
+
+            modelBuilder.Entity("Contractra.Domain.Identity.AuthSession", b =>
+                {
+                    b.Navigation("RefreshTokens");
                 });
 
             modelBuilder.Entity("Contractra.Domain.Identity.Role", b =>

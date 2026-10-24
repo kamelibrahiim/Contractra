@@ -62,7 +62,7 @@ public class UserPermissionIntegrityTests : IClassFixture<PostgresTestDatabaseFi
         await using (var dbContext = _fixture.CreateDbContext())
         {
             (await dbContext.Users.Include(u => u.Permissions).SingleAsync(u => u.Id == user.Id))
-                .Permissions.Single().Revoke(T0.AddDays(3), T0.AddDays(3));
+                .RevokePermission(permission, T0.AddDays(3), T0.AddDays(3));
             await dbContext.SaveChangesAsync();
         }
 
@@ -219,7 +219,7 @@ public class UserPermissionIntegrityTests : IClassFixture<PostgresTestDatabaseFi
 
     private async Task<User> SeedUserAsync()
     {
-        var user = new User(new LoginIdentifier($"UserPermission.{Guid.NewGuid():N}"), UserStatus.Active);
+        var user = TestUsers.NewUser($"UserPermission.{Guid.NewGuid():N}", UserStatus.Active);
         await using var dbContext = _fixture.CreateDbContext();
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync();
